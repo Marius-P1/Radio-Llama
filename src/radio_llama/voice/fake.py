@@ -1,4 +1,8 @@
-"""A fake backend that writes silence, so the whole pipeline runs without a paid API."""
+"""A fake backend that writes a faint hum, so the whole pipeline runs without a paid API.
+
+It is a hum and not pure silence because loudness normalisation (ffmpeg loudnorm) produces
+NaN samples on fully silent input and the MP3 encoder then aborts. Real speech is never silent.
+"""
 
 import subprocess
 from pathlib import Path
@@ -28,9 +32,13 @@ class FakeTTS:
             "-f",
             "lavfi",
             "-i",
-            "anullsrc=r=44100:cl=stereo",
+            "sine=frequency=200:sample_rate=44100",
             "-t",
             str(seconds),
+            "-af",
+            "volume=-30dB",
+            "-ac",
+            "2",
             "-c:a",
             "libmp3lame",
             "-q:a",
