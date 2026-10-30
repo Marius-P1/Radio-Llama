@@ -4,7 +4,7 @@ Radio Llama is a radio show made by machines. An LLM writes a radio host's scrip
 
 ## Status
 
-Phase 1 in progress. The pipeline runs end to end with fake LLM and TTS (`radio-llama generate --fake`). The web app is next. Tag `v0-hackathon` holds the original hackathon code.
+Phase 1 in progress. The pipeline, the API and the web app run end to end with fake LLM and TTS. Replay page and release are next. Tag `v0-hackathon` holds the original hackathon code.
 
 ## Origins
 
@@ -24,6 +24,24 @@ The hackathon tree is preserved at tag `v0-hackathon`. The copyrighted music fil
 - FastAPI job API plus React web app (planned)
 - Static replay page on GitHub Pages (planned)
 - Evaluation harness and tool-using agent in Phase 2 (planned)
+
+## Run it
+
+You need Docker, a Mistral or Anthropic API key, and an ElevenLabs API key.
+
+```
+cp .env.example .env
+```
+
+Fill the keys in `.env`, then:
+
+```
+docker compose up --build
+```
+
+Open http://localhost:8000.
+
+The first start generates placeholder audio (or downloads the real catalog once it exists) into `catalog/audio/`. Shows are saved in `output/`, the voice cache in `cache/`.
 
 ## Development
 
@@ -48,6 +66,22 @@ uv run radio-llama generate --fake --style jazz
 ```
 
 The fake LLM returns a canned sentence and the fake voice is a faint hum, so the MP3 proves the pipeline, not the content.
+
+### Dev mode
+
+Terminal 1, the API on port 8000 with reload:
+
+```
+uv run radio-llama serve --reload
+```
+
+Terminal 2, Vite on port 5173, which proxies `/api` to the backend:
+
+```
+cd frontend && npm install && npm run dev
+```
+
+After an API change, run `uv run radio-llama export-openapi` and then `npm run generate-types` in `frontend/`. CI fails if either generated file is stale.
 
 ## License
 
