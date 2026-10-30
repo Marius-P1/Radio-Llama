@@ -151,7 +151,7 @@ def test_check_order_rejects_bad_sequences(kinds: list[SegmentKind], problem: st
         check_order(_show(kinds).segments)
 
 
-def test_assemble_show_writes_parts_mix_and_json(tmp_path: Path) -> None:
+def test_assemble_show_writes_parts_and_mix(tmp_path: Path) -> None:
     kinds: list[SegmentKind] = ["intro", "song", "transition", "song", "outro"]
     show = _show(kinds, song_length_s=2.0)
     # Pure digital silence makes loudnorm emit NaN and libmp3lame abort, so speech
@@ -169,7 +169,7 @@ def test_assemble_show_writes_parts_mix_and_json(tmp_path: Path) -> None:
     result = assemble_show(show, sources, out_dir)
 
     expected = ["00-intro.mp3", "01-song.mp3", "02-transition.mp3", "03-song.mp3", "04-outro.mp3"]
-    assert sorted(p.name for p in out_dir.iterdir()) == sorted([*expected, "show.mp3", "show.json"])
+    assert sorted(p.name for p in out_dir.iterdir()) == sorted([*expected, "show.mp3"])
     assert [segment.audio_file for segment in result.segments] == expected
     for segment in result.segments:
         assert segment.duration_s is not None and segment.duration_s > 0
@@ -178,9 +178,6 @@ def test_assemble_show_writes_parts_mix_and_json(tmp_path: Path) -> None:
 
     total = sum(segment.duration_s or 0.0 for segment in result.segments)
     assert abs(probe_duration(out_dir / "show.mp3") - total) <= 0.5
-
-    saved = Show.model_validate_json((out_dir / "show.json").read_text(encoding="utf-8"))
-    assert saved == result
 
 
 def test_run_ffmpeg_reports_failure(tmp_path: Path) -> None:

@@ -1,14 +1,14 @@
-"""Turn a voiced show into numbered segment files, one `show.mp3` and a `show.json`.
+"""Turn a voiced show into numbered segment files and one `show.mp3`.
 
 The input is a `Show` whose segments are in final order plus one raw audio file per
 segment: the TTS output for speech, the catalog file for a song. The output folder gets
-one normalised MP3 per segment (`00-intro.mp3`, `01-song.mp3`, ...), the joined
-`show.mp3` and a `show.json` describing the show with file names and durations filled in.
-Three ffmpeg steps do the work (D014): songs are trimmed with `-t` and faded in and out,
-every piece is loudness-normalised with `loudnorm` and resampled to 44.1 kHz stereo, then
-the pieces are joined with the concat demuxer and encoded to MP3 once. The single-pass
-`loudnorm` is deliberate: a two-pass run would double the runtime for a gain in accuracy
-a demo does not need.
+one normalised MP3 per segment (`00-intro.mp3`, `01-song.mp3`, ...) and the joined
+`show.mp3`; the segments get their file names and durations filled in. The generator,
+not this module, writes `show.json`. Three ffmpeg steps do the work (D014): songs are
+trimmed with `-t` and faded in and out, every piece is loudness-normalised with
+`loudnorm` and resampled to 44.1 kHz stereo, then the pieces are joined with the concat
+demuxer and encoded to MP3 once. The single-pass `loudnorm` is deliberate: a two-pass
+run would double the runtime for a gain in accuracy a demo does not need.
 """
 
 from pathlib import Path
@@ -111,11 +111,12 @@ def check_order(segments: list[Segment]) -> None:
 
 
 def assemble_show(show: Show, sources: list[Path], out_dir: Path) -> Show:
-    """Build the per-segment files, `show.mp3` and `show.json` in `out_dir`.
+    """Build the per-segment files and `show.mp3` in `out_dir`.
 
     `sources[i]` is the raw audio for `show.segments[i]`. The show is updated in place
     (segment `audio_file` and `duration_s`, then `show.audio_file`) and returned. The
-    status is left alone; the caller owns the lifecycle.
+    status is left alone and nothing is written besides audio; the caller owns the
+    lifecycle and `show.json`.
     """
     check_order(show.segments)
     if len(sources) != len(show.segments):
@@ -135,5 +136,4 @@ def assemble_show(show: Show, sources: list[Path], out_dir: Path) -> Show:
 
     concat_parts(parts, out_dir / "show.mp3")
     show.audio_file = "show.mp3"
-    (out_dir / "show.json").write_text(show.model_dump_json(indent=2) + "\n", encoding="utf-8")
     return show
