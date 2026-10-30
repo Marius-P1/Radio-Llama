@@ -10,6 +10,7 @@ caching for free.
 import hashlib
 import json
 import logging
+import shutil
 from pathlib import Path
 
 from radio_llama.voice.base import TextToSpeech, Voice
@@ -46,6 +47,6 @@ class CachedTextToSpeech:
         log.info("TTS cache miss %s", key[:12])
         raw = self._inner.synthesize(text, voice)
         self._dir.mkdir(parents=True, exist_ok=True)
-        # Same filesystem as the backend's work dir, so this is a rename, not a copy.
-        raw.replace(final)
+        # A rename when the work dir is on the same filesystem, a copy otherwise.
+        shutil.move(raw, final)
         return final
