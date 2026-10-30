@@ -8,10 +8,12 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "anthropic>=2.3.0",
     "elevenlabs>=2.75.0",
+    "fastapi>=0.162.0",
     "mistralai>=3.6.0",
     "pydantic>=2.14.2",
     "pydantic-settings>=2.16.2",
     "typer>=0.27.3",
+    "uvicorn>=0.54.0",
 ]
 
 [project.scripts]
@@ -41,6 +43,7 @@ addopts = "-q"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest>=9.2.0",
     "ruff>=0.17.3",
 ]
