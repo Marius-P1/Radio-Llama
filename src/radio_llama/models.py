@@ -41,6 +41,7 @@ class ShowConfig(BaseModel):
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1
     track_count: int = 3
     song_length_s: float = 30.0  # how long each song plays before the fade-out
+    seed: int | None = None  # fixes the random track pick, for reproducible runs (D017)
 
 
 SegmentKind = Literal["intro", "song", "transition", "outro"]
