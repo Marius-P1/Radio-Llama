@@ -3,6 +3,7 @@
 from radio_llama.voice.base import TextToSpeech, TTSError, Voice
 from radio_llama.voice.cache import CachedTextToSpeech, cache_key
 from radio_llama.voice.elevenlabs import ElevenLabsTTS
+from radio_llama.voice.factory import make_tts, voice_for
 from radio_llama.voice.fake import FakeTTS
 
 __all__ = [
@@ -13,4 +14,6 @@ __all__ = [
     "TextToSpeech",
     "Voice",
     "cache_key",
+    "make_tts",
+    "voice_for",
 ]

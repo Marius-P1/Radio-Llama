@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     llm_provider: Literal["mistral", "anthropic", "fake"] = "mistral"
     llm_model: str = "mistral-small-latest"
     tts_backend: Literal["elevenlabs", "fake"] = "elevenlabs"
+    elevenlabs_model_id: str = "eleven_multilingual_v2"
 
     # Paths
     cache_dir: Path = Path("cache")
