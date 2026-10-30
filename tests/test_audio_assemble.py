@@ -121,6 +121,18 @@ def test_concat_parts_joins_files_end_to_end(tmp_path: Path) -> None:
     assert not dst.with_suffix(".txt").exists()
 
 
+def test_concat_parts_handles_a_quote_in_the_path(tmp_path: Path) -> None:
+    folder = tmp_path / "it's here"
+    folder.mkdir()
+    part = folder / "part.mp3"
+    _tone(part, 1.0)
+    dst = folder / "joined.mp3"
+
+    concat_parts([part, part], dst)
+
+    assert abs(probe_duration(dst) - 2.0) <= 0.3
+
+
 def test_check_order_accepts_a_valid_show() -> None:
     check_order(_show(["intro", "song", "transition", "song", "outro"]).segments)
 

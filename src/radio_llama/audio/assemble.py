@@ -74,8 +74,12 @@ def concat_parts(parts: list[Path], dst: Path) -> None:
 
 
 def _concat_path(path: Path) -> str:
-    """Absolute path with forward slashes, quoted the way the concat demuxer expects."""
-    return path.resolve().as_posix().replace("'", "'''")
+    """Absolute path with forward slashes, escaped for the concat demuxer.
+
+    The list file wraps each path in single quotes. A quote inside the path has to close
+    the string, add an escaped quote, and reopen it: `'` becomes `'\''`.
+    """
+    return path.resolve().as_posix().replace("'", "'\''")
 
 
 def check_order(segments: list[Segment]) -> None:
