@@ -1,0 +1,14 @@
+# One command run: copy .env.example to .env and fill the API keys first, then
+# `docker compose up --build` and open http://localhost:8000.
+# The three volumes keep the shows, the TTS cache and the music on the host, so they
+# survive a rebuild and the catalog is only fetched once.
+services:
+  radio-llama:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - ./output:/app/output
+      - ./cache:/app/cache
+      - ./catalog/audio:/app/catalog/audio
