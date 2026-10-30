@@ -197,3 +197,26 @@ def test_export_openapi_writes_the_schema(
     assert "/api/v1/shows" in schema["paths"]
     assert "/api/v1/options" in schema["paths"]
     assert "/api/v1/shows/{show_id}/audio" in schema["paths"]
+
+
+def test_built_frontend_is_served_next_to_the_api(fake_settings: Settings, tmp_path: Path) -> None:
+    tmp_dist = tmp_path / "dist"
+    (tmp_dist / "assets").mkdir(parents=True)
+    (tmp_dist / "index.html").write_text("<h1>Radio Llama test page</h1>", encoding="utf-8")
+    (tmp_dist / "assets" / "app.js").write_text("console.log('hi')", encoding="utf-8")
+    settings = fake_settings.model_copy(update={"frontend_dist": tmp_dist})
+
+    with TestClient(create_app(settings)) as client:
+        index = client.get("/")
+        assert index.status_code == 200
+        assert "Radio Llama test page" in index.text
+        assert client.get("/assets/app.js").text == "console.log('hi')"
+        assert client.get("/api/v1/options").status_code == 200
+
+
+def test_api_works_without_a_built_frontend(fake_settings: Settings, tmp_path: Path) -> None:
+    settings = fake_settings.model_copy(update={"frontend_dist": tmp_path / "missing"})
+
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/").status_code == 404
+        assert client.get("/api/v1/options").status_code == 200

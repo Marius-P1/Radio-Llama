@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 import radio_llama
 from radio_llama.api.jobs import Jobs, mark_stale_shows_failed
@@ -41,4 +42,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(router)
+    if settings.frontend_dist.is_dir():
+        # The API routes are registered first so they win over the static mount; `html=True`
+        # serves `index.html` at `/`. The app has no client-side router, so no deep links.
+        app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")
+        log.info("Serving the built frontend from %s", settings.frontend_dist)
+    else:
+        log.info("No built frontend at %s, serving the API only", settings.frontend_dist)
     return app

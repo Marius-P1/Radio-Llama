@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     output_dir: Path = Path("output")
     catalog_path: Path = Path("catalog/catalog.json")
     prompts_dir: Path = Path("prompts")
+    # Built frontend served at `/` when the folder exists.
+    frontend_dist: Path = Path("frontend/dist")
 
     def require_api_key(self, provider: str) -> str:
         """Return the API key for `provider` as a plain string, or raise ConfigError."""
