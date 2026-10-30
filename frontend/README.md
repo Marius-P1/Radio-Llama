@@ -34,3 +34,23 @@ npm run build
 ```
 
 The build goes to `frontend/dist/`, which the backend serves in production.
+
+## Replay mode
+
+The replay page is the same app built read-only. It plays shows exported as static files, so it needs no backend and runs on GitHub Pages. The create screen is hidden, the shows are listed from `public/shows/index.json`, and the footer states the CC BY-SA 4.0 license and credits ElevenLabs for the voice.
+
+```sh
+npm run build:replay
+```
+
+This sets `VITE_REPLAY=1` through `.env.replay` and builds with the base path `/Radio-Llama/`, the path of a GitHub Pages project site.
+
+The shows come from the backend's output folder. From the repository root:
+
+```sh
+uv run radio-llama export-replay <show_id>... --zip replay-shows.zip
+```
+
+This copies each ready show's `show.json` and `show.mp3` into `frontend/public/shows/<id>/`, rewrites `index.json`, and packs the folder into `replay-shows.zip`. That folder and the zip are git-ignored: audio is never committed.
+
+`.github/workflows/pages.yml` deploys the replay build when a `v*` tag is pushed. It downloads `replay-shows.zip` from the release of that tag, unpacks it into `public/shows/`, runs `npm run build:replay` and publishes `dist/` to Pages. The release must carry the zip, and Pages must be enabled with GitHub Actions as the source.
