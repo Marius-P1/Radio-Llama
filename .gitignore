@@ -23,3 +23,7 @@ catalog/audio/
 # Frontend
 node_modules/
 frontend/dist/
+
+# Python build artifacts
+dist/
+*.egg-info/
