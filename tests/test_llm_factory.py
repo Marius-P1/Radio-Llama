@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from radio_llama.config import ConfigError, Settings
-from radio_llama.llm import FakeLLM, make_llm_client
+from radio_llama.llm import AnthropicClient, FakeLLM, make_llm_client
 
 
 @pytest.fixture(autouse=True)
@@ -23,3 +23,16 @@ def test_mistral_without_key_names_the_variable(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setenv("LLM_PROVIDER", "mistral")
     with pytest.raises(ConfigError, match="MISTRAL_API_KEY"):
         make_llm_client(Settings())
+
+
+def test_anthropic_without_key_names_the_variable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+    with pytest.raises(ConfigError, match="ANTHROPIC_API_KEY"):
+        make_llm_client(Settings())
+
+
+def test_anthropic_with_key_returns_the_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
+    # anthropic.Anthropic(api_key=...) only builds an HTTP client; it makes no request.
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
+    assert isinstance(make_llm_client(Settings()), AnthropicClient)

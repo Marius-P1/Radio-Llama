@@ -1,0 +1,18 @@
+{
+  "id": "msg_fake",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-fake",
+  "content": [
+    {
+      "type": "text",
+      "text": "Good evening, this is a recorded test reply."
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 21,
+    "output_tokens": 11
+  }
+}
