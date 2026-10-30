@@ -14,8 +14,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# uv comes from its official image. 0.9 is the current minor; bump when uv.lock needs it.
-COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /uvx /bin/
+# uv comes from its official image. The tag matches the uv that wrote uv.lock (0.13);
+# bump both together.
+COPY --from=ghcr.io/astral-sh/uv:0.13 /uv /uvx /bin/
 
 WORKDIR /app
 # UV_NO_SYNC stops `uv run` in the entrypoint from re-syncing (and pulling the dev group)
