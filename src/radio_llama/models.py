@@ -31,6 +31,7 @@ class Persona(BaseModel):
     id: str  # for example "calm"
     name: str  # display name
     description: str  # one or two sentences fed to the prompt
+    voice_id: str  # ElevenLabs voice id
 
 
 class ShowConfig(BaseModel):
