@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from radio_llama.config import Settings
+from radio_llama.config import ConfigError, Settings
 from radio_llama.llm import FakeLLM, make_llm_client
 
 
@@ -17,3 +17,9 @@ def clean_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 def test_fake_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM_PROVIDER", "fake")
     assert isinstance(make_llm_client(Settings()), FakeLLM)
+
+
+def test_mistral_without_key_names_the_variable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "mistral")
+    with pytest.raises(ConfigError, match="MISTRAL_API_KEY"):
+        make_llm_client(Settings())
