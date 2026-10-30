@@ -1,0 +1,25 @@
+# Working notes for the rebuild stay on disk, never in git (Marius's choice).
+docs/
+
+# Secrets and local environment
+.env
+.venv/
+
+# Python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Generated at runtime
+cache/
+output/
+catalog/audio/
+
+# Audio is never committed
+*.mp3
+*.wav
+
+# Frontend
+node_modules/
+frontend/dist/
