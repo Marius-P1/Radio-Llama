@@ -46,3 +46,10 @@ jobs:
         run: git diff --exit-code src/api/schema.d.ts
       - run: npm run lint
       - run: npm run build
+
+  docker:
+    # Docker is not installed on the development machine, so the image is built here.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t radio-llama .
