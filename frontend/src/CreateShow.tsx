@@ -117,7 +117,6 @@ export function CreateShow({ onCreated }: Props) {
               onClick={() => setPersona(p.id)}
             >
               <strong>{p.name}</strong>
-              <span className="muted">{p.description}</span>
             </button>
           ))}
         </div>
