@@ -19,6 +19,8 @@ catalog/audio/
 # Audio is never committed
 *.mp3
 *.wav
+# Exported replay shows hold MP3s and ship as a release asset
+frontend/public/shows/
 
 # Frontend
 node_modules/

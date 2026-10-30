@@ -274,3 +274,7 @@ footer {
   border-top: 1px solid var(--border);
   font-size: 0.9rem;
 }
+
+.intro {
+  margin-bottom: 24px;
+}

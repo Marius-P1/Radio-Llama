@@ -1,12 +1,6 @@
 import createClient from 'openapi-fetch'
-import type { components, paths } from './schema'
-
-export type Options = components['schemas']['OptionsResponse']
-export type CreateShowRequest = components['schemas']['CreateShowRequest']
-export type ShowResponse = components['schemas']['ShowResponse']
-export type ShowSummary = components['schemas']['ShowSummary']
-export type Segment = components['schemas']['Segment']
-export type Track = components['schemas']['Track']
+import type { paths } from './schema'
+import type { CreateShowRequest, Options, ShowResponse, ShowSummary } from './types'
 
 // Relative URLs on purpose: Vite proxies /api in dev, the backend serves the built files in production.
 export const api = createClient<paths>({ baseUrl: '' })

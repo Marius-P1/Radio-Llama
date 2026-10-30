@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { audioUrl, getShow, type Segment, type ShowResponse, type Track } from './api/client'
+import { audioUrl, getShow, type Segment, type ShowResponse, type Track } from './api'
 import { languageLabel, styleLabel } from './labels'
 
 type Props = {

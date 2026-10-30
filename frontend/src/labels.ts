@@ -1,4 +1,4 @@
-import type { ShowSummary } from './api/client'
+import type { ShowSummary } from './api'
 
 /** Plain-English labels for values the API returns as identifiers. */
 

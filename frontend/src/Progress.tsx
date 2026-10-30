@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getShow, type ShowResponse } from './api/client'
+import { getShow, type ShowResponse } from './api'
 
 type Props = {
   id: string

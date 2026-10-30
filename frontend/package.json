@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:replay": "tsc -b && vite build --mode replay",
     "lint": "oxlint",
     "preview": "vite preview",
     "generate-types": "openapi-typescript openapi.json -o src/api/schema.d.ts"

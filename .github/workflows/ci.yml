@@ -46,6 +46,7 @@ jobs:
         run: git diff --exit-code src/api/schema.d.ts
       - run: npm run lint
       - run: npm run build
+      - run: npm run build:replay
 
   docker:
     # Docker is not installed on the development machine, so the image is built here.

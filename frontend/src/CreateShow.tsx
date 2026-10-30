@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createShow, getOptions, type Options } from './api/client'
+import { createShow, getOptions, type Options } from './api'
 import { languageLabel, styleLabel } from './labels'
 
 type Language = 'en' | 'fr'

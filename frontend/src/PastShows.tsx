@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listShows, type ShowSummary } from './api/client'
+import { listShows, type ShowSummary } from './api'
 import { dateLabel, languageLabel, statusLabel, styleLabel } from './labels'
 
 type Props = {
