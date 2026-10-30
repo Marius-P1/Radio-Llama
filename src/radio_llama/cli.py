@@ -14,6 +14,7 @@ from radio_llama.api.app import create_app
 from radio_llama.config import ConfigError, load_settings
 from radio_llama.generator import make_generator, run_generation
 from radio_llama.models import Show, ShowConfig
+from radio_llama.replay import export_replay, zip_replay
 from radio_llama.storage import new_show_id
 
 app = typer.Typer(
@@ -114,6 +115,32 @@ def export_openapi(
     text = json.dumps(schema, indent=2, sort_keys=True) + "\n"
     path.write_text(text, encoding="utf-8", newline="\n")
     typer.echo(f"OpenAPI schema written to {path}")
+
+
+@app.command("export-replay")
+def export_replay_command(
+    show_ids: Annotated[list[str], typer.Argument(help="Ids of ready shows in OUTPUT_DIR.")],
+    dest: Annotated[Path, typer.Option(help="Folder the replay page reads shows from.")] = Path(
+        "frontend/public/shows"
+    ),
+    zip_path: Annotated[
+        Path | None, typer.Option("--zip", help="Also write a zip of DEST, for the release asset.")
+    ] = None,
+) -> None:
+    """Copy ready shows into the replay page (D010) and rewrite its index.json."""
+    try:
+        settings = load_settings()
+        summaries = export_replay(show_ids, settings.output_dir, dest)
+    except (ConfigError, FileNotFoundError, ValueError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from None
+
+    for summary in summaries:
+        typer.echo(f"Exported show {summary['id']} to {dest / summary['id']}")
+    typer.echo(f"Index written to {dest / 'index.json'}")
+    if zip_path is not None:
+        zip_replay(dest, zip_path)
+        typer.echo(f"Archive written to {zip_path}")
 
 
 if __name__ == "__main__":
