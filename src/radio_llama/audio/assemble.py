@@ -77,9 +77,10 @@ def _concat_path(path: Path) -> str:
     """Absolute path with forward slashes, escaped for the concat demuxer.
 
     The list file wraps each path in single quotes. A quote inside the path has to close
-    the string, add an escaped quote, and reopen it: `'` becomes `'\''`.
+    the string, add a backslash-escaped quote, and reopen it: a lone quote becomes
+    quote, backslash, quote, quote.
     """
-    return path.resolve().as_posix().replace("'", "'\''")
+    return path.resolve().as_posix().replace("'", "'\\''")
 
 
 def check_order(segments: list[Segment]) -> None:
