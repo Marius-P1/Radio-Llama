@@ -1,13 +1,16 @@
 """The `radio-llama` command line: a developer tool for generating shows (P1-09)."""
 
+import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
 import typer
+import uvicorn
 from pydantic import ValidationError
 
+from radio_llama.api.app import create_app
 from radio_llama.config import ConfigError, load_settings
 from radio_llama.generator import make_generator, run_generation
 from radio_llama.models import Show, ShowConfig
@@ -85,6 +88,31 @@ def generate(
     typer.echo(f"Show written to {out_dir / show.audio_file}")
     typer.echo(f"Segments: {len(show.segments)}")
     typer.echo(f"LLM tokens: {tokens_in} in, {tokens_out} out")
+
+
+@app.command()
+def serve(
+    host: Annotated[str, typer.Option(help="Interface to listen on.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="Port to listen on.")] = 8000,
+    reload: Annotated[bool, typer.Option("--reload", help="Restart on code changes.")] = False,
+) -> None:
+    """Development server for the API."""
+    uvicorn.run("radio_llama.api.app:create_app", factory=True, host=host, port=port, reload=reload)
+
+
+@app.command("export-openapi")
+def export_openapi(
+    path: Annotated[Path, typer.Argument(help="Where to write the schema.")] = Path(
+        "frontend/openapi.json"
+    ),
+) -> None:
+    """Write the OpenAPI schema as JSON, for the frontend types (P1-11) and CI drift checks."""
+    # The schema does not depend on the providers, so the fakes avoid needing any API key.
+    settings = load_settings().model_copy(update={"llm_provider": "fake", "tts_backend": "fake"})
+    schema = create_app(settings).openapi()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(schema, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    typer.echo(f"OpenAPI schema written to {path}")
 
 
 if __name__ == "__main__":

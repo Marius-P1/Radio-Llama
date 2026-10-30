@@ -1,0 +1,649 @@
+{
+  "components": {
+    "schemas": {
+      "CreateShowRequest": {
+        "properties": {
+          "generator": {
+            "const": "pipeline",
+            "default": "pipeline",
+            "title": "Generator",
+            "type": "string"
+          },
+          "language": {
+            "default": "en",
+            "enum": [
+              "en",
+              "fr"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "persona": {
+            "default": "calm",
+            "title": "Persona",
+            "type": "string"
+          },
+          "style": {
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "style"
+        ],
+        "title": "CreateShowRequest",
+        "type": "object"
+      },
+      "Fact": {
+        "properties": {
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "source_url"
+        ],
+        "title": "Fact",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "OptionsResponse": {
+        "properties": {
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "personas": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/PersonaOption"
+              },
+              "type": "array"
+            },
+            "title": "Personas",
+            "type": "object"
+          },
+          "styles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Styles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "styles",
+          "personas",
+          "languages"
+        ],
+        "title": "OptionsResponse",
+        "type": "object"
+      },
+      "PersonaOption": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "PersonaOption",
+        "type": "object"
+      },
+      "Progress": {
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "done",
+          "total"
+        ],
+        "title": "Progress",
+        "type": "object"
+      },
+      "Segment": {
+        "properties": {
+          "audio_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio File"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "kind": {
+            "enum": [
+              "intro",
+              "song",
+              "transition",
+              "outro"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "track_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track Id"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "Segment",
+        "type": "object"
+      },
+      "ShowConfig": {
+        "properties": {
+          "generator": {
+            "const": "pipeline",
+            "default": "pipeline",
+            "title": "Generator",
+            "type": "string"
+          },
+          "language": {
+            "default": "en",
+            "enum": [
+              "en",
+              "fr"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "persona": {
+            "title": "Persona",
+            "type": "string"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "song_length_s": {
+            "default": 30.0,
+            "title": "Song Length S",
+            "type": "number"
+          },
+          "style": {
+            "title": "Style",
+            "type": "string"
+          },
+          "track_count": {
+            "default": 3,
+            "title": "Track Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "style",
+          "persona"
+        ],
+        "title": "ShowConfig",
+        "type": "object"
+      },
+      "ShowResponse": {
+        "properties": {
+          "audio_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Url"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ShowConfig"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Progress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "generating",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tracks": {
+            "items": {
+              "$ref": "#/components/schemas/Track"
+            },
+            "title": "Tracks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "created_at",
+          "config",
+          "segments",
+          "tracks"
+        ],
+        "title": "ShowResponse",
+        "type": "object"
+      },
+      "ShowSummary": {
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/ShowConfig"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "generating",
+              "ready",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "created_at",
+          "config"
+        ],
+        "title": "ShowSummary",
+        "type": "object"
+      },
+      "Track": {
+        "properties": {
+          "artist": {
+            "title": "Artist",
+            "type": "string"
+          },
+          "audio_file": {
+            "title": "Audio File",
+            "type": "string"
+          },
+          "duration_s": {
+            "title": "Duration S",
+            "type": "number"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/Fact"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "license": {
+            "title": "License",
+            "type": "string"
+          },
+          "placeholder": {
+            "default": false,
+            "title": "Placeholder",
+            "type": "boolean"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "style": {
+            "title": "Style",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "artist",
+          "style",
+          "duration_s",
+          "license",
+          "source_url",
+          "audio_file"
+        ],
+        "title": "Track",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Radio Llama API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/options": {
+      "get": {
+        "operationId": "get_options_api_v1_options_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Options"
+      }
+    },
+    "/api/v1/shows": {
+      "get": {
+        "operationId": "list_shows_api_v1_shows_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShowSummary"
+                  },
+                  "title": "Response List Shows Api V1 Shows Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Shows"
+      },
+      "post": {
+        "operationId": "create_show_api_v1_shows_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Show"
+      }
+    },
+    "/api/v1/shows/{show_id}": {
+      "get": {
+        "operationId": "get_show_api_v1_shows__show_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "show_id",
+            "required": true,
+            "schema": {
+              "title": "Show Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Show"
+      }
+    },
+    "/api/v1/shows/{show_id}/audio": {
+      "get": {
+        "operationId": "get_show_audio_api_v1_shows__show_id__audio_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "show_id",
+            "required": true,
+            "schema": {
+              "title": "Show Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Show Audio"
+      }
+    }
+  }
+}
