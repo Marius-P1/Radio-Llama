@@ -111,7 +111,8 @@ def export_openapi(
     settings = load_settings().model_copy(update={"llm_provider": "fake", "tts_backend": "fake"})
     schema = create_app(settings).openapi()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(schema, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    text = json.dumps(schema, indent=2, sort_keys=True) + "\n"
+    path.write_text(text, encoding="utf-8", newline="\n")
     typer.echo(f"OpenAPI schema written to {path}")
 
 
