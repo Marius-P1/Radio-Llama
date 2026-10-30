@@ -5,7 +5,10 @@ description = "An LLM radio host between Creative Commons songs."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "pydantic>=2.14.2",
+    "pydantic-settings>=2.16.2",
+]
 
 [build-system]
 requires = ["hatchling"]
