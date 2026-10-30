@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from pydantic import ValidationError
 
 from radio_llama.config import ConfigError, load_settings
 from radio_llama.generator import make_generator, run_generation
@@ -51,19 +52,23 @@ def generate(
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from None
 
-    now = datetime.now(UTC)
-    show = Show(
-        id=new_show_id(now),
-        created_at=now,
-        config=ShowConfig(
+    try:
+        config = ShowConfig(
             style=style,
             persona=persona,
-            language=language or settings.radio_language,
+            language=language or settings.radio_language,  # type: ignore[arg-type]
             track_count=tracks,
             song_length_s=song_length,
             seed=seed,
-        ),
-    )
+        )
+    except ValidationError as exc:
+        # One line per bad option, for example "language: Input should be 'en' or 'fr'".
+        for error in exc.errors():
+            typer.echo(f"{error['loc'][0]}: {error['msg']}", err=True)
+        raise typer.Exit(code=1) from None
+
+    now = datetime.now(UTC)
+    show = Show(id=new_show_id(now), created_at=now, config=config)
     out_dir = (output or settings.output_dir) / show.id
 
     def on_progress(done: int, total: int) -> None:
