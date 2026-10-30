@@ -4,7 +4,7 @@ Radio Llama is a radio show made by machines. An LLM writes a radio host's scrip
 
 ## Status
 
-Phase 1 in progress. Nothing works end to end yet. Tag `v0-hackathon` holds the original hackathon code.
+Phase 1 in progress. The pipeline runs end to end with fake LLM and TTS (`radio-llama generate --fake`). The web app is next. Tag `v0-hackathon` holds the original hackathon code.
 
 ## Origins
 
@@ -38,6 +38,16 @@ uv run pytest
 ```
 
 Tests never call a paid API.
+
+### Generate a show with fakes
+
+```
+uv sync
+uv run python catalog/download.py
+uv run radio-llama generate --fake --style jazz
+```
+
+The fake LLM returns a canned sentence and the fake voice is a faint hum, so the MP3 proves the pipeline, not the content.
 
 ## License
 
