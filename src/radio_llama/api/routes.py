@@ -148,4 +148,5 @@ def get_show_audio(show_id: str, settings: SettingsDep) -> FileResponse:
     path = settings.output_dir / show_id / (show.audio_file or "")
     if show.status != "ready" or show.audio_file is None or not path.is_file():
         raise HTTPException(status_code=404, detail=f"Show {show_id!r} has no audio yet.")
-    return FileResponse(path, media_type="audio/mpeg", filename=f"{show_id}.mp3")
+    # No filename: the browser plays the MP3 inline instead of downloading it.
+    return FileResponse(path, media_type="audio/mpeg")
