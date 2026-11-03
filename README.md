@@ -127,7 +127,6 @@ After an API change, run `uv run radio-llama export-openapi` and then `npm run g
 - Everything so far was tested with fakes. No real LLM or ElevenLabs call has been made in this repo yet.
 - The energy labels in the catalog are the curator's; all jazz tracks have none.
 - French shows receive the host notes in English.
-- The ElevenLabs voice ids in `prompts/*/personas.json` are placeholders.
 - The Anthropic adapter ignores `temperature`.
 - The web app has not been tested with a non-technical person yet.
 - The web app has no deep links. Reloading the page returns to the first screen.
@@ -138,11 +137,10 @@ For Marius, before tagging `v1.0`.
 
 1. Publish the catalog audio: zip `catalog/audio/` without the `fake-*` files, attach it to a `catalog-v1` release, write its SHA-256 into `catalog/SHA256SUMS`. See [catalog/README.md](catalog/README.md).
 2. Run `uv run python catalog/download.py` from a clean checkout, then `uv run pytest`.
-3. Set the real ElevenLabs voice ids in `prompts/en/personas.json` and `prompts/fr/personas.json`.
-4. Run one real show with Mistral or Anthropic and ElevenLabs, and listen to it.
-5. Generate the replay shows and export them: `radio-llama export-replay <id>... --zip replay-shows.zip`. Attach the zip to the release.
-6. Take the screenshot and cut the one minute audio sample. Link both above.
-7. Tag.
+3. Run one real show with Mistral or Anthropic and ElevenLabs, and listen to it.
+4. Generate the replay shows and export them: `radio-llama export-replay <id>... --zip replay-shows.zip`. Attach the zip to the release.
+5. Take the screenshot and cut the one minute audio sample. Link both above.
+6. Tag.
 
 ## Origins
 

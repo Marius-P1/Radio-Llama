@@ -15,6 +15,7 @@ UI_STRINGS = {
     "en": {
         "by": "by",
         "no_facts": "(no facts available for this track)",
+        "no_notes": "(none)",
         "about": {"artist": "About the artist:", "track": "About the track:"},
         "album": "Album:",
         "tags": "Tags:",
@@ -28,6 +29,7 @@ UI_STRINGS = {
     "fr": {
         "by": "de",
         "no_facts": "(aucune anecdote disponible pour ce morceau)",
+        "no_notes": "(aucune)",
         "about": {"artist": "Sur l'artiste :", "track": "Sur le morceau :"},
         "album": "Album :",
         "tags": "Tags :",
@@ -143,7 +145,7 @@ class ScriptWriter:
                 "next_artist": next_track.artist,
                 "next_details": format_track_details(next_track, self._language),
                 "facts": format_facts(next_track.facts, self._language),
-                "host_notes": next_track.host_notes or "",
+                "host_notes": next_track.host_notes or UI_STRINGS[self._language]["no_notes"],
             },
         )
 
