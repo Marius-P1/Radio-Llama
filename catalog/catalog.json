@@ -1,257 +1,2093 @@
-{
-  "version": 1,
-  "tracks": [
-    {
-      "id": "fake-jazz-1",
-      "title": "Fake Jazz Track 1",
-      "artist": "Placeholder Artist 1",
-      "style": "jazz",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-jazz-1",
-      "audio_file": "fake-jazz-1.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Jazz Track 1.",
-          "source_url": "https://example.com/fake-jazz-1"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Jazz Track 1.",
-          "source_url": "https://example.com/fake-jazz-1"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-jazz-2",
-      "title": "Fake Jazz Track 2",
-      "artist": "Placeholder Artist 2",
-      "style": "jazz",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-jazz-2",
-      "audio_file": "fake-jazz-2.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Jazz Track 2.",
-          "source_url": "https://example.com/fake-jazz-2"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Jazz Track 2.",
-          "source_url": "https://example.com/fake-jazz-2"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-jazz-3",
-      "title": "Fake Jazz Track 3",
-      "artist": "Placeholder Artist 3",
-      "style": "jazz",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-jazz-3",
-      "audio_file": "fake-jazz-3.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Jazz Track 3.",
-          "source_url": "https://example.com/fake-jazz-3"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Jazz Track 3.",
-          "source_url": "https://example.com/fake-jazz-3"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-rock-1",
-      "title": "Fake Rock Track 1",
-      "artist": "Placeholder Artist 4",
-      "style": "rock",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-rock-1",
-      "audio_file": "fake-rock-1.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Rock Track 1.",
-          "source_url": "https://example.com/fake-rock-1"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Rock Track 1.",
-          "source_url": "https://example.com/fake-rock-1"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-rock-2",
-      "title": "Fake Rock Track 2",
-      "artist": "Placeholder Artist 5",
-      "style": "rock",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-rock-2",
-      "audio_file": "fake-rock-2.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Rock Track 2.",
-          "source_url": "https://example.com/fake-rock-2"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Rock Track 2.",
-          "source_url": "https://example.com/fake-rock-2"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-rock-3",
-      "title": "Fake Rock Track 3",
-      "artist": "Placeholder Artist 6",
-      "style": "rock",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-rock-3",
-      "audio_file": "fake-rock-3.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Rock Track 3.",
-          "source_url": "https://example.com/fake-rock-3"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Rock Track 3.",
-          "source_url": "https://example.com/fake-rock-3"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-electronic-1",
-      "title": "Fake Electronic Track 1",
-      "artist": "Placeholder Artist 7",
-      "style": "electronic",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-electronic-1",
-      "audio_file": "fake-electronic-1.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Electronic Track 1.",
-          "source_url": "https://example.com/fake-electronic-1"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Electronic Track 1.",
-          "source_url": "https://example.com/fake-electronic-1"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-electronic-2",
-      "title": "Fake Electronic Track 2",
-      "artist": "Placeholder Artist 8",
-      "style": "electronic",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-electronic-2",
-      "audio_file": "fake-electronic-2.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Electronic Track 2.",
-          "source_url": "https://example.com/fake-electronic-2"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Electronic Track 2.",
-          "source_url": "https://example.com/fake-electronic-2"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-electronic-3",
-      "title": "Fake Electronic Track 3",
-      "artist": "Placeholder Artist 9",
-      "style": "electronic",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-electronic-3",
-      "audio_file": "fake-electronic-3.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Electronic Track 3.",
-          "source_url": "https://example.com/fake-electronic-3"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Electronic Track 3.",
-          "source_url": "https://example.com/fake-electronic-3"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-lofi-1",
-      "title": "Fake Lofi Track 1",
-      "artist": "Placeholder Artist 10",
-      "style": "lofi",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-lofi-1",
-      "audio_file": "fake-lofi-1.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Lofi Track 1.",
-          "source_url": "https://example.com/fake-lofi-1"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Lofi Track 1.",
-          "source_url": "https://example.com/fake-lofi-1"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-lofi-2",
-      "title": "Fake Lofi Track 2",
-      "artist": "Placeholder Artist 11",
-      "style": "lofi",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-lofi-2",
-      "audio_file": "fake-lofi-2.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Lofi Track 2.",
-          "source_url": "https://example.com/fake-lofi-2"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Lofi Track 2.",
-          "source_url": "https://example.com/fake-lofi-2"
-        }
-      ],
-      "placeholder": true
-    },
-    {
-      "id": "fake-lofi-3",
-      "title": "Fake Lofi Track 3",
-      "artist": "Placeholder Artist 12",
-      "style": "lofi",
-      "duration_s": 25.0,
-      "license": "CC-BY-4.0",
-      "source_url": "https://example.com/fake-lofi-3",
-      "audio_file": "fake-lofi-3.mp3",
-      "facts": [
-        {
-          "text": "Placeholder fact 1 about Fake Lofi Track 3.",
-          "source_url": "https://example.com/fake-lofi-3"
-        },
-        {
-          "text": "Placeholder fact 2 about Fake Lofi Track 3.",
-          "source_url": "https://example.com/fake-lofi-3"
-        }
-      ],
-      "placeholder": true
-    }
-  ]
-}
+[
+  {
+    "id": "electronic-01",
+    "pick": "e01",
+    "style": "electronic",
+    "energy": "upbeat",
+    "title": "Night Owl",
+    "artist": "Broke For Free",
+    "album": "Directionless EP",
+    "year": 2011,
+    "duration_seconds": 194,
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Broke_For_Free/Directionless_EP/Broke_For_Free_-_Directionless_EP_-_01_Night_Owl/",
+    "audio_file": "Broke For Free - Night Owl.mp3",
+    "artist_url": "https://brokeforfree.bandcamp.com/",
+    "tags": [
+      "minimal electronic",
+      "mellow"
+    ],
+    "facts": [
+      {
+        "text": "Night Owl is from the Directionless EP, which the artist described as a collection of their favorite mellow tracks.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Broke_For_Free/Directionless_EP/",
+        "quote": "'Directionless' is a collection of my favorite mellow tracks over the last 6 months",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Broke For Free makes nostalgic, feel-good instrumentals.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Broke_For_Free/",
+        "quote": "Nostalgic, feel-good instrumentals from Northern California",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Broke For Free is based in Oakland, California.",
+        "about": "artist",
+        "source_url": "https://brokeforfree.bandcamp.com/music",
+        "quote": "Oakland, California",
+        "source_type": "bandcamp"
+      }
+    ],
+    "notes": "Night Owl is track 1 of the EP (FMA tracklist), but no fact relies on that."
+  },
+  {
+    "id": "electronic-02",
+    "pick": "e02",
+    "style": "electronic",
+    "energy": "calm",
+    "title": "9 Ghosts I",
+    "artist": "Nine Inch Nails",
+    "album": "Ghosts I-IV",
+    "year": 2008,
+    "duration_seconds": 167,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Nine_Inch_Nails/Ghosts_I-IV/9_Ghosts_I/",
+    "audio_file": "Nine Inch Nails - 9 Ghosts I.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/Nine_Inch_Nails",
+    "tags": [
+      "dark ambient",
+      "industrial"
+    ],
+    "facts": [
+      {
+        "text": "9 Ghosts I comes from Ghosts I-IV, an album Nine Inch Nails released under a Creative Commons license.",
+        "about": "track",
+        "source_url": "https://en.wikipedia.org/wiki/Ghosts_I%E2%80%93IV",
+        "quote": "The album was released under a Creative Commons license (BY-NC-SA)",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "Ghosts I-IV was the first Creative Commons licensed music to be nominated for a Grammy Award.",
+        "about": "track",
+        "source_url": "https://en.wikipedia.org/wiki/Ghosts_I%E2%80%93IV",
+        "quote": "the first time music released under a Creative Commons license had been nominated for a Grammy Award",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "The album was made by Trent Reznor with Atticus Ross and Alan Moulder.",
+        "about": "track",
+        "source_url": "https://en.wikipedia.org/wiki/Ghosts_I%E2%80%93IV",
+        "quote": "The core creative team behind the project was Reznor, Atticus Ross, and Alan Moulder.",
+        "source_type": "wikipedia"
+      }
+    ],
+    "notes": "FMA lists the album as 2009 (upload date). Wikipedia infobox gives March 2, 2008. Year set to 2008. License is the US port of 3.0."
+  },
+  {
+    "id": "electronic-03",
+    "pick": "e04",
+    "style": "electronic",
+    "energy": "upbeat",
+    "title": "The Day Before Tomorrow",
+    "artist": "The Polish Ambassador",
+    "album": "First Words",
+    "year": 2010,
+    "duration_seconds": 337,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/The_Polish_Ambassador/First_Words/23_The_Day_Before_Tomorrow/",
+    "audio_file": "The Polish Ambassador - The Day Before Tomorrow.mp3",
+    "artist_url": "https://freemusicarchive.org/music/The_Polish_Ambassador/",
+    "tags": [
+      "glitch",
+      "trip-hop",
+      "funk"
+    ],
+    "facts": [
+      {
+        "text": "The Day Before Tomorrow is from First Words, a 23-track double album.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/The_Polish_Ambassador/First_Words/",
+        "quote": "a very elaborate and satisfying 23-track double album",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The Polish Ambassador blends funk, glitch, IDM, hip hop, 80s music, jungle and dub.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/The_Polish_Ambassador/First_Words/",
+        "quote": "he blends elements of funk, glitch, idm, hip hop, 80s music, jungle, and dub",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "His platform bio credits him with 17 albums and countless remixes.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/The_Polish_Ambassador/bio",
+        "quote": "With a stack of 17 albums and countless remixes",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "The English Wikipedia article no longer exists (checked live). All facts come from FMA album and bio text, written by the artist or label. Album year from the FMA album page (Oct 01, 2010); the track page shows a 2014 upload date."
+  },
+  {
+    "id": "electronic-04",
+    "pick": "e05",
+    "style": "electronic",
+    "energy": "upbeat",
+    "title": "I Walked Alone (instrumental)",
+    "artist": "YACHT",
+    "album": "Shangri-La (Instrumentals)",
+    "year": 2011,
+    "duration_seconds": 290,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/YACHT/Shangri-La_Instrumentals/03_I_Walked_Alone/",
+    "audio_file": "YACHT - I Walked Alone (instrumental).mp3",
+    "artist_url": "https://freemusicarchive.org/music/YACHT/",
+    "tags": [
+      "disco",
+      "electronic",
+      "dance"
+    ],
+    "facts": [
+      {
+        "text": "YACHT is a conceptual pop group based in Los Angeles.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/YACHT/bio",
+        "quote": "YACHT is a conceptual pop group based in Los Angeles, California.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "YACHT started in 2002 in Portland, Oregon.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/YACHT/bio",
+        "quote": "YACHT was born in 2002 in Portland, Oregon",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The album Shangri-La was produced and performed by Jona Bechtolt and Claire L. Evans.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/YACHT/Shangri-La_Instrumentals/",
+        "quote": "was produced, mixed, recorded, and performed by Jona Bechtolt and Claire L. Evans",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Year from the FMA album page (Jun 21, 2011); this is the instrumental edition, the vocal album is not covered here. Wikipedia not used."
+  },
+  {
+    "id": "electronic-05",
+    "pick": "e07",
+    "style": "electronic",
+    "energy": "calm",
+    "title": "Voyage I - Waterfall",
+    "artist": "The Kyoto Connection",
+    "album": "Wake Up",
+    "year": 2013,
+    "duration_seconds": 264,
+    "license": "CC BY-NC-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+    "track_url": "https://freemusicarchive.org/music/The_Kyoto_Connection/Wake_Up_1957/03_Voyage_I_-_Waterfall/",
+    "audio_file": "The Kyoto Connection - Voyage I - Waterfall.mp3",
+    "artist_url": "https://freemusicarchive.org/music/The_Kyoto_Connection/",
+    "tags": [
+      "new age",
+      "ambient",
+      "electronic"
+    ],
+    "facts": [
+      {
+        "text": "The Kyoto Connection is an Argentine group that has made Japan-inspired music since the late 2000s.",
+        "about": "artist",
+        "source_url": "https://banbantonton.com/2022/06/02/the-kyoto-connection-the-flower-the-bird-and-the-mountain-temples-of-jura/",
+        "quote": "Argentine trio, The Kyoto Connection, have been making music inspired by Japan since the late 2000s.",
+        "source_type": "review"
+      },
+      {
+        "text": "Voyage I - Waterfall is from Wake Up, the group's fifth studio album.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/The_Kyoto_Connection/Wake_Up_1957/",
+        "quote": "Wake Up is our fifth studio album.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Wake Up was recorded between January 2012 and May 2013.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/The_Kyoto_Connection/Wake_Up_1957/",
+        "quote": "Recorded between Jan 2012 and May 2013",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Other sources call the project one man's (Facundo Arena) work; the review calls it a trio, so the host should not state the lineup. License set to CC BY-NC-SA 3.0 (Marius decision): the track page says CC BY-SA 3.0, the artist bio says CC BY-NC-SA, the stricter one is used."
+  },
+  {
+    "id": "electronic-06",
+    "pick": "e08",
+    "style": "electronic",
+    "energy": "upbeat",
+    "title": "Underclocked (underunderclocked mix)",
+    "artist": "Eric Skiff",
+    "album": "Resistor Anthems",
+    "year": 2008,
+    "duration_seconds": 189,
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Eric_Skiff/Resistor_Anthems/eric_skiff_-_02_-_underclocked_underunderclocked_mix/",
+    "audio_file": "Eric Skiff - Underclocked (underunderclocked mix).mp3",
+    "artist_url": "https://freemusicarchive.org/music/Eric_Skiff/",
+    "tags": [
+      "chiptune",
+      "8-bit"
+    ],
+    "facts": [
+      {
+        "text": "Resistor Anthems was reportedly made almost entirely on a borrowed Game Boy turned into an instrument.",
+        "about": "track",
+        "source_url": "https://www.westword.com/music/beyond-playlist-eric-skiff-5702643/",
+        "quote": "Reportedly created almost entirely on a borrowed Gameboy hacked into a musical instrument",
+        "source_type": "review"
+      },
+      {
+        "text": "Resistor Anthems is a nine-track album of lo-fi electronic music.",
+        "about": "track",
+        "source_url": "https://www.westword.com/music/beyond-playlist-eric-skiff-5702643/",
+        "quote": "Resistor Anthems is a nine tracks of chirping, lo-fi electronic beauty",
+        "source_type": "review"
+      },
+      {
+        "text": "Eric Skiff released every song on the album under a Creative Commons Attribution license.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Eric_Skiff/Resistor_Anthems/",
+        "quote": "All songs are released under a Creative Commons Attribution License",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Year 2008 is inferred from the Westword review dated May 21, 2009 saying 'Released last year'; FMA shows 2005 (album) and 2011 (bio), both unreliable. Keep the word 'reportedly' in fact 1."
+  },
+  {
+    "id": "electronic-07",
+    "pick": "e09",
+    "style": "electronic",
+    "energy": "calm",
+    "title": "How I Used To See The Stars",
+    "artist": "Lee Rosevere",
+    "album": "Music For Podcasts - Ambient",
+    "year": null,
+    "duration_seconds": 280,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/lee-rosevere/music-for-podcasts-ambient/how-i-used-to-see-the-stars/",
+    "audio_file": "Lee Rosevere - How I Used To See The Stars.mp3",
+    "artist_url": "https://freemusicarchive.org/music/lee-rosevere/",
+    "tags": [
+      "ambient",
+      "electronic"
+    ],
+    "facts": [
+      {
+        "text": "Lee Rosevere worked with NASA on podcast music for the 50th anniversary of the Apollo 11 landing.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/lee-rosevere/bio",
+        "quote": "He worked with NASA on original podcast music for the 50th anniversary of the Apollo 11 landing in 2019.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Lee Rosevere is a prolific, self-taught composer.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/lee-rosevere/bio",
+        "quote": "A prolific composer and self-taught musician",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "This track comes from a collection of ambient pieces written for use in podcasts.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/lee-rosevere/music-for-podcasts-ambient/",
+        "quote": "A collection of ambient compositions intended for use with podcasts",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Year left null: FMA shows May 2023, which looks like an upload date. Own site not checked."
+  },
+  {
+    "id": "electronic-08",
+    "pick": "e10",
+    "style": "electronic",
+    "energy": "upbeat",
+    "title": "Inspiration",
+    "artist": "BoxCat Games",
+    "album": "Nameless: The Hackers RPG Soundtrack",
+    "year": 2013,
+    "duration_seconds": 268,
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/",
+    "track_url": "https://freemusicarchive.org/music/BoxCat_Games/Nameless_the_Hackers_RPG_Soundtrack/BoxCat_Games_-_Nameless-_the_Hackers_RPG_Soundtrack_-_07_Inspiration/",
+    "audio_file": "BoxCat Games - Inspiration.mp3",
+    "artist_url": "https://boxcat.bandcamp.com/",
+    "tags": [
+      "chiptune",
+      "game soundtrack"
+    ],
+    "facts": [
+      {
+        "text": "Inspiration is from the soundtrack of Nameless: The Hackers RPG, an iOS game.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/BoxCat_Games/Nameless_the_Hackers_RPG_Soundtrack/",
+        "quote": "from the soundtrack of \"Nameless: The Hackers RPG\", a new iOS RPG by BoxCat Games.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The soundtrack holds 29 funky chiptunes.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/BoxCat_Games/Nameless_the_Hackers_RPG_Soundtrack/",
+        "quote": "29 funky chiptunes",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "BoxCat Games is an independent video game developer.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/BoxCat_Games/bio",
+        "quote": "BoxCat Games is an independent video game developer.",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "BoxCat Games is a studio, not a named composer. If the host is asked who composed it, there is no source."
+  },
+  {
+    "id": "electronic-09",
+    "pick": "e11",
+    "style": "electronic",
+    "energy": "upbeat",
+    "title": "Unrealness",
+    "artist": "Ketsa",
+    "album": "Upbeat Street",
+    "year": 2025,
+    "duration_seconds": 178,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Ketsa/upbeat-street/unrealness/",
+    "audio_file": "Ketsa - Unrealness.mp3",
+    "artist_url": "https://ketsa.bandcamp.com/",
+    "tags": [
+      "jazz",
+      "hip-hop beats",
+      "upbeat"
+    ],
+    "facts": [
+      {
+        "text": "Ketsa is an independent producer based in London.",
+        "about": "artist",
+        "source_url": "https://ketsa.bandcamp.com/music",
+        "quote": "Ketsa is independent, london-based producer",
+        "source_type": "bandcamp"
+      },
+      {
+        "text": "Ketsa's music has been used in a Volvo TV advert.",
+        "about": "artist",
+        "source_url": "https://ketsa.bandcamp.com/music",
+        "quote": "His music has been used for a Volvo TV advert",
+        "source_type": "bandcamp"
+      },
+      {
+        "text": "Unrealness comes from Upbeat Street, an album of upbeat tracks across different genres.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Ketsa/upbeat-street/",
+        "quote": "Upbeat bangers in different genres!",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "FMA tags this track Jazz and Hip-Hop Beats, not Electronic. You heard it, so your call on the style. Album date Dec 31, 2025, track page Jan 24, 2026; I used 2025. Most other Ketsa tracks are BY-NC-ND, this one is BY 4.0 on its track page."
+  },
+  {
+    "id": "electronic-10",
+    "pick": "e12",
+    "style": "electronic",
+    "energy": "calm",
+    "title": "Weak Five (feat. CTRL DEL)",
+    "artist": "RoccoW",
+    "album": "Weeklybeats 2026",
+    "year": 2026,
+    "duration_seconds": 183,
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "track_url": "https://freemusicarchive.org/music/RoccoW/weeklybeats-2026/weak-five-feat-ctrl-del/",
+    "audio_file": "RoccoW - Weak Five (feat. CTRL DEL).mp3",
+    "artist_url": "https://roccow.bandcamp.com/",
+    "tags": [
+      "indie",
+      "mellow",
+      "guitar"
+    ],
+    "facts": [
+      {
+        "text": "On Weak Five, RoccoW's longtime friend CTRL DEL plays guitar.",
+        "about": "track",
+        "source_url": "https://weeklybeats.com/roccow/music/weak-five-feat-ctrl-del-2",
+        "quote": "Featuring fellow WB participant and long time friend CTRL DEL on guitar.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Weak Five was made for Weeklybeats, a project where artists release one song a week for a whole year.",
+        "about": "track",
+        "source_url": "https://weeklybeats.com/roccow/music/weak-five-feat-ctrl-del-2",
+        "quote": "Weeklybeats is a 52 week long music project in which artists compose and publicly release 1 song a week",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "RoccoW makes chiptune and demoscene music and organizes EINDBAAS.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/RoccoW/bio",
+        "quote": "Music maker. Chiptune / Demoscene. Organizer for EINDBAAS",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "License mismatch: FMA track page says CC BY 4.0, the Weeklybeats page for the same track says CC BY-SA. Both are allowed, but the strictest reading is BY-SA. FMA tags it Indie-Rock and Weeklybeats tags it acoustic, indie, orchestral, pop: it may not read as electronic. License set to CC BY-SA 4.0 (Marius decision): FMA says CC BY 4.0, the artist's Weeklybeats page says CC BY-SA, the stricter one is used."
+  },
+  {
+    "id": "electronic-11",
+    "pick": "e13",
+    "style": "electronic",
+    "energy": "upbeat",
+    "title": "Dark Sanctum (Boss Fight)",
+    "artist": "Visager",
+    "album": "Songs From An Unmade World",
+    "year": 2015,
+    "duration_seconds": 182,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Visager/Songs_From_An_Unmade_World/Visager_-_Songs_from_an_Unmade_World_-_09_Dark_Sanctum_Boss_Fight/",
+    "audio_file": "Visager - Dark Sanctum (Boss Fight).mp3",
+    "artist_url": "https://visager.bandcamp.com/",
+    "tags": [
+      "game music",
+      "synth"
+    ],
+    "facts": [
+      {
+        "text": "Visager is the project of Josie Brechner, a video game composer and sound designer based in Philadelphia.",
+        "about": "artist",
+        "source_url": "https://visager.bandcamp.com/music",
+        "quote": "Josie Brechner (she/they) is a video game composer and sound designer living in Philadelphia, PA.",
+        "source_type": "bandcamp"
+      },
+      {
+        "text": "The album holds eleven original themes, each portraying a classic video game level or environment.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Visager/Songs_From_An_Unmade_World/",
+        "quote": "This album contains eleven original themes each portraying a different level or environment",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The album draws on games like The Legend of Zelda, Chrono Trigger and Castlevania.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Visager/Songs_From_An_Unmade_World/",
+        "quote": "Legend of Zelda, Chronotrigger, Castlevania",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "The artist's 2026 album notes object to AI use of their music. Not binding on this CC BY album, but you kept it knowingly."
+  },
+  {
+    "id": "electronic-12",
+    "pick": "e15",
+    "style": "electronic",
+    "energy": "upbeat",
+    "title": "Ah Celebrate",
+    "artist": "Binärpilot",
+    "album": "Remember C64?",
+    "year": 2010,
+    "duration_seconds": 191,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Binrpilot/Remember_C64/Ah_Celebrate/",
+    "audio_file": "Binärpilot - Ah Celebrate.mp3",
+    "artist_url": "https://binaerpilot.bandcamp.com/",
+    "tags": [
+      "chiptune",
+      "chip music"
+    ],
+    "facts": [
+      {
+        "text": "Binärpilot is an artist from Norway.",
+        "about": "artist",
+        "source_url": "https://binaerpilot.bandcamp.com/",
+        "quote": "Binærpilot Norway",
+        "source_type": "bandcamp"
+      },
+      {
+        "text": "Ah Celebrate is filed under chip music.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Binrpilot/Remember_C64/Ah_Celebrate/",
+        "quote": "Genre Chip Music",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Ah Celebrate is from Remember C64?, a chip music release from 2010.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Binaerpilot/Remember_C64",
+        "quote": "Released Feb 23, 2010",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Facts are thin: location, genre label and year only. Cover check unresolved: no source says whether the album covers C64 game music; titles look original. FMA spells the name Binärpilot, Bandcamp Binærpilot. FMA bio is a fictional robot persona and was not used."
+  },
+  {
+    "id": "jazz-01",
+    "pick": "j01",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "Faster Does It",
+    "artist": "Kevin MacLeod",
+    "album": "Jazz Sampler",
+    "year": null,
+    "duration_seconds": 181,
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Kevin_MacLeod/Jazz_Sampler/Faster_Does_It_1271/",
+    "audio_file": "Kevin MacLeod - Faster Does It.mp3",
+    "artist_url": "https://incompetech.com/",
+    "tags": [
+      "jazz",
+      "easy listening"
+    ],
+    "facts": [
+      {
+        "text": "The New York Times called Kevin MacLeod arguably the most prolific composer you've never heard of.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Kevin_MacLeod",
+        "quote": "Described by The New York Times as \"arguably the most prolific composer you've never heard of\"",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "He has composed over 2,000 pieces of royalty-free music and released them under a Creative Commons license.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Kevin_MacLeod",
+        "quote": "MacLeod has composed over 2,000 pieces of royalty-free library music and made them available under a Creative Commons (CC BY) copyright license.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "Kevin MacLeod was born in Green Bay, Wisconsin.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Kevin_MacLeod",
+        "quote": "Kevin MacLeod was born in Green Bay, Wisconsin, in 1972.",
+        "source_type": "wikipedia"
+      }
+    ],
+    "notes": "Year null: FMA shows 2011, the date of the sampler upload. No fact about the track itself."
+  },
+  {
+    "id": "jazz-02",
+    "pick": "j02",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "Leaning Reflection",
+    "artist": "Taylor Ho Bynum/Tomas Fujiwara Duo",
+    "album": "Live at WFMU on Scott McDowell's Show 3/22/09",
+    "year": 2009,
+    "duration_seconds": 330,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Taylor_Ho_BynumTomas_Fujiwara_Duo/Live_at_WFMU_on_Scott_McDowells_Show_32209/Leaning_Reflection/",
+    "audio_file": "Taylor Ho Bynum_Tomas Fujiwara Duo - Leaning Reflection.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/Taylor_Ho_Bynum",
+    "tags": [
+      "free improvisation",
+      "cornet",
+      "drums",
+      "live"
+    ],
+    "facts": [
+      {
+        "text": "This track comes from a live cornet and drums improvisation session.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Taylor_Ho_BynumTomas_Fujiwara_Duo/Live_at_WFMU_on_Scott_McDowells_Show_32209/",
+        "quote": "for a cornet/drums improv throwdown",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Taylor Ho Bynum plays mainly cornet, along with flugelhorn and trumpet.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Taylor_Ho_Bynum",
+        "quote": "His main instrument is the cornet, but he also plays numerous similar instruments, including flugelhorn and trumpet.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "Bynum first played with drummer Tomas Fujiwara in the early 1990s.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Taylor_Ho_Bynum",
+        "quote": "Around the early 1990s, Bynum first played with drummer Tomas Fujiwara.",
+        "source_type": "wikipedia"
+      }
+    ],
+    "notes": "Live radio recording: check the edges for host talk before using fades. Tomas Fujiwara has no Wikipedia article."
+  },
+  {
+    "id": "jazz-03",
+    "pick": "j03",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "Thin Air",
+    "artist": "Mary Halvorson and Jessica Pavone",
+    "album": "Live @ ISSUE (11/5/08)",
+    "year": 2008,
+    "duration_seconds": 351,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Mary_Halvorson_and_Jessica_Pavone/Live__ISSUE_11508/Thin_Air_1048/",
+    "audio_file": "Mary Halvorson and Jessica Pavone - Thin Air.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/Mary_Halvorson",
+    "tags": [
+      "avant-garde jazz",
+      "guitar",
+      "viola",
+      "live"
+    ],
+    "facts": [
+      {
+        "text": "Mary Halvorson is an American avant-garde jazz guitarist and composer.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Mary_Halvorson",
+        "quote": "Mary Halvorson (born October 16, 1980) is an American avant-garde jazz composer and guitarist from Brookline, Massachusetts.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "Mary Halvorson was awarded a MacArthur Fellowship in 2019.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Mary_Halvorson",
+        "quote": "In 2019, she was awarded a MacArthur Fellowship.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "Jessica Pavone, a New York violist and composer, began performing with Halvorson around 2001.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Jessica_Pavone",
+        "quote": "Around 2001, Pavone started performing with avant-jazz guitarist (and Anthony Braxton student) Mary Halvorson.",
+        "source_type": "wikipedia"
+      }
+    ],
+    "notes": "Year 2008 comes from the recording date in the album title; FMA upload is 2009. Some of the duo's songs are sung (Pavone page), listen for vocals."
+  },
+  {
+    "id": "jazz-04",
+    "pick": "j06",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "Inasmuch As",
+    "artist": "Kyle Bruckmann's Wrack",
+    "album": "Intents & Purposes",
+    "year": null,
+    "duration_seconds": 339,
+    "license": "CC BY-NC-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Kyle_Bruckmanns_Wrack/Intents__Purposes/Inasmuch_As/",
+    "audio_file": "Kyle Bruckmann's Wrack - Inasmuch As.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/Kyle_Bruckmann",
+    "tags": [
+      "chamber jazz",
+      "oboe",
+      "composed improvisation"
+    ],
+    "facts": [
+      {
+        "text": "Kyle Bruckmann is an American composer and oboist based in San Francisco.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Kyle_Bruckmann",
+        "quote": "Kyle Bruckmann (born 1971) is an American composer and oboist based in San Francisco, California.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "Wrack is a chamber ensemble with a highly unusual line-up of instruments.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Kyle_Bruckmanns_Wrack/bio",
+        "quote": "Wrack is both a chamber ensemble with a highly unusual instrumentation",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The band features bass clarinet, viola, bass and percussion alongside Bruckmann.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Kyle_Bruckmanns_Wrack/bio",
+        "quote": "With Jason Stein (bass clarinet), Jen Clare Paulson (viola), Anton Hatwich (bass), and Tim Daisy (percussion).",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Year null: FMA shows Nov 2008 (upload). The FMA bio does not say Bruckmann plays oboe in Wrack, only Wikipedia says he is an oboist."
+  },
+  {
+    "id": "jazz-05",
+    "pick": "j07",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "Big Fun (New Ruckus)",
+    "artist": "Slumgum",
+    "album": "Quardboard Flavored Fiber",
+    "year": 2011,
+    "duration_seconds": 170,
+    "license": "CC BY-NC-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Slumgum/Quardboard_Flavored_Fiber/03_Big_Fun_New_Ruckus/",
+    "audio_file": "Slumgum - Big Fun (New Ruckus).mp3",
+    "artist_url": "https://freemusicarchive.org/music/Slumgum/",
+    "tags": [
+      "jazz",
+      "quartet"
+    ],
+    "facts": [
+      {
+        "text": "Slumgum is a quartet from Los Angeles.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Slumgum/Quardboard_Flavored_Fiber/",
+        "quote": "Slumgum, a perpetually inventive quartet from Los Angeles",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "All four members of Slumgum are CalArts graduates.",
+        "about": "artist",
+        "source_url": "https://blog.calarts.edu/2012/12/19/jazz-quartet-slumgum-receives-chamber-music-america-grant/",
+        "quote": "Comprised of CalArts alumni",
+        "source_type": "review"
+      },
+      {
+        "text": "Slumgum received a Chamber Music America award for adventurous programming.",
+        "about": "artist",
+        "source_url": "https://blog.calarts.edu/2012/12/19/jazz-quartet-slumgum-receives-chamber-music-america-grant/",
+        "quote": "received a Chamber Music America Award for Adventurous Programming",
+        "source_type": "review"
+      }
+    ],
+    "notes": "CalArts blog is a school news page, closest enum is review. The CalArts page says Altadena-based; FMA says Los Angeles. Also usable: Quardboard Flavored Fiber is the band's second release (FMA album page). Year from the FMA bio album list (2011)."
+  },
+  {
+    "id": "jazz-06",
+    "pick": "j08",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "Irresistible Yvette (with Les Gauchers Quintet)",
+    "artist": "Lee Maddeford",
+    "album": "Instrumentals 1",
+    "year": 2010,
+    "duration_seconds": 317,
+    "license": "CC BY-NC-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Lee_Maddeford/Instrumentals_1/02_-_lee_maddeford_les_gauchers_quintette_-_irrestible_yvette/",
+    "audio_file": "Lee Maddeford - Irresistible Yvette (with Les Gauchers Quintet).mp3",
+    "artist_url": "https://freemusicarchive.org/music/Lee_Maddeford/",
+    "tags": [
+      "acoustic",
+      "gypsy jazz",
+      "quintet"
+    ],
+    "facts": [
+      {
+        "text": "Lee Maddeford lives and works in Switzerland.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Lee_Maddeford/bio",
+        "quote": "Lives and works in Switzerland",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The album's pieces are performed by Les Gauchers Orchestra and Les Gauchers Quintet.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Lee_Maddeford/Instrumentals_1/",
+        "quote": "performed by Les Gauchers Orchestra and Les Gauchers Quintet",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The Creative Commons blog once featured his catalog of well over ten hours of recordings.",
+        "about": "artist",
+        "source_url": "https://creativecommons.org/2007/06/23/the-music-of-lee-maddeford/",
+        "quote": "There’s a huge variety of quality music (well over 10 hours of recordings) to enjoy",
+        "source_type": "review"
+      }
+    ],
+    "notes": "Year is the FMA date (Jan 2010)."
+  },
+  {
+    "id": "jazz-07",
+    "pick": "j09",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "One Night in Las Vegas (ID 1296)",
+    "artist": "Lobo Loco",
+    "album": "Around",
+    "year": 2020,
+    "duration_seconds": 195,
+    "license": "CC BY-NC-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Lobo_Loco/around/one-night-in-las-vegas-id-1296mp3/",
+    "audio_file": "Lobo Loco - One Night in Las Vegas (ID 1296).mp3",
+    "artist_url": "https://www.musikbrause.de/",
+    "tags": [
+      "funk jazz",
+      "brass"
+    ],
+    "facts": [
+      {
+        "text": "The artist describes this track as pulsating funky jazz with brass.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Lobo_Loco/around/one-night-in-las-vegas-id-1296mp3/",
+        "quote": "Pulsating funky jazz with brasses",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Lobo Loco is a German musician who records in a small studio above his garage.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/blog/meet-lobo-loco/",
+        "quote": "is from Germany, and he is crazy about making music. So he goes every free hour in his small studio above the garage.",
+        "source_type": "interview"
+      },
+      {
+        "text": "Lobo Loco taught himself to play guitar in 1987.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/blog/meet-lobo-loco/",
+        "quote": "In 1987, I taught myself to play the western guitar.",
+        "source_type": "interview"
+      }
+    ],
+    "notes": "The title includes a catalog ID, '(ID 1296)'. The host should say 'One Night in Las Vegas'."
+  },
+  {
+    "id": "jazz-08",
+    "pick": "j11",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "Jazz for Your Sadness",
+    "artist": "Ketsa",
+    "album": "Soul Sighs",
+    "year": 2026,
+    "duration_seconds": 205,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Ketsa/soul-sighs/jazz-for-your-sadness/",
+    "audio_file": "Ketsa - Jazz for Your Sadness.mp3",
+    "artist_url": "https://ketsa.bandcamp.com/",
+    "tags": [
+      "jazz-hop",
+      "mellow"
+    ],
+    "facts": [
+      {
+        "text": "Ketsa is the London-based producer Dominic Giam.",
+        "about": "artist",
+        "source_url": "https://ketsa.bandcamp.com/music",
+        "quote": "Ketsa is independent, london-based producer Dominic Giam.",
+        "source_type": "bandcamp"
+      },
+      {
+        "text": "His music has been used in campaigns for Greenpeace and in films by National Geographic.",
+        "about": "artist",
+        "source_url": "https://ketsa.bandcamp.com/music",
+        "quote": "promotional campaigns by Greenpeace, Audi, Riachuelo, Grance Ormonde and films by the National Geographic",
+        "source_type": "bandcamp"
+      }
+    ],
+    "notes": "Only 2 facts, both about the artist. The electronic entry already says he is London-based, so the host may repeat itself. This is Ketsa's second and last allowed slot."
+  },
+  {
+    "id": "jazz-09",
+    "pick": "j12",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "Scratch Pad",
+    "artist": "Jesse Spillane",
+    "album": "The Big Idea Machine",
+    "year": 2023,
+    "duration_seconds": 190,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Jesse_Spillane/the-big-idea-machine/scratch-pad/",
+    "audio_file": "Jesse Spillane - Scratch Pad.mp3",
+    "artist_url": "https://freemusicarchive.org/music/Jesse_Spillane/",
+    "tags": [
+      "jazz",
+      "fusion"
+    ],
+    "facts": [
+      {
+        "text": "Jesse Spillane is a musician based in Pittsburgh.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Jesse_Spillane/bio",
+        "quote": "I am a Pittsburgh-based musician",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "He writes instrumental music that spans several genres.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Jesse_Spillane/bio",
+        "quote": "creates dynamic and exciting instrumental music which spans multiple genres and styles",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The Big Idea Machine mixes acoustic and electronic sounds, blending jazz, fusion and rock.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Jesse_Spillane/the-big-idea-machine/",
+        "quote": "with a mix of acoustic and electronic elements with a mix of styles including jazz, fusion, rock",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "All facts are self-written by the artist on FMA. His own site was not opened."
+  },
+  {
+    "id": "jazz-10",
+    "pick": "j13",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "In G Minor Mood",
+    "artist": "Dee Yan-Key",
+    "album": "Frédéric would cry",
+    "year": 2018,
+    "duration_seconds": 223,
+    "license": "CC BY-NC-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Dee_Yan-Key/Frdric_would_cry/02--Dee_Yan-Key-In_G_Minor_Mood/",
+    "audio_file": "Dee Yan-Key - In G Minor Mood.mp3",
+    "artist_url": "https://freemusicarchive.org/music/Dee_Yan-Key/",
+    "tags": [
+      "jazz",
+      "swing",
+      "classical"
+    ],
+    "facts": [
+      {
+        "text": "In G Minor Mood is based on the first movement of Mozart's Symphony No. 40 in G minor.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Dee_Yan-Key/Frdric_would_cry/02--Dee_Yan-Key-In_G_Minor_Mood/",
+        "quote": "w. a. mozart: symphony no. 40 in g minor k. 550, I.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Dee Yan-Key is a German composer of neoclassical, electro swing and ambient music.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Dee_Yan-Key/bio",
+        "quote": "Dee Yan-Key is a German composer of Neoclassical, Electro swing and Ambient music.",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Only 2 facts. 'Based on' is my reading of the track description, which only names the Mozart movement. Mozart's work is public domain, so the arrangement can carry a CC license."
+  },
+  {
+    "id": "jazz-11",
+    "pick": "j14",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "Nomad",
+    "artist": "Mela",
+    "album": "Mela two",
+    "year": 2019,
+    "duration_seconds": 170,
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Mela/Mela_two/MELA_-_Mela_Two_-_04_Nomad/",
+    "audio_file": "Mela - Nomad.mp3",
+    "artist_url": "https://freemusicarchive.org/music/Mela/",
+    "tags": [
+      "jazz fusion",
+      "vibraphone"
+    ],
+    "facts": [
+      {
+        "text": "Mela is a jazz quartet from New York.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Mela/Mela_two/",
+        "quote": "Le quatuor new-yorkais Mela",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Mela Two was the band's second recording session, made at the State University of New York at Fredonia.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Mela/Mela_two/",
+        "quote": "sa 2ème session d’enregistrement à l’université d’état de Fredonia",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The four members take turns composing the album's ten tracks.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Mela/Mela_two/",
+        "quote": "Composant tour à tour les 10 titres de cet opus",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Source text is in French; quotes are copied as written and the facts are my translation. 'new-yorkais' could mean New York state rather than the city, so the host should say 'from New York' only. The same text lists a pianist who also sings (chant), listen for vocals."
+  },
+  {
+    "id": "jazz-12",
+    "pick": "j15",
+    "style": "jazz",
+    "energy": "unknown",
+    "title": "Orbiting A Distant Planet",
+    "artist": "Quantum Jazz",
+    "album": "End of Line",
+    "year": 2012,
+    "duration_seconds": 268,
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Quantum_Jazz/End_of_Line/07_-_Quantum_Jazz_-_Orbiting_A_Distant_Planet/",
+    "audio_file": "Quantum Jazz - Orbiting A Distant Planet.mp3",
+    "artist_url": "https://freemusicarchive.org/music/Quantum_Jazz/",
+    "tags": [
+      "groove jazz",
+      "electric"
+    ],
+    "facts": [
+      {
+        "text": "Quantum Jazz plays groovy jazz from Denmark.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Quantum_Jazz/bio",
+        "quote": "Groovy Danish Jazz.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "End of Line is the band's second and last album.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Quantum_Jazz/End_of_Line/",
+        "quote": "This is the second and last album by Quantum Jazz",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The album was recorded over a single weekend in May 2011.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Quantum_Jazz/End_of_Line/",
+        "quote": "recorded over a weekend session in May 2011",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Year 2012 is the FMA date; recording was May 2011. License page says 'Attribution-ShareAlike 3.0 International'."
+  },
+  {
+    "id": "rock-01",
+    "pick": "r01",
+    "style": "rock",
+    "energy": "upbeat",
+    "title": "Dog Days",
+    "artist": "50 Foot Wave",
+    "album": "50FOOTWAVE",
+    "year": null,
+    "duration_seconds": 232,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/50_Foot_Wave/50FOOTWAVE/Dog_Days/",
+    "audio_file": "50 Foot Wave - Dog Days.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/50_Foot_Wave",
+    "tags": [
+      "alternative rock"
+    ],
+    "facts": [
+      {
+        "text": "50 Foot Wave is an American alternative rock band formed in 2003.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/50_Foot_Wave",
+        "quote": "50 Foot Wave (often stylized as 50FOOTWAVE) is an American alternative rock band, formed in 2003.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "The band is fronted by Kristin Hersh, who writes its songs.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/50_Foot_Wave",
+        "quote": "The band is fronted by Kristin Hersh, who writes the group's songs",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "When the band gave music away for free, it said it wanted listeners' energy and enthusiasm rather than their money.",
+        "about": "artist",
+        "source_url": "https://creativecommons.org/2005/12/16/kristinhershand50footwavegocc/",
+        "quote": "We thought it’d be interesting to ask for your energy & enthusiasm rather than your money",
+        "source_type": "review"
+      }
+    ],
+    "notes": "Year null: FMA shows a 2009 upload date for the 50FOOTWAVE album. Fact 3 is the band's own statement, quoted on the Creative Commons blog, about its earlier Free Music EP, not this album."
+  },
+  {
+    "id": "rock-02",
+    "pick": "r04",
+    "style": "rock",
+    "energy": "upbeat",
+    "title": "The Freak Was Clean",
+    "artist": "Thee Oh Sees",
+    "album": "Peanut Butter Oven EP",
+    "year": null,
+    "duration_seconds": 183,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Thee_Oh_Sees/Peanut_Butter_Oven_EP/The_Freak_Was_Clean/",
+    "audio_file": "Thee Oh Sees - The Freak Was Clean.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/Osees",
+    "tags": [
+      "garage rock",
+      "psych"
+    ],
+    "facts": [
+      {
+        "text": "The band, now known as Osees, formed in San Francisco in 1997.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Osees",
+        "quote": "Osees is an American rock band formed in San Francisco, California in 1997",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "The group often changes its name, and Thee Oh Sees is one of the names it has used.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Osees",
+        "quote": "At various times, the band has performed or released under the names Orinoka Crash Suite, OCS, Orange County Sound, The Ohsees, The Oh Sees, Thee Oh Sees, Oh Sees, and Osees.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "The Peanut Butter Oven EP came out as a 12-inch on the Awesome Vistas label, in a run of about 300 copies.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Thee_Oh_Sees/Peanut_Butter_Oven_EP/",
+        "quote": "It's not entirely clear what happened to the 300 or so physical copies of this 12''. It was released on Chris Johanson's Awesome Vistas label",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "EP text on FMA comes from WFMU's Beware of the Blog. Year null: FMA shows a 2008 upload date."
+  },
+  {
+    "id": "rock-03",
+    "pick": "r06",
+    "style": "rock",
+    "energy": "upbeat",
+    "title": "Gates Of Heaven",
+    "artist": "Killdozer",
+    "album": "Live on WFMU's Brian Turner Show, Election Day 2008",
+    "year": 2008,
+    "duration_seconds": 249,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Killdozer/Live_at_WFMU_on_Brian_Turners_Show_on_1142008/Gates_Of_Heaven/",
+    "audio_file": "Killdozer - Gates Of Heaven.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/Killdozer_(band)",
+    "tags": [
+      "noise rock",
+      "live"
+    ],
+    "facts": [
+      {
+        "text": "Killdozer was a noise rock band from Madison, Wisconsin.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Killdozer_(band)",
+        "quote": "Killdozer was an American noise rock band formed in Madison, Wisconsin",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "Killdozer wrote every song on its 1989 album Twelve Point Buck, which includes Gates of Heaven.",
+        "about": "track",
+        "source_url": "https://en.wikipedia.org/wiki/Twelve_Point_Buck",
+        "quote": "All tracks are written by Killdozer.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "Kurt Cobain told producer Butch Vig he wanted Nevermind to sound as heavy as Twelve Point Buck.",
+        "about": "track",
+        "source_url": "https://en.wikipedia.org/wiki/Twelve_Point_Buck",
+        "quote": "Cobain told Vig that he wanted Nevermind to sound \"as heavy\" as Twelve Point Buck.",
+        "source_type": "wikipedia"
+      }
+    ],
+    "notes": "Cover check done: Gates of Heaven is side two, track 1 of Twelve Point Buck (1989), credited to Killdozer. This file is a 2008 live radio version. Formation year conflicts: Wikipedia says 1983, the WFMU notes say 1982, so no fact uses it. The same live set includes covers (Sweet Home Alabama, I Am I Said); only this track is used."
+  },
+  {
+    "id": "rock-04",
+    "pick": "r08",
+    "style": "rock",
+    "energy": "upbeat",
+    "title": "Rhode Island Freakout",
+    "artist": "Kinski",
+    "album": "Live at WFMU on Brian Turner's Show on 4/22/2003",
+    "year": 2003,
+    "duration_seconds": 282,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Kinski/Live_at_WFMU_on_Brian_Turners_Show_on_4222003/Rhode_Island_Freakout/",
+    "audio_file": "Kinski - Rhode Island Freakout.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/Kinski_(band)",
+    "tags": [
+      "space rock",
+      "post-rock",
+      "live"
+    ],
+    "facts": [
+      {
+        "text": "Kinski is a rock band from Seattle.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Kinski_(band)",
+        "quote": "Kinski is an American rock band from Seattle, Washington.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "Kinski formed in 1998 in a pub, after drummer Dave Weeks, then a bartender, overheard two customers talking.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Kinski_(band)",
+        "quote": "They formed in 1998 in a pub, when bartender and drummer Dave Weeks overheard a conversation between two customers",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "This live session was recorded while Kinski toured their Sub Pop album Airs Above Your Station.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Kinski/Live_at_WFMU_on_Brian_Turners_Show_on_4222003/",
+        "quote": "on tour to support their excellent new Sub Pop disc \"Airs Above Your Station\"",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Live radio recording."
+  },
+  {
+    "id": "rock-05",
+    "pick": "r09",
+    "style": "rock",
+    "energy": "upbeat",
+    "title": "NY Surf",
+    "artist": "Gary Wilson",
+    "album": "Live at WFMU on Scott Williams Show on 5/17/2002",
+    "year": 2002,
+    "duration_seconds": 148,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Gary_Wilson/Live_at_WFMU_on_Scotts_Show_on_5172002/NY_Surf/",
+    "audio_file": "Gary Wilson - NY Surf.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/Gary_Wilson_(musician)",
+    "tags": [
+      "experimental",
+      "new wave",
+      "live"
+    ],
+    "facts": [
+      {
+        "text": "Gary Wilson is best known for his 1977 album You Think You Really Know Me.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Gary_Wilson_(musician)",
+        "quote": "most notable for his 1977 album You Think You Really Know Me.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "He made that album himself, in his parents' basement in Endicott, New York, on a four-track tape machine.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Gary_Wilson/Live_at_WFMU_on_Scotts_Show_on_5172002/",
+        "quote": "set up in his parents' basement in Endicott NY with a TEAC reel-to-reel 4-track and self-produced 'You Think You Really Know Me'",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Around 1996, Beck began citing Gary Wilson as an influence.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Gary_Wilson_(musician)",
+        "quote": "until around 1996, when Beck was heard citing him as an influence",
+        "source_type": "wikipedia"
+      }
+    ],
+    "notes": "Live radio recording. Another song from this set and from his famous album has an explicit word in its title: keep it out of any host text."
+  },
+  {
+    "id": "rock-06",
+    "pick": "r11",
+    "style": "rock",
+    "energy": "calm",
+    "title": "Watch Yourself",
+    "artist": "Mink Lungs",
+    "album": "Live at WFMU on Scott's Show on 11/9/2001",
+    "year": 2001,
+    "duration_seconds": 199,
+    "license": "CC BY-NC 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Mink_Lungs/Live_at_WFMU_on_Scotts_Show_on_1192001/Watch_Yourself/",
+    "audio_file": "Mink Lungs - Watch Yourself.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/Mink_Lungs",
+    "tags": [
+      "indie rock",
+      "live"
+    ],
+    "facts": [
+      {
+        "text": "The Mink Lungs were a band from the Brooklyn area, started in 1993.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Mink_Lungs",
+        "quote": "The Mink Lungs were a Brooklyn-area band begun in 1993.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "The band released its debut album, The Better Button, in 2002.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Mink_Lungs",
+        "quote": "In 2002, the band released its debut album The Better Button.",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "Members of the Mink Lungs often switched vocals and instruments.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Mink_Lungs",
+        "quote": "Often switching vocals and instruments",
+        "source_type": "wikipedia"
+      }
+    ],
+    "notes": "Live radio recording. Other tracks from this artist on FMA are BY-NC-SA 3.0; this one is BY-NC 4.0 on its own page."
+  },
+  {
+    "id": "rock-07",
+    "pick": "r12",
+    "style": "rock",
+    "energy": "calm",
+    "title": "Resuscitation Distillery Blues",
+    "artist": "Wooden Wand",
+    "album": "Born Bad",
+    "year": null,
+    "duration_seconds": 197,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Wooden_Wand/Born_Bad/Resuscitation_Distillery_Blues/",
+    "audio_file": "Wooden Wand - Resuscitation Distillery Blues.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/Wooden_Wand",
+    "tags": [
+      "folk rock",
+      "psych folk"
+    ],
+    "facts": [
+      {
+        "text": "Wooden Wand is the stage name of singer-songwriter James Jackson Toth.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Wooden_Wand",
+        "quote": "Wooden Wand is the stage name of singer-songwriter James Jackson Toth",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "He was a significant figure in the New Weird America scene of the early to mid-2000s.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Wooden_Wand",
+        "quote": "a significant player in the New Weird America trend of the early to mid-2000s",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "He has released music on labels including Kill Rock Stars and Young God.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Wooden_Wand",
+        "quote": "Toth has appeared on labels including Kill Rock Stars, Ecstatic Peace!, Rykodisc, and Young God.",
+        "source_type": "wikipedia"
+      }
+    ],
+    "notes": "Year null: FMA shows Jan 01, 2009, which looks like a placeholder date."
+  },
+  {
+    "id": "rock-08",
+    "pick": "r13",
+    "style": "rock",
+    "energy": "medium",
+    "title": "In the Pineys",
+    "artist": "Strapping Fieldhands",
+    "album": "In the Pineys",
+    "year": null,
+    "duration_seconds": 175,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Strapping_Fieldhands/In_the_Pineys/In_the_Pineys/",
+    "audio_file": "Strapping Fieldhands - In the Pineys.mp3",
+    "artist_url": "https://en.wikipedia.org/wiki/The_Strapping_Fieldhands",
+    "tags": [
+      "lo-fi",
+      "indie rock",
+      "psych"
+    ],
+    "facts": [
+      {
+        "text": "The Strapping Fieldhands are an indie rock band from Philadelphia, linked to the Siltbreeze label.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/The_Strapping_Fieldhands",
+        "quote": "The Strapping Fieldhands are an American indie rock band based in Philadelphia, and are associated with the Siltbreeze label",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "In the 1990s they toured with Guided by Voices and Pavement.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/The_Strapping_Fieldhands",
+        "quote": "During the 1990s, the Fieldhands toured extensively with The Grifters, Guided by Voices, Pavement",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "The song is a four-track recording with poorly tuned guitars and a toy xylophone.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Strapping_Fieldhands/In_the_Pineys/",
+        "quote": "Four track recording featuring poorly tuned guitars and a toy xylophone.",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Year null: Wikipedia dates the In the Pineys EP to 1994, FMA to 1995. Wikipedia credits the band as 'The Strapping Fieldhands'; FMA credits 'Strapping Fieldhands'."
+  },
+  {
+    "id": "rock-09",
+    "pick": "r14",
+    "style": "rock",
+    "energy": "upbeat",
+    "title": "Highland Crawler",
+    "artist": "Gentleman Jesse",
+    "album": "Gentleman Jesse Live at WFMU on Terre T's Show 2/7/09",
+    "year": 2009,
+    "duration_seconds": 192,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Gentleman_Jesse/Gentleman_Jesse_Live_at_WFMU_on_Terre_Ts_Show_2709/Highland_Crawler/",
+    "audio_file": "Gentleman Jesse - Highland Crawler.mp3",
+    "artist_url": "https://thirdmanrecords.com/blogs/news/atlanta-power-pop-mainstay-gentleman-jesse-releases-compass-7-ep-out-now",
+    "tags": [
+      "power pop",
+      "live"
+    ],
+    "facts": [
+      {
+        "text": "Gentleman Jesse is the musical alias of Atlanta power pop musician Jesse Smith.",
+        "about": "artist",
+        "source_url": "https://thirdmanrecords.com/blogs/news/atlanta-power-pop-mainstay-gentleman-jesse-releases-compass-7-ep-out-now",
+        "quote": "Gentleman Jesse, the musical alias of Atlanta power-pop mainstay Jesse Smith",
+        "source_type": "label"
+      },
+      {
+        "text": "He has been part of the Atlanta music scene since the mid to late 1990s.",
+        "about": "artist",
+        "source_url": "https://thirdmanrecords.com/blogs/news/atlanta-power-pop-mainstay-gentleman-jesse-releases-compass-7-ep-out-now",
+        "quote": "has been a mainstay in the Atlanta music scene since the mid/late ‘90s.",
+        "source_type": "label"
+      },
+      {
+        "text": "He also played in the punk band The Carbonas.",
+        "about": "artist",
+        "source_url": "https://thirdmanrecords.com/blogs/news/atlanta-power-pop-mainstay-gentleman-jesse-releases-compass-7-ep-out-now",
+        "quote": "most notably with legendary art-damaged punks The Carbonas",
+        "source_type": "label"
+      }
+    ],
+    "notes": "Source is his label, Third Man Records. Live radio recording. The FMA album notes name his own label, whose name should not be said on air."
+  },
+  {
+    "id": "rock-10",
+    "pick": "r15",
+    "style": "rock",
+    "energy": "upbeat",
+    "title": "In My Brain",
+    "artist": "Pierced Arrows",
+    "album": "Straight To the Heart",
+    "year": 2008,
+    "duration_seconds": 203,
+    "license": "CC BY-NC-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Pierced_Arrows/Straight_To_the_Heart/In_My_Brain/",
+    "audio_file": "Pierced Arrows - In My Brain.mp3",
+    "artist_url": "https://freemusicarchive.org/music/Pierced_Arrows/",
+    "tags": [
+      "garage rock",
+      "punk"
+    ],
+    "facts": [
+      {
+        "text": "Pierced Arrows is the band of Fred and Toody Cole.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Pierced_Arrows/bio",
+        "quote": "Not that anybody expected Fred and Toody Cole to stay quiet for long. They've returned, louder than ever, under the name Pierced Arrows.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Singer and guitarist Fred Cole is best known for the bands Dead Moon and Pierced Arrows.",
+        "about": "artist",
+        "source_url": "https://en.wikipedia.org/wiki/Fred_Cole_(musician)",
+        "quote": "most notably The Lollipop Shoppe, Dead Moon, and Pierced Arrows",
+        "source_type": "wikipedia"
+      },
+      {
+        "text": "In My Brain first appeared on a seven-inch single in 2007.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Pierced_Arrows/Straight_To_the_Heart/",
+        "quote": "In My Brain and Caroline appeared on a 7'' in 2007",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Year 2008 from the album notes ('released: 2008'). The album also contains a Neil Young cover; this track is not it. Keep Fred Cole's death and the Coles' marriage out of host text."
+  },
+  {
+    "id": "rock-11",
+    "pick": "r16",
+    "style": "rock",
+    "energy": "upbeat",
+    "title": "Ship of Theseus",
+    "artist": "Lemon Knife",
+    "album": "Event Horizon",
+    "year": 2026,
+    "duration_seconds": 197,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/lemon-knife/event-horizon-1/ship-of-theseus/",
+    "audio_file": "Lemon Knife - Ship of Theseus.mp3",
+    "artist_url": "https://lemonknife.bandcamp.com/",
+    "tags": [
+      "hard rock",
+      "punk"
+    ],
+    "facts": [
+      {
+        "text": "Lemon Knife is a hard rock duo from Chicago.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/lemon-knife/bio",
+        "quote": "Lemon Knife is a Chicago-based hard rock duo with punk edges",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The duo was formed in 2017 by Mia Blixt-Shehan and John Retterer-Moore.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/lemon-knife/bio",
+        "quote": "Formed by kindred nerds Mia Blixt-Shehan (bass, vocals, guitar) and John Retterer-Moore (drums, vocals, lyrics) in the spring of 2017",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Ship of Theseus opens with an arena rock intro, then turns into fast punk with environmentally conscious lyrics.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/lemon-knife/event-horizon-1/ship-of-theseus/",
+        "quote": "Arena rock intro kicking into high-octane punk chaos backing environmentally conscious lyrics.",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "All facts are self-written by the band on FMA. The bio also mentions a personal identity topic, which I left out."
+  },
+  {
+    "id": "rock-12",
+    "pick": "r17",
+    "style": "rock",
+    "energy": "medium",
+    "title": "Sonzis FM",
+    "artist": "Pipe Choir",
+    "album": "Pipe Choir",
+    "year": 2014,
+    "duration_seconds": 292,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Pipe_Choir/Pipe_Choir/Sonzis_FM/",
+    "audio_file": "Pipe Choir - Sonzis FM.mp3",
+    "artist_url": "https://freemusicarchive.org/music/Pipe_Choir/",
+    "tags": [
+      "indie rock",
+      "alternative"
+    ],
+    "facts": [
+      {
+        "text": "Pipe Choir was founded in 1991 by Michael J. Bostwick in Cleveland, Ohio.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Pipe_Choir/bio",
+        "quote": "Pipe Choir, founded in 1991 by Michael J. Bostwick in Cleveland, Ohio",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "It began as an alternative rock project mixing choral, electronic and rock sounds.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Pipe_Choir/bio",
+        "quote": "began as a collaborative alternative rock project that blended choral, electronic, and rock elements",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Since 2009, Pipe Choir has been Bostwick's solo project.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Pipe_Choir/bio",
+        "quote": "In 2009, Pipe Choir fully evolved into a solo project under Bostwick’s creative direction.",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Year 2014 from the album page (Nov 27, 2014); the track page shows 2016. All facts are self-written on FMA."
+  },
+  {
+    "id": "rock-13",
+    "pick": "r18",
+    "style": "rock",
+    "energy": "medium",
+    "title": "Curtains Down",
+    "artist": "Six Star General",
+    "album": "Ice Machine",
+    "year": 2006,
+    "duration_seconds": 163,
+    "license": "CC BY-NC-SA 3.0 US",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+    "track_url": "https://freemusicarchive.org/music/Six_Star_General/Ice_Machine/Curtains_Down/",
+    "audio_file": "Six Star General - Curtains Down.mp3",
+    "artist_url": "https://sixstargeneral.bandcamp.com/",
+    "tags": [
+      "indie rock",
+      "basement rock"
+    ],
+    "facts": [
+      {
+        "text": "Six Star General is a three-piece band playing what it calls basement rock.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Six_Star_General/bio",
+        "quote": "Three hard-working dudes playing basement rock.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Ice Machine is the band's third release.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Six_Star_General/Ice_Machine/",
+        "quote": "SSG's third release.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The album was recorded at Plan of a Boy Studios in Providence, Rhode Island, in June 2006.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Six_Star_General/Ice_Machine/",
+        "quote": "recorded with Kraig Jordan at Plan of a Boy Studios in Providence, RI in early June 2006",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Bio text on FMA is quoted from WFMU's Beware of the Blog. Year 2006 from the album notes ('released in August '06'); FMA upload is 2008."
+  },
+  {
+    "id": "lofi-01",
+    "pick": "l01",
+    "style": "lofi",
+    "energy": "calm",
+    "title": "Lace",
+    "artist": "Nctrnm",
+    "album": "Singles",
+    "year": 2018,
+    "duration_seconds": 197,
+    "license": "CC BY-NC 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "track_url": "https://freemusicarchive.org/music/nctrnm/singles-2/NctrnmLace119Bbm/",
+    "audio_file": "Nctrnm - Lace.mp3",
+    "artist_url": "https://nctrnm.bandcamp.com/",
+    "tags": [
+      "lo-fi electronica",
+      "trip-hop",
+      "downtempo"
+    ],
+    "facts": [
+      {
+        "text": "Nctrnm is the pseudonym of producer Matthew McGilvery.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/blog/meet-nctrnm/",
+        "quote": "Nctrnm is the pseudonym of Matthew McGilvery.",
+        "source_type": "interview"
+      },
+      {
+        "text": "He comes from the Inland Empire region of Southern California.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/blog/meet-nctrnm/",
+        "quote": "from the Inland Empire region of Southern California",
+        "source_type": "interview"
+      },
+      {
+        "text": "Lace is in B-flat minor at 119 beats per minute.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/nctrnm/singles-2/NctrnmLace119Bbm/",
+        "quote": "key: bb minor tempo: 119 BPM",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "The FMA interview is written partly in the artist's own words."
+  },
+  {
+    "id": "lofi-02",
+    "pick": "l02",
+    "style": "lofi",
+    "energy": "medium",
+    "title": "Cloud Launching",
+    "artist": "Little Glass Men",
+    "album": "Simplify",
+    "year": 2017,
+    "duration_seconds": 276,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Little_Glass_Men/Simplify/Cloud_Launching/",
+    "audio_file": "Little Glass Men - Cloud Launching.mp3",
+    "artist_url": "https://freemusicarchive.org/music/Little_Glass_Men/",
+    "tags": [
+      "trip hop",
+      "chill"
+    ],
+    "facts": [
+      {
+        "text": "Little Glass Men is the side project of producer Ryan Claus.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Little_Glass_Men/bio",
+        "quote": "Ryan Claus strips bare his soul with his incorporeal side project, Little Glass Men",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "An early Little Glass Men track was licensed for a Red Bull TV spot.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Little_Glass_Men/bio",
+        "quote": "was licensed to Redbull for a national TV spot",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Simplify is an album of instrumental trip hop.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Little_Glass_Men/Simplify/",
+        "quote": "Instrumental trip hop.",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "All facts are self-written on FMA."
+  },
+  {
+    "id": "lofi-03",
+    "pick": "l03",
+    "style": "lofi",
+    "energy": "calm",
+    "title": "Take Me With You",
+    "artist": "Candlegravity",
+    "album": "Lost At Sea II",
+    "year": 2013,
+    "duration_seconds": 246,
+    "license": "CC BY-NC-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Candlegravity/Lost_At_Sea_II/202_-_TakeMeWithYou/",
+    "audio_file": "Candlegravity - Take Me With You.mp3",
+    "artist_url": "https://freemusicarchive.org/music/Candlegravity/",
+    "tags": [
+      "downtempo",
+      "chill-out"
+    ],
+    "facts": [
+      {
+        "text": "Candlegravity is the project of Sean Crownover.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Candlegravity/bio",
+        "quote": "Candlegravity is Sean Crownover.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Originally from California, he is based in Tokyo, Japan.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Candlegravity/bio",
+        "quote": "Originally from California. He currently resides in Tokyo, Japan",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "He releases mostly ambient, glitch and post-rock music on web labels such as Bunkai-Kei.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Candlegravity/bio",
+        "quote": "writes and produces mostly ambient/glitch/post-rock style music on different web labels (VKRS, Bunkai-Kei, etc)",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Bio is undated, so 'currently resides in Tokyo' may be out of date. Host should say 'based in Tokyo' cautiously or skip it."
+  },
+  {
+    "id": "lofi-04",
+    "pick": "l05",
+    "style": "lofi",
+    "energy": "medium",
+    "title": "H O L I Z N A (Instrumental)",
+    "artist": "HoliznaRAPS",
+    "album": "H O L I Z N A",
+    "year": 2022,
+    "duration_seconds": 174,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/holiznaraps/h-o-l-i-z-n-a/h-o-l-i-z-n-a-instrumental/",
+    "audio_file": "HoliznaRAPS - H O L I Z N A (Instrumental).mp3",
+    "artist_url": "https://freemusicarchive.org/music/holiznaraps/",
+    "tags": [
+      "hip hop beats",
+      "lo-fi hip hop"
+    ],
+    "facts": [
+      {
+        "text": "Holizna produces his own beats and also raps.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/holiznaraps/bio",
+        "quote": "I produce my own beats and rap.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "He releases everything on this account under a CC BY license.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/holiznaraps/bio",
+        "quote": "everything on this page will be CCBY",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Only 2 facts, both self-written. The host should say the title as 'Holizna'. His other account is CC0 and is not part of this catalog."
+  },
+  {
+    "id": "lofi-05",
+    "pick": "l07",
+    "style": "lofi",
+    "energy": "medium",
+    "title": "All of a Sudden",
+    "artist": "Serat",
+    "album": "Flow Sessions",
+    "year": 2023,
+    "duration_seconds": 131,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/serat/flow-sessions/all-of-a-sudden/",
+    "audio_file": "Serat - All of a Sudden.mp3",
+    "artist_url": "https://freemusicarchive.org/music/serat/",
+    "tags": [
+      "hip hop beats",
+      "lo-fi"
+    ],
+    "facts": [
+      {
+        "text": "Serat is a project of Vlas Presnetsov, also known for his ambient project Blear Moon.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/serat/bio",
+        "quote": "Serat is multi-genre project of Vlas Presnetsov, who is also known for his ambient project Blear Moon.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The album Flow Sessions grew out of a music challenge during Advent 2023.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/serat/flow-sessions/",
+        "quote": "This album came to be in result of the challenge we set for us for the advent time of 2023.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Each track on the album comes with artwork by Anna Repman.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/serat/flow-sessions/",
+        "quote": "Artworks by Anna Repman",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "The album notes describe Anna Repman's personal relationship to the artist; the fact leaves that out on purpose."
+  },
+  {
+    "id": "lofi-06",
+    "pick": "l08",
+    "style": "lofi",
+    "energy": "calm",
+    "title": "longing to be somebody else",
+    "artist": "AvapXia",
+    "album": "summer lofi",
+    "year": 2022,
+    "duration_seconds": 226,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/avapxia/summer-lofi/longing-to-be-somebody-else/",
+    "audio_file": "AvapXia - longing to be somebody else.mp3",
+    "artist_url": "https://freemusicarchive.org/music/avapxia/",
+    "tags": [
+      "lo-fi hip hop"
+    ],
+    "facts": [
+      {
+        "text": "AvapXia studied music composition at the University of Idaho.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/avapxia/bio",
+        "quote": "I just graduated from University of Idaho with a degree in music composition",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "The summer lofi EP was AvapXia's first try at lo-fi hip hop.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/avapxia/summer-lofi/",
+        "quote": "This EP was my first foray into the lofi hip-hop genre",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "For the EP, AvapXia recorded samples from glass jars and school supplies.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/avapxia/summer-lofi/",
+        "quote": "there are some old ones made with glass jars, I did a session where I recorded a bunch of school supplies",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Year 2022 from the album page; the track page shows a 2024 upload date. Bio says 'just graduated' without a date, so the fact avoids timing."
+  },
+  {
+    "id": "lofi-07",
+    "pick": "l09",
+    "style": "lofi",
+    "energy": "medium",
+    "title": "Heat Haze",
+    "artist": "Lee Rosevere",
+    "album": "Music for Podcasts - Beats",
+    "year": null,
+    "duration_seconds": 194,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/lee-rosevere/music-for-podcasts-beats/heat-haze/",
+    "audio_file": "Lee Rosevere - Heat Haze.mp3",
+    "artist_url": "https://leerosevere.bandcamp.com/",
+    "tags": [
+      "hip hop beats",
+      "chill"
+    ],
+    "facts": [
+      {
+        "text": "Lee Rosevere has over 100 releases, from electronic pop and chillhop to ambient music for cats.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/lee-rosevere/bio",
+        "quote": "Lee has over 100 releases of music ranging from electronic pop, chillhop, synthwave to ambient music for cats.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "His music has been used in hundreds of podcasts, including shows from NPR, CBC and the BBC.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/lee-rosevere/bio",
+        "quote": "His music has appeared in hundreds of podcasts (NPR, CBC, BBC",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "He wrote the score for the Norwegian documentary No Time to Lose.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/lee-rosevere/bio",
+        "quote": "written a score for the Norwegian documentary \"No Time to Lose\"",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Second and last slot for Lee Rosevere (also electronic-07). Facts chosen to differ from the electronic entry. Year null: FMA shows a 2024 upload date."
+  },
+  {
+    "id": "lofi-08",
+    "pick": "l10",
+    "style": "lofi",
+    "energy": "medium",
+    "title": "Only Knows",
+    "artist": "Broke For Free",
+    "album": "Layers",
+    "year": 2012,
+    "duration_seconds": 179,
+    "license": "CC BY-NC 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Broke_For_Free/Layers/Only_Knows/",
+    "audio_file": "Broke For Free - Only Knows.mp3",
+    "artist_url": "https://brokeforfree.bandcamp.com/",
+    "tags": [
+      "chillwave",
+      "hip hop beats"
+    ],
+    "facts": [
+      {
+        "text": "Layers is a chillwave album with heavy hip hop influences.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Broke_For_Free/Layers/",
+        "quote": "Layers is a chillwave album with heavy hip hop influences.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Only Knows came out on Layers in April 2012.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Broke_For_Free/Layers/Only_Knows/",
+        "quote": "Released Apr 18, 2012",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Second and last slot for Broke For Free (also electronic-01). Only 2 new facts; the Oakland and 'nostalgic, feel-good instrumentals' facts from the electronic entry also apply. Fact 2 relies on the FMA release date matching the real one, which I could not confirm elsewhere."
+  },
+  {
+    "id": "lofi-09",
+    "pick": "l11",
+    "style": "lofi",
+    "energy": "medium",
+    "title": "Dreamy Feets - Instrumental (ID 2323)",
+    "artist": "Lobo Loco",
+    "album": "Tunnel Games",
+    "year": 2025,
+    "duration_seconds": 233,
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "track_url": "https://freemusicarchive.org/music/Lobo_Loco/tunnel-games/dreamy-feets-instrumental-id-2323/",
+    "audio_file": "Lobo Loco - Dreamy Feets - Instrumental (ID 2323).mp3",
+    "artist_url": "https://www.musikbrause.de/",
+    "tags": [
+      "lo-fi hip hop",
+      "lo-fi folk"
+    ],
+    "facts": [
+      {
+        "text": "Tunnel Games was played on instruments including a Korg Kaossilator Pro, a Hammond Melodion and a Gretsch steel guitar.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Lobo_Loco/tunnel-games/",
+        "quote": "played with Korg Kaossilator Pro, Hammond Melodion, Gretsch Steelguitar",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Lobo Loco shares a wide range of styles, from blues and folk to jazz, rock and meditation sounds.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/blog/meet-lobo-loco/",
+        "quote": "he also shares very different styles, from blues, folk, jazz, rock, to latin to spherical meditation sounds",
+        "source_type": "interview"
+      },
+      {
+        "text": "In 2011, when the Hippie House Jam Band was founded, he learned Hammond organ and bass guitar.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/blog/meet-lobo-loco/",
+        "quote": "In 2011, the Hippie House Jam Band (Funk & Soul) was founded, and I learned how to play Hammond organ and bass guitar.",
+        "source_type": "interview"
+      }
+    ],
+    "notes": "Second and last slot for Lobo Loco (also jazz-07). Facts chosen to differ from the jazz entry. The host should drop '(ID 2323)' when speaking."
+  },
+  {
+    "id": "lofi-10",
+    "pick": "l12",
+    "style": "lofi",
+    "energy": "medium",
+    "title": "The Working Machine",
+    "artist": "RoccoW",
+    "album": "Weeklybeats 2026",
+    "year": 2026,
+    "duration_seconds": 128,
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "track_url": "https://freemusicarchive.org/music/RoccoW/weeklybeats-2026/the-working-machine/",
+    "audio_file": "RoccoW - The Working Machine.mp3",
+    "artist_url": "https://roccow.bandcamp.com/",
+    "tags": [
+      "lo-fi electronic",
+      "sampler"
+    ],
+    "facts": [
+      {
+        "text": "The Working Machine was built in Ableton with some randomness for several MIDI instruments.",
+        "about": "track",
+        "source_url": "https://weeklybeats.com/roccow/music/the-working-machine",
+        "quote": "This week's track was made in Ableton with some randomness for several MIDI instruments.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "RoccoW then resampled the whole track twice on an SP-404 sampler, adding vinyl and drive effects.",
+        "about": "track",
+        "source_url": "https://weeklybeats.com/roccow/music/the-working-machine",
+        "quote": "The entire thing was then resampled twice on an SP-404-SX with a vinyl sym and filter+drive effect.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "RoccoW is based in the Netherlands.",
+        "about": "artist",
+        "source_url": "https://roccow.bandcamp.com/music",
+        "quote": "RoccoW Netherlands",
+        "source_type": "bandcamp"
+      }
+    ],
+    "notes": "Second and last slot for RoccoW (also electronic-10). License set to CC BY-SA 4.0 (Marius decision): FMA says CC BY 4.0, the artist's Weeklybeats page says CC BY-SA, the stricter one is used."
+  },
+  {
+    "id": "lofi-11",
+    "pick": "l13",
+    "style": "lofi",
+    "energy": "upbeat",
+    "title": "Grandma",
+    "artist": "Daizy",
+    "album": "Aramat",
+    "year": 2012,
+    "duration_seconds": 251,
+    "license": "CC BY-NC-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+    "track_url": "https://freemusicarchive.org/music/Daizy/Aramat/02_daizy_-_grandma/",
+    "audio_file": "Daizy - Grandma.mp3",
+    "artist_url": "https://freemusicarchive.org/music/Daizy/",
+    "tags": [
+      "laid-back electronica",
+      "chill-out"
+    ],
+    "facts": [
+      {
+        "text": "Daizy is a Belgian project by Gilles Munten, dedicated to laid-back electronica.",
+        "about": "artist",
+        "source_url": "https://freemusicarchive.org/music/Daizy/bio",
+        "quote": "Belgium project by Gilles Munten dedicated to laidback electronica.",
+        "source_type": "platform_bio"
+      },
+      {
+        "text": "Aramat is Daizy's follow-up album of laid-back electronica.",
+        "about": "track",
+        "source_url": "https://freemusicarchive.org/music/Daizy/Aramat/",
+        "quote": "Followup album of laidback electronica sounds by our Belgium project Daizy.",
+        "source_type": "platform_bio"
+      }
+    ],
+    "notes": "Only 2 facts, and they overlap. Album text reads as written by a label ('our Belgium project') but no label is named."
+  }
+]
