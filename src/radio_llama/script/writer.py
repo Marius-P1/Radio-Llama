@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Literal
 
-from radio_llama.llm.base import LLMClient, LLMResponse, Message
+from radio_llama.llm.base import LLMClient, LLMError, LLMResponse, Message
 from radio_llama.models import Energy, Fact, Persona, Track
 from radio_llama.script.prompts import load_template, render
 from radio_llama.script.timing import SPEECH_SECONDS, word_budget
@@ -118,7 +118,8 @@ class ScriptWriter:
         style: str,
         *,
         energy: Energy | None = None,
-        max_tokens: int = 400,
+        # Room for the model's thinking as well as the script (D021).
+        max_tokens: int = 2000,
         temperature: float = 0.8,
     ) -> None:
         self._llm = llm
@@ -172,4 +173,7 @@ class ScriptWriter:
             temperature=self._temperature,
         )
         self.responses.append(response)
-        return clean_script(response.text)
+        script = clean_script(response.text)
+        if not script:
+            raise LLMError(f"The model returned an empty {kind} script.")
+        return script

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from radio_llama.llm import FakeLLM
+from radio_llama.llm import FakeLLM, LLMError
 from radio_llama.models import Fact, Track
 from radio_llama.personas import get_persona
 from radio_llama.script import SPEECH_SECONDS, ScriptWriter, clean_script, word_budget
@@ -72,6 +72,16 @@ def make_writer(language: str = "en") -> tuple[ScriptWriter, FakeLLM]:
     persona = get_persona(PROMPTS_DIR, language, "calm")
     writer = ScriptWriter(llm, PROMPTS_DIR, language, persona, "jazz")  # type: ignore[arg-type]
     return writer, llm
+
+
+def test_an_empty_script_is_an_error() -> None:
+    """A blank reply must fail the show, not become half a second of silence on air."""
+    llm = FakeLLM(['""'])
+    persona = get_persona(PROMPTS_DIR, "en", "calm")
+    writer = ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz")
+
+    with pytest.raises(LLMError, match="empty transition script"):
+        writer.write_transition(TRACKS[0], TRACKS[1])
 
 
 def test_intro_prompt_carries_tracks_budget_persona_and_style() -> None:

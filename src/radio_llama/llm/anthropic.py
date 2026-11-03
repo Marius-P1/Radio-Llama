@@ -26,6 +26,10 @@ class AnthropicClient:
             "messages": [
                 {"role": m.role, "content": m.content} for m in messages if m.role != "system"
             ],
+            # Claude 5 models think before answering and the thinking counts against
+            # `max_tokens`. A radio script needs little thought; at the default effort the
+            # model has used the whole budget thinking and returned no text (D021).
+            "output_config": {"effort": "low"},
         }
         if system_parts:
             kwargs["system"] = "\n\n".join(system_parts)
@@ -41,6 +45,11 @@ class AnthropicClient:
         latency_s = time.perf_counter() - started
 
         text = "".join(block.text for block in response.content if block.type == "text")
+        if not text.strip():
+            raise LLMError(
+                f"Anthropic returned no text (stop reason: {response.stop_reason}, "
+                f"{response.usage.output_tokens} output tokens)."
+            )
         return LLMResponse(
             text=text,
             input_tokens=response.usage.input_tokens,

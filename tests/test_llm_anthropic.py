@@ -65,6 +65,14 @@ def test_generate_passes_model_and_max_tokens_through_but_not_temperature() -> N
     assert "temperature" not in stub.kwargs
 
 
+def test_generate_asks_for_low_effort() -> None:
+    stub = StubMessages(response=load_fixture())
+
+    make_client(stub).generate(MESSAGES, max_tokens=64, temperature=0.3)
+
+    assert stub.kwargs["output_config"] == {"effort": "low"}
+
+
 def test_system_messages_are_joined_into_the_system_argument() -> None:
     stub = StubMessages(response=load_fixture())
     messages = [
@@ -101,6 +109,20 @@ def test_only_text_blocks_make_up_the_text() -> None:
     response = make_client(stub).generate(MESSAGES, max_tokens=64, temperature=0.3)
 
     assert response.text == "Good evening, two blocks."
+
+
+def test_a_reply_without_text_is_an_error() -> None:
+    """The model spent the whole budget thinking and never wrote the script."""
+    data = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    data["content"] = [{"type": "thinking", "thinking": "", "signature": "sig"}]
+    data["stop_reason"] = "max_tokens"
+    stub = StubMessages(response=SDKMessage.model_validate(data))
+
+    with pytest.raises(LLMError) as info:
+        make_client(stub).generate(MESSAGES, max_tokens=64, temperature=0.3)
+
+    assert "no text" in str(info.value)
+    assert "max_tokens" in str(info.value)
 
 
 def test_sdk_errors_become_llm_errors() -> None:
