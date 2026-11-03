@@ -79,6 +79,8 @@ export interface components {
     schemas: {
         /** CreateShowRequest */
         CreateShowRequest: {
+            /** Energy */
+            energy?: ("calm" | "medium" | "upbeat") | null;
             /**
              * Generator
              * @default pipeline
@@ -123,6 +125,8 @@ export interface components {
         };
         /** OptionsResponse */
         OptionsResponse: {
+            /** Energies */
+            energies: string[];
             /** Languages */
             languages: string[];
             /** Personas */
@@ -166,6 +170,8 @@ export interface components {
         };
         /** ShowConfig */
         ShowConfig: {
+            /** Energy */
+            energy?: ("calm" | "medium" | "upbeat") | null;
             /**
              * Generator
              * @default pipeline

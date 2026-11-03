@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 
 from radio_llama.llm.base import LLMClient, LLMResponse, Message
-from radio_llama.models import Fact, Persona, Track
+from radio_llama.models import Energy, Fact, Persona, Track
 from radio_llama.script.prompts import load_template, render
 from radio_llama.script.timing import SPEECH_SECONDS, word_budget
 
@@ -55,6 +55,7 @@ class ScriptWriter:
         persona: Persona,
         style: str,
         *,
+        energy: Energy | None = None,
         max_tokens: int = 400,
         temperature: float = 0.8,
     ) -> None:
@@ -63,6 +64,7 @@ class ScriptWriter:
         self._language = language
         self._persona = persona
         self._style = style
+        self._energy = energy
         self._max_tokens = max_tokens
         self._temperature = temperature
         # Every response, in order, for token accounting (D004).

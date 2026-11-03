@@ -36,6 +36,9 @@ def generate(
     language: Annotated[
         str | None, typer.Option(help="en or fr. Defaults to RADIO_LANGUAGE.")
     ] = None,
+    energy: Annotated[
+        str | None, typer.Option(help="calm, medium or upbeat. Any energy when left out.")
+    ] = None,
     tracks: Annotated[int, typer.Option(help="Number of songs.")] = 3,
     song_length: Annotated[float, typer.Option(help="Seconds each song plays.")] = 30.0,
     seed: Annotated[int | None, typer.Option(help="Fix the random track pick.")] = None,
@@ -61,6 +64,7 @@ def generate(
             style=style,
             persona=persona,
             language=language or settings.radio_language,  # type: ignore[arg-type]
+            energy=energy,  # type: ignore[arg-type]
             track_count=tracks,
             song_length_s=song_length,
             seed=seed,

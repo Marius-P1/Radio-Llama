@@ -3,6 +3,22 @@
     "schemas": {
       "CreateShowRequest": {
         "properties": {
+          "energy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "calm",
+                  "medium",
+                  "upbeat"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy"
+          },
           "generator": {
             "const": "pipeline",
             "default": "pipeline",
@@ -98,6 +114,13 @@
       },
       "OptionsResponse": {
         "properties": {
+          "energies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Energies",
+            "type": "array"
+          },
           "languages": {
             "items": {
               "type": "string"
@@ -126,7 +149,8 @@
         "required": [
           "styles",
           "personas",
-          "languages"
+          "languages",
+          "energies"
         ],
         "title": "OptionsResponse",
         "type": "object"
@@ -237,6 +261,22 @@
       },
       "ShowConfig": {
         "properties": {
+          "energy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "calm",
+                  "medium",
+                  "upbeat"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy"
+          },
           "generator": {
             "const": "pipeline",
             "default": "pipeline",

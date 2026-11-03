@@ -1,3 +1,4 @@
+import json
 import shutil
 from pathlib import Path
 
@@ -39,6 +40,25 @@ def test_generate_fake_writes_an_mp3(cli_env: Path) -> None:
     assert len(shows) == 1
     assert (shows[0] / "show.mp3").exists()
     assert (shows[0] / "show.json").exists()
+
+
+def test_generate_with_energy_records_it(cli_env: Path) -> None:
+    result = runner.invoke(
+        app,
+        ["generate", "--fake", "--style", "rock", "--energy", "calm", "--song-length", "1.5"],
+    )
+
+    assert result.exit_code == 0, result.output
+    show = json.loads((next(cli_env.iterdir()) / "show.json").read_text(encoding="utf-8"))
+    assert show["config"]["energy"] == "calm"
+
+
+def test_generate_with_unknown_energy_fails_cleanly(cli_env: Path) -> None:
+    result = runner.invoke(app, ["generate", "--fake", "--style", "jazz", "--energy", "frantic"])
+
+    assert result.exit_code == 1
+    assert "energy" in result.output
+    assert "Traceback" not in result.output
 
 
 def test_generate_without_keys_explains_the_missing_variable(cli_env: Path) -> None:

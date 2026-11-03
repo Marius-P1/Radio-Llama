@@ -7,7 +7,7 @@ from radio_llama.audio.assemble import assemble_show
 from radio_llama.config import Settings
 from radio_llama.generator.base import GenerationError, ProgressCallback
 from radio_llama.llm.base import LLMClient, LLMResponse
-from radio_llama.models import Segment, Show, Track
+from radio_llama.models import ENERGIES, Energy, Segment, Show, Track
 from radio_llama.music.local_catalog import LocalCatalog
 from radio_llama.personas import get_persona
 from radio_llama.script.writer import ScriptWriter
@@ -31,13 +31,16 @@ class PipelineGenerator:
     ) -> Show:
         config = show.config
 
-        # Pick the tracks: a seeded random sample of the style, every audio file present (D017).
+        # Pick the tracks: a seeded random sample of the style (D017), the listener's energy
+        # first (D020), every audio file present.
         candidates = self._music.list_tracks(config.style)
         if len(candidates) < config.track_count:
             raise GenerationError(
                 f"Style {config.style!r} has {len(candidates)} tracks, {config.track_count} needed."
             )
-        tracks = random.Random(config.seed).sample(candidates, config.track_count)
+        tracks = pick_tracks(
+            candidates, config.track_count, config.energy, random.Random(config.seed)
+        )
         for track in tracks:
             path = self._music.audio_path(track)
             if not path.exists():
@@ -48,7 +51,12 @@ class PipelineGenerator:
         # The host: persona text for the prompts, voice for the TTS.
         persona = get_persona(self._settings.prompts_dir, config.language, config.persona)
         writer = ScriptWriter(
-            self._llm, self._settings.prompts_dir, config.language, persona, config.style
+            self._llm,
+            self._settings.prompts_dir,
+            config.language,
+            persona,
+            config.style,
+            energy=config.energy,
         )
         voice = voice_for(persona, self._settings)
 
@@ -74,6 +82,31 @@ class PipelineGenerator:
         assemble_show(show, sources, out_dir)
         self.last_responses = writer.responses
         return show
+
+
+def pick_tracks(
+    candidates: list[Track], count: int, energy: Energy | None, rng: random.Random
+) -> list[Track]:
+    """A seeded random sample of `count` tracks, by tiers when an energy is asked for (D020).
+
+    Tiers: the requested energy, then tracks with no energy, then the other energies nearest
+    first (medium sits between calm and upbeat). Each tier is sampled at random until
+    `count` is reached. With no energy, one sample over every candidate.
+    """
+    if energy is None:
+        return rng.sample(candidates, count)
+
+    def tier(track: Track) -> int:
+        if track.energy is None:
+            return 1
+        distance = abs(ENERGIES.index(track.energy) - ENERGIES.index(energy))
+        return 0 if distance == 0 else distance + 1
+
+    picked: list[Track] = []
+    for rank in range(len(ENERGIES) + 1):
+        tracks = [track for track in candidates if tier(track) == rank]
+        picked.extend(rng.sample(tracks, min(count - len(picked), len(tracks))))
+    return picked
 
 
 def _plan(tracks: list[Track]) -> list[Segment]:

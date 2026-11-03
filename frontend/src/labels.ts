@@ -6,6 +6,11 @@ export function styleLabel(style: string): string {
   return style.charAt(0).toUpperCase() + style.slice(1)
 }
 
+export function energyLabel(energy: string | null | undefined): string {
+  if (energy === null || energy === undefined) return 'Any'
+  return energy.charAt(0).toUpperCase() + energy.slice(1)
+}
+
 export function languageLabel(language: string): string {
   if (language === 'en') return 'English'
   if (language === 'fr') return 'French'

@@ -60,6 +60,7 @@ class ShowConfig(BaseModel):
     persona: str  # Persona.id
     language: Literal["en", "fr"] = "en"
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1
+    energy: Energy | None = None  # the listener's wish; None means any (D020)
     track_count: int = 3
     song_length_s: float = 30.0  # how long each song plays before the fade-out
     seed: int | None = None  # fixes the random track pick, for reproducible runs (D017)

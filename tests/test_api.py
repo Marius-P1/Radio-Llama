@@ -54,6 +54,7 @@ def test_options_lists_styles_personas_and_languages(client: TestClient) -> None
     body = response.json()
     assert body["styles"] == ["jazz", "rock"]
     assert body["languages"] == ["en", "fr"]
+    assert body["energies"] == ["calm", "medium", "upbeat"]
     assert sorted(body["personas"]) == ["en", "fr"]
     for language in ("en", "fr"):
         assert [persona["id"] for persona in body["personas"][language]] == PERSONA_IDS
@@ -98,6 +99,21 @@ def test_list_shows_newest_first(client: TestClient) -> None:
     assert ids.index(second["id"]) < ids.index(first["id"])
     assert all(show["status"] == "ready" for show in response.json())
     assert "segments" not in response.json()[0]
+
+
+def test_energy_is_stored_in_the_config(client: TestClient) -> None:
+    created = _create(client, energy="calm")
+
+    assert created["config"]["energy"] == "calm"
+    assert client.get(f"/api/v1/shows/{created['id']}").json()["config"]["energy"] == "calm"
+    assert _create(client)["config"]["energy"] is None
+    assert _create(client, energy=None)["config"]["energy"] is None
+
+
+def test_unknown_energy_is_a_422(client: TestClient) -> None:
+    response = client.post("/api/v1/shows", json={"style": "jazz", "energy": "frantic"})
+
+    assert response.status_code == 422
 
 
 def test_unknown_style_is_a_400(client: TestClient) -> None:

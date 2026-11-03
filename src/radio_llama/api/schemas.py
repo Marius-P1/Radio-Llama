@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from radio_llama.models import Segment, Show, ShowConfig, ShowStatus, Track
+from radio_llama.models import Energy, Segment, Show, ShowConfig, ShowStatus, Track
 
 
 class PersonaOption(BaseModel):
@@ -18,6 +18,7 @@ class OptionsResponse(BaseModel):
     styles: list[str]
     personas: dict[str, list[PersonaOption]]  # keyed by language: {"en": [...], "fr": [...]}
     languages: list[str]  # ["en", "fr"]
+    energies: list[str]  # ["calm", "medium", "upbeat"]; a request may also leave energy out
 
 
 class CreateShowRequest(BaseModel):
@@ -25,6 +26,7 @@ class CreateShowRequest(BaseModel):
     persona: str = "calm"
     language: Literal["en", "fr"] = "en"
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1
+    energy: Energy | None = None  # None: any energy (D020)
 
 
 class Progress(BaseModel):

@@ -18,7 +18,7 @@ from radio_llama.api.schemas import (
     ShowSummary,
 )
 from radio_llama.config import Settings
-from radio_llama.models import Show, ShowConfig
+from radio_llama.models import ENERGIES, Show, ShowConfig
 from radio_llama.music import LocalCatalog
 from radio_llama.personas import load_personas
 from radio_llama.storage import SHOW_FILE, load_show, new_show_id, save_show
@@ -79,7 +79,12 @@ def get_options(settings: SettingsDep, music: MusicDep) -> OptionsResponse:
         ]
         for language in LANGUAGES
     }
-    return OptionsResponse(styles=music.list_styles(), personas=personas, languages=LANGUAGES)
+    return OptionsResponse(
+        styles=music.list_styles(),
+        personas=personas,
+        languages=LANGUAGES,
+        energies=list(ENERGIES),
+    )
 
 
 @router.post("/shows", status_code=202)
@@ -114,6 +119,7 @@ def create_show(
             persona=body.persona,
             language=body.language,
             generator=body.generator,
+            energy=body.energy,
         ),
     )
     save_show(show, settings.output_dir / show.id)

@@ -1,3 +1,4 @@
+import random
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -6,8 +7,9 @@ import pytest
 
 from radio_llama.config import Settings
 from radio_llama.generator import GenerationError, PipelineGenerator, run_generation
+from radio_llama.generator.pipeline import pick_tracks
 from radio_llama.llm import FakeLLM
-from radio_llama.models import Show, ShowConfig
+from radio_llama.models import Show, ShowConfig, Track
 from radio_llama.music import LocalCatalog
 from radio_llama.storage import load_show
 from radio_llama.voice import CachedTextToSpeech, FakeTTS, TextToSpeech, TTSError, Voice
@@ -113,6 +115,103 @@ def test_tts_error_marks_the_show_failed(
     assert show.status == "failed"
     assert show.error is not None
     assert "voice is out" in show.error
+
+
+def _track(track_id: str, energy: str | None) -> Track:
+    return Track(
+        id=track_id,
+        title=track_id,
+        artist="Artist",
+        style="jazz",
+        energy=energy,  # type: ignore[arg-type]
+        album="Album",
+        duration_s=100.0,
+        license="CC BY 4.0",
+        license_url="https://creativecommons.org/licenses/by/4.0/",
+        track_url="https://example.com",
+        artist_url="https://example.com",
+        audio_file=f"{track_id}.mp3",
+    )
+
+
+CANDIDATES = [
+    _track("calm-1", "calm"),
+    _track("calm-2", "calm"),
+    _track("medium-1", "medium"),
+    _track("medium-2", "medium"),
+    _track("upbeat-1", "upbeat"),
+    _track("upbeat-2", "upbeat"),
+    _track("unknown-1", None),
+    _track("unknown-2", None),
+]
+
+
+def _energies(tracks: list[Track]) -> list[str | None]:
+    return [track.energy for track in tracks]
+
+
+def test_pick_without_energy_samples_everything() -> None:
+    picked = pick_tracks(CANDIDATES, 3, None, random.Random(1))
+
+    assert len(picked) == 3
+    assert len({track.id for track in picked}) == 3
+    assert pick_tracks(CANDIDATES, 3, None, random.Random(1)) == picked
+    assert pick_tracks(CANDIDATES, 8, None, random.Random(1)) != CANDIDATES
+
+
+def test_pick_takes_the_requested_energy_first() -> None:
+    picked = pick_tracks(CANDIDATES, 2, "calm", random.Random(1))
+
+    assert _energies(picked) == ["calm", "calm"]
+
+
+def test_pick_fills_with_unknown_then_nearest_energies() -> None:
+    picked = pick_tracks(CANDIDATES, 7, "calm", random.Random(1))
+
+    assert _energies(picked) == ["calm", "calm", None, None, "medium", "medium", "upbeat"]
+    assert len({track.id for track in picked}) == 7
+
+
+def test_pick_from_upbeat_goes_through_medium_before_calm() -> None:
+    picked = pick_tracks(CANDIDATES, 8, "upbeat", random.Random(3))
+
+    expected = ["upbeat", "upbeat", None, None, "medium", "medium", "calm", "calm"]
+    assert _energies(picked) == expected
+
+
+def test_pick_from_medium_treats_calm_and_upbeat_alike() -> None:
+    picked = pick_tracks(CANDIDATES, 8, "medium", random.Random(5))
+
+    assert _energies(picked[:4]) == ["medium", "medium", None, None]
+    assert sorted(str(energy) for energy in _energies(picked[4:])) == [
+        "calm",
+        "calm",
+        "upbeat",
+        "upbeat",
+    ]
+
+
+def test_pick_is_reproducible_with_a_seed() -> None:
+    first = pick_tracks(CANDIDATES, 5, "upbeat", random.Random(42))
+    second = pick_tracks(CANDIDATES, 5, "upbeat", random.Random(42))
+    assert first == second
+
+
+def test_pick_samples_inside_a_tier_larger_than_count() -> None:
+    picks = {pick_tracks(CANDIDATES, 1, "calm", random.Random(seed))[0].id for seed in range(20)}
+    assert picks == {"calm-1", "calm-2"}
+
+
+def test_show_with_energy_reaches_ready(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, tmp_path: Path
+) -> None:
+    show = run_generation(
+        _generator(fake_settings, tiny_catalog), _show(energy="upbeat", seed=1), tmp_path
+    )
+
+    assert show.status == "ready"
+    assert show.config.energy == "upbeat"
+    assert len(show.tracks) == 3
 
 
 def test_french_show_reaches_ready(
