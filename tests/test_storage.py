@@ -2,7 +2,7 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
-from radio_llama.models import Show, ShowConfig
+from radio_llama.models import Show, ShowConfig, Track
 from radio_llama.storage import SHOW_FILE, load_show, new_show_id, save_show
 
 
@@ -23,6 +23,33 @@ def test_save_show_creates_folder_and_round_trips(tmp_path: Path) -> None:
     assert path == out_dir / SHOW_FILE
     assert path.read_text(encoding="utf-8").endswith("}\n")
     assert load_show(out_dir) == show
+
+
+def test_show_json_carries_no_curator_notes(tmp_path: Path) -> None:
+    show = _show()
+    show.tracks = [
+        Track(
+            id="t1",
+            title="Blue Morning",
+            artist="Some Artist",
+            style="jazz",
+            album="Early Light",
+            duration_s=201.5,
+            license="CC BY 4.0",
+            license_url="https://creativecommons.org/licenses/by/4.0/",
+            track_url="https://example.com/blue-morning",
+            artist_url="https://example.com/some-artist",
+            audio_file="t1.mp3",
+            notes="Curator only.",
+        )
+    ]
+
+    path = save_show(show, tmp_path)
+
+    text = path.read_text(encoding="utf-8")
+    assert '"notes"' not in text
+    assert "Curator only" not in text
+    assert load_show(tmp_path).tracks[0].notes == ""
 
 
 def test_new_show_id_has_timestamp_and_suffix() -> None:

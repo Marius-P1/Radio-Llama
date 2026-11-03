@@ -18,10 +18,15 @@ def make_track(number: int, facts: list[Fact] | None = None) -> Track:
         title=f"Blue Window {number}",
         artist=f"The Lanterns {number}",
         style="jazz",
+        album="Blue Windows",
+        year=2019,
         duration_s=180.0,
-        license="CC-BY-4.0",
-        source_url=f"https://example.org/track-{number}",
+        license="CC BY 4.0",
+        license_url="https://creativecommons.org/licenses/by/4.0/",
+        track_url=f"https://example.org/track-{number}",
+        artist_url=f"https://example.org/lanterns-{number}",
         audio_file=f"track-{number}.mp3",
+        tags=["jazz", "late night"],
         facts=facts or [],
     )
 

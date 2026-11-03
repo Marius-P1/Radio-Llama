@@ -8,23 +8,44 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+Energy = Literal["calm", "medium", "upbeat"]
+ENERGIES: tuple[Energy, ...] = ("calm", "medium", "upbeat")  # in order, for distance
+
 
 class Fact(BaseModel):
-    text: str
-    source_url: str
+    text: str  # one plain sentence the host can say on air
+    about: Literal["artist", "track"] = "track"
+    source_url: str  # page the fact was read on
+    quote: str | None = None  # the source text the fact is written from
+    source_type: str | None = None  # for example "artist bio", "review"
 
 
 class Track(BaseModel):
-    id: str
+    id: str  # "<style>-<nn>"
     title: str
     artist: str
     style: str  # for example "jazz", "rock"
+    energy: Energy | None = None  # None when unknown
+    album: str
+    year: int | None = None
     duration_s: float  # full track length in seconds
-    license: str  # SPDX-like id, for example "CC-BY-4.0" or "CC-BY-SA-4.0"
-    source_url: str  # page where the track was found, used for credits
+    license: str  # as the source page shows it, for example "CC BY-NC-SA 3.0 US"
+    license_url: str
+    track_url: str  # page where the track was found, used for credits
+    artist_url: str
     audio_file: str  # file name inside catalog/audio/
+    tags: list[str] = Field(default_factory=list)
     facts: list[Fact] = Field(default_factory=list)
-    placeholder: bool = False  # True only for the fake tracks shipped before the real catalog
+    spoken_title: str | None = None  # what the host says when the title is not speakable as is
+    host_notes: str | None = None  # on-air guidance for the host, fed to the prompt
+    # Curator notes. Excluded from every dump, so they never reach show.json, the API or
+    # the replay page (D020).
+    notes: str = Field("", exclude=True)
+
+    @property
+    def display_title(self) -> str:
+        """The title to speak and to show: `spoken_title` when set, else `title`."""
+        return self.spoken_title or self.title
 
 
 class Persona(BaseModel):

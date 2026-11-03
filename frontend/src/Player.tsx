@@ -102,7 +102,7 @@ export function Player({ id, onBack }: Props) {
         {show.tracks.map((track) => (
           <li key={track.id}>
             <strong>{track.title}</strong> by {track.artist} (
-            <a href={track.source_url} target="_blank" rel="noreferrer">
+            <a href={track.track_url} target="_blank" rel="noreferrer">
               source
             </a>
             ), {track.license}

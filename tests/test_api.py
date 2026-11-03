@@ -76,7 +76,10 @@ def test_create_show_then_read_it_and_its_audio(client: TestClient) -> None:
     assert len(show["segments"]) == 7
     assert len(show["tracks"]) == 3
     assert show["audio_url"] == f"/api/v1/shows/{created['id']}/audio"
-    assert all(track["license"] and track["source_url"] for track in show["tracks"])
+    for track in show["tracks"]:
+        assert track["license"] and track["license_url"]
+        assert track["track_url"] and track["artist_url"]
+        assert "notes" not in track
 
     audio = client.get(show["audio_url"])
     assert audio.status_code == 200

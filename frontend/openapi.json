@@ -36,6 +36,37 @@
       },
       "Fact": {
         "properties": {
+          "about": {
+            "default": "track",
+            "enum": [
+              "artist",
+              "track"
+            ],
+            "title": "About",
+            "type": "string"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type"
+          },
           "source_url": {
             "title": "Source Url",
             "type": "string"
@@ -387,8 +418,16 @@
       },
       "Track": {
         "properties": {
+          "album": {
+            "title": "Album",
+            "type": "string"
+          },
           "artist": {
             "title": "Artist",
+            "type": "string"
+          },
+          "artist_url": {
+            "title": "Artist Url",
             "type": "string"
           },
           "audio_file": {
@@ -399,12 +438,39 @@
             "title": "Duration S",
             "type": "number"
           },
+          "energy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "calm",
+                  "medium",
+                  "upbeat"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy"
+          },
           "facts": {
             "items": {
               "$ref": "#/components/schemas/Fact"
             },
             "title": "Facts",
             "type": "array"
+          },
+          "host_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Host Notes"
           },
           "id": {
             "title": "Id",
@@ -414,22 +480,50 @@
             "title": "License",
             "type": "string"
           },
-          "placeholder": {
-            "default": false,
-            "title": "Placeholder",
-            "type": "boolean"
-          },
-          "source_url": {
-            "title": "Source Url",
+          "license_url": {
+            "title": "License Url",
             "type": "string"
+          },
+          "spoken_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spoken Title"
           },
           "style": {
             "title": "Style",
             "type": "string"
           },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "track_url": {
+            "title": "Track Url",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
           }
         },
         "required": [
@@ -437,9 +531,12 @@
           "title",
           "artist",
           "style",
+          "album",
           "duration_s",
           "license",
-          "source_url",
+          "license_url",
+          "track_url",
+          "artist_url",
           "audio_file"
         ],
         "title": "Track",

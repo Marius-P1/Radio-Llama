@@ -43,7 +43,7 @@ class ShowSummary(BaseModel):
 class ShowResponse(ShowSummary):
     progress: Progress | None = None  # set while generating
     segments: list[Segment]
-    tracks: list[Track]  # credits: artist, title, license, source_url are all in Track
+    tracks: list[Track]  # credits: artist, title, license and the links are all in Track
     audio_url: str | None = None  # "/api/v1/shows/{id}/audio" once ready
 
     @classmethod

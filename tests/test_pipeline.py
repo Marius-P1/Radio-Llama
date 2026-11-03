@@ -56,7 +56,8 @@ def test_run_generation_builds_a_ready_show(
     assert [segment.kind for segment in show.segments] == EXPECTED_KINDS
     assert (out_dir / "show.mp3").exists()
     assert (out_dir / "show.json").exists()
-    assert load_show(out_dir) == show
+    # Dumps, not models: the catalog's curator notes stay in memory and never reach show.json.
+    assert load_show(out_dir).model_dump() == show.model_dump()
     for segment in show.segments:
         assert segment.audio_file is not None
         assert segment.duration_s is not None and segment.duration_s > 0

@@ -101,6 +101,16 @@ export interface components {
         };
         /** Fact */
         Fact: {
+            /**
+             * About
+             * @default track
+             * @enum {string}
+             */
+            about: "artist" | "track";
+            /** Quote */
+            quote?: string | null;
+            /** Source Type */
+            source_type?: string | null;
             /** Source Url */
             source_url: string;
             /** Text */
@@ -230,29 +240,40 @@ export interface components {
         };
         /** Track */
         Track: {
+            /** Album */
+            album: string;
             /** Artist */
             artist: string;
+            /** Artist Url */
+            artist_url: string;
             /** Audio File */
             audio_file: string;
             /** Duration S */
             duration_s: number;
+            /** Energy */
+            energy?: ("calm" | "medium" | "upbeat") | null;
             /** Facts */
             facts?: components["schemas"]["Fact"][];
+            /** Host Notes */
+            host_notes?: string | null;
             /** Id */
             id: string;
             /** License */
             license: string;
-            /**
-             * Placeholder
-             * @default false
-             */
-            placeholder: boolean;
-            /** Source Url */
-            source_url: string;
+            /** License Url */
+            license_url: string;
+            /** Spoken Title */
+            spoken_title?: string | null;
             /** Style */
             style: string;
+            /** Tags */
+            tags?: string[];
             /** Title */
             title: string;
+            /** Track Url */
+            track_url: string;
+            /** Year */
+            year?: number | null;
         };
         /** ValidationError */
         ValidationError: {

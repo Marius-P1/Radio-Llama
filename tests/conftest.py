@@ -19,11 +19,17 @@ def _track(track_id: str, style: str, number: int) -> dict:
         "title": f"Title {track_id}",
         "artist": f"Test Artist {number}",
         "style": style,
+        "album": "Test Album",
+        "year": 2020,
         "duration_s": TONE_SECONDS,
-        "license": "CC-BY-4.0",
-        "source_url": f"https://example.com/{track_id}",
+        "license": "CC BY 4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "track_url": f"https://example.com/{track_id}",
+        "artist_url": f"https://example.com/artist-{number}",
         "audio_file": f"{track_id}.mp3",
+        "tags": ["test"],
         "facts": [{"text": f"Fact about {track_id}.", "source_url": "https://example.com"}],
+        "notes": "Curator notes that must never leave the catalog.",
     }
 
 
