@@ -12,7 +12,11 @@ class ConfigError(Exception):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # `.env.example` ships every variable blank. An empty variable means "use the default",
+    # not an empty string (which would make every Path point at the current folder).
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", env_ignore_empty=True, extra="ignore"
+    )
 
     # API keys
     mistral_api_key: SecretStr | None = None

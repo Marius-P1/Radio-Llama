@@ -53,6 +53,23 @@ def test_invalid_language_gives_one_clear_message(monkeypatch: pytest.MonkeyPatc
     assert len(message.splitlines()) == 1
 
 
+def test_env_example_as_is_gives_the_defaults(tmp_path: Path) -> None:
+    """Copying `.env.example` to `.env` without filling anything in must change nothing."""
+    (tmp_path / ".env").write_text(ENV_EXAMPLE.read_text(encoding="utf-8"), encoding="utf-8")
+    settings = load_settings()
+    assert settings.catalog_path == Path("catalog/catalog.json")
+    assert settings.llm_model == "mistral-small-latest"
+    assert settings.mistral_api_key is None
+
+
+def test_empty_variable_in_environment_gives_the_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CATALOG_PATH", "")
+    monkeypatch.setenv("LLM_MODEL", "")
+    settings = load_settings()
+    assert settings.catalog_path == Path("catalog/catalog.json")
+    assert settings.llm_model == "mistral-small-latest"
+
+
 def test_env_example_lists_every_setting() -> None:
     names = set(re.findall(r"^([A-Z_]+)=$", ENV_EXAMPLE.read_text(encoding="utf-8"), re.MULTILINE))
     expected = {name.upper() for name in Settings.model_fields}
