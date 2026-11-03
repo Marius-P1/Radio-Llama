@@ -8,14 +8,16 @@ from radio_llama.script import PROMPT_NAMES, load_template, placeholders, render
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 EXPECTED_PLACEHOLDERS = {
-    "system": {"persona_description", "style"},
+    "system": {"persona_description", "style", "energy_line"},
     "intro": {"track_list", "word_budget"},
     "transition": {
         "previous_title",
         "previous_artist",
         "next_title",
         "next_artist",
+        "next_details",
         "facts",
+        "host_notes",
         "word_budget",
     },
     "outro": {"track_list", "word_budget"},

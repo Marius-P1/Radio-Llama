@@ -9,10 +9,35 @@ from radio_llama.models import Energy, Fact, Persona, Track
 from radio_llama.script.prompts import load_template, render
 from radio_llama.script.timing import SPEECH_SECONDS, word_budget
 
-# Language-dependent strings that are not prompts.
+# Language-dependent strings that are not prompts: labels and short sentences the writer
+# puts into placeholder values.
 UI_STRINGS = {
-    "en": {"by": "by", "no_facts": "(no facts available for this track)"},
-    "fr": {"by": "de", "no_facts": "(aucune anecdote disponible pour ce morceau)"},
+    "en": {
+        "by": "by",
+        "no_facts": "(no facts available for this track)",
+        "about": {"artist": "About the artist:", "track": "About the track:"},
+        "album": "Album:",
+        "tags": "Tags:",
+        "energy": "Energy:",
+        "energy_line": {
+            "calm": "The listener asked for a calm show.",
+            "medium": "The listener asked for a medium-energy show.",
+            "upbeat": "The listener asked for an upbeat show.",
+        },
+    },
+    "fr": {
+        "by": "de",
+        "no_facts": "(aucune anecdote disponible pour ce morceau)",
+        "about": {"artist": "Sur l'artiste :", "track": "Sur le morceau :"},
+        "album": "Album :",
+        "tags": "Tags :",
+        "energy": "Énergie :",
+        "energy_line": {
+            "calm": "L'auditeur a demandé une émission calme.",
+            "medium": "L'auditeur a demandé une émission d'énergie moyenne.",
+            "upbeat": "L'auditeur a demandé une émission entraînante.",
+        },
+    },
 }
 
 # A whole text wrapped in ``` fences, with or without a language tag after the opening fence.
@@ -36,14 +61,49 @@ def clean_script(text: str) -> str:
 def format_track_list(tracks: list[Track], language: str) -> str:
     """One line per track: "Title by Artist" in English, "Title de Artist" in French."""
     by = UI_STRINGS[language]["by"]
-    return "\n".join(f"{track.title} {by} {track.artist}" for track in tracks)
+    return "\n".join(f"{track.display_title} {by} {track.artist}" for track in tracks)
+
+
+def format_programme(tracks: list[Track], language: str) -> str:
+    """Like `format_track_list`, with "(album, year, tags)" after each track, parts that exist."""
+    lines = []
+    for line, track in zip(format_track_list(tracks, language).splitlines(), tracks, strict=True):
+        parts = [track.album, str(track.year or ""), *track.tags]
+        details = ", ".join(part for part in parts if part)
+        lines.append(f"{line} ({details})" if details else line)
+    return "\n".join(lines)
+
+
+def format_track_details(track: Track, language: str) -> str:
+    """Album and year on one line, tags and energy on another. Only the parts that exist."""
+    strings = UI_STRINGS[language]
+    first = []
+    if track.album:
+        first.append(f"{strings['album']} {track.album}")
+    if track.year is not None:
+        first.append(f"({track.year})")
+    second = []
+    if track.tags:
+        second.append(f"{strings['tags']} {', '.join(track.tags)}")
+    if track.energy is not None:
+        second.append(f"{strings['energy']} {track.energy}")
+    lines = [" ".join(first), ". ".join(second)]
+    return "\n".join(line for line in lines if line)
 
 
 def format_facts(facts: list[Fact], language: str) -> str:
-    """A bulleted list of fact texts, or the language's "no facts" line."""
+    """A bulleted list of facts, each labelled artist or track, or the "no facts" line."""
     if not facts:
         return UI_STRINGS[language]["no_facts"]
-    return "\n".join(f"- {fact.text}" for fact in facts)
+    about = UI_STRINGS[language]["about"]
+    return "\n".join(f"- {about[fact.about]} {fact.text}" for fact in facts)
+
+
+def energy_line(energy: Energy | None, language: str) -> str:
+    """The sentence naming the energy the listener asked for, or an empty string."""
+    if energy is None:
+        return ""
+    return UI_STRINGS[language]["energy_line"][energy]
 
 
 class ScriptWriter:
@@ -71,17 +131,19 @@ class ScriptWriter:
         self.responses: list[LLMResponse] = []
 
     def write_intro(self, tracks: list[Track]) -> str:
-        return self._write("intro", {"track_list": format_track_list(tracks, self._language)})
+        return self._write("intro", {"track_list": format_programme(tracks, self._language)})
 
     def write_transition(self, previous: Track, next_track: Track) -> str:
         return self._write(
             "transition",
             {
-                "previous_title": previous.title,
+                "previous_title": previous.display_title,
                 "previous_artist": previous.artist,
-                "next_title": next_track.title,
+                "next_title": next_track.display_title,
                 "next_artist": next_track.artist,
+                "next_details": format_track_details(next_track, self._language),
                 "facts": format_facts(next_track.facts, self._language),
+                "host_notes": next_track.host_notes or "",
             },
         )
 
@@ -91,7 +153,11 @@ class ScriptWriter:
     def _write(self, kind: str, values: dict[str, str]) -> str:
         system = render(
             load_template(self._prompts_dir, self._language, "system"),
-            {"persona_description": self._persona.description, "style": self._style},
+            {
+                "persona_description": self._persona.description,
+                "style": self._style,
+                "energy_line": energy_line(self._energy, self._language),
+            },
         )
         budget = word_budget(SPEECH_SECONDS[kind], self._language)
         user = render(

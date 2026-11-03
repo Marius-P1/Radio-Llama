@@ -6,29 +6,37 @@ from radio_llama.llm import FakeLLM
 from radio_llama.models import Fact, Track
 from radio_llama.personas import get_persona
 from radio_llama.script import SPEECH_SECONDS, ScriptWriter, clean_script, word_budget
-from radio_llama.script.writer import UI_STRINGS
+from radio_llama.script.writer import (
+    UI_STRINGS,
+    energy_line,
+    format_facts,
+    format_programme,
+    format_track_details,
+    format_track_list,
+)
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 CANNED = "Good evening, this is Radio Llama."
 
 
-def make_track(number: int, facts: list[Fact] | None = None) -> Track:
-    return Track(
-        id=f"track-{number}",
-        title=f"Blue Window {number}",
-        artist=f"The Lanterns {number}",
-        style="jazz",
-        album="Blue Windows",
-        year=2019,
-        duration_s=180.0,
-        license="CC BY 4.0",
-        license_url="https://creativecommons.org/licenses/by/4.0/",
-        track_url=f"https://example.org/track-{number}",
-        artist_url=f"https://example.org/lanterns-{number}",
-        audio_file=f"track-{number}.mp3",
-        tags=["jazz", "late night"],
-        facts=facts or [],
-    )
+def make_track(number: int, facts: list[Fact] | None = None, **overrides) -> Track:
+    fields = {
+        "id": f"track-{number}",
+        "title": f"Blue Window {number}",
+        "artist": f"The Lanterns {number}",
+        "style": "jazz",
+        "album": "Blue Windows",
+        "year": 2019,
+        "duration_s": 180.0,
+        "license": "CC BY 4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "track_url": f"https://example.org/track-{number}",
+        "artist_url": f"https://example.org/lanterns-{number}",
+        "audio_file": f"track-{number}.mp3",
+        "tags": ["jazz", "late night"],
+        "facts": facts or [],
+    }
+    return Track(**{**fields, **overrides})
 
 
 TRACKS = [
@@ -44,6 +52,19 @@ TRACKS = [
     ),
     make_track(3),
 ]
+# A track whose title is not speakable as is, with a note for the host and typed facts.
+SPOKEN = make_track(
+    4,
+    [
+        Fact(text="Born in Oslo.", about="artist", source_url="https://d.example"),
+        Fact(text="Mixed on tape.", about="track", source_url="https://e.example"),
+    ],
+    title="Blue Window 4 (ID 1296)",
+    spoken_title="Blue Window Four",
+    host_notes="Do not name the label.",
+    energy="calm",
+    notes="Curator only.",
+)
 
 
 def make_writer(language: str = "en") -> tuple[ScriptWriter, FakeLLM]:
@@ -83,6 +104,55 @@ def test_transition_prompt_carries_both_tracks_and_next_facts() -> None:
         assert fact.text in user.content
     assert TRACKS[0].facts[0].text not in user.content
     assert str(word_budget(SPEECH_SECONDS["transition"], "en")) in user.content
+
+
+def test_transition_prompt_carries_details_labelled_facts_and_host_notes() -> None:
+    writer, llm = make_writer()
+    writer.write_transition(TRACKS[0], SPOKEN)
+
+    _, user = llm.calls[0]
+    assert "Blue Window Four by The Lanterns 4" in user.content
+    assert "(ID 1296)" not in user.content
+    assert "Album: Blue Windows (2019)" in user.content
+    assert "Tags: jazz, late night. Energy: calm" in user.content
+    assert "- About the artist: Born in Oslo." in user.content
+    assert "- About the track: Mixed on tape." in user.content
+    assert "Do not name the label." in user.content
+    assert "Curator only" not in user.content
+
+
+def test_intro_and_outro_use_the_spoken_title() -> None:
+    writer, llm = make_writer()
+    writer.write_intro([SPOKEN])
+    writer.write_outro([SPOKEN])
+
+    for _, user in llm.calls:
+        assert "Blue Window Four by The Lanterns 4" in user.content
+        assert "(ID 1296)" not in user.content
+    assert "(Blue Windows, 2019, jazz, late night)" in llm.calls[0][1].content
+    assert "Blue Windows" not in llm.calls[1][1].content
+
+
+def test_system_prompt_names_the_energy_only_when_asked() -> None:
+    llm = FakeLLM([CANNED])
+    persona = get_persona(PROMPTS_DIR, "en", "calm")
+    ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz", energy="upbeat").write_intro(TRACKS)
+    ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz").write_intro(TRACKS)
+
+    assert "The listener asked for an upbeat show." in llm.calls[0][0].content
+    assert "listener asked" not in llm.calls[1][0].content
+
+
+def test_format_helpers_leave_out_missing_parts() -> None:
+    bare = make_track(5, album="", year=None, tags=[])
+
+    assert format_track_list([bare], "en") == "Blue Window 5 by The Lanterns 5"
+    assert format_programme([bare], "en") == "Blue Window 5 by The Lanterns 5"
+    assert format_track_details(bare, "en") == ""
+    assert format_track_details(make_track(6, tags=[]), "fr") == "Album : Blue Windows (2019)"
+    assert format_facts([], "fr") == UI_STRINGS["fr"]["no_facts"]
+    assert energy_line(None, "fr") == ""
+    assert energy_line("calm", "fr") == "L'auditeur a demandé une émission calme."
 
 
 def test_transition_without_facts_says_so() -> None:
