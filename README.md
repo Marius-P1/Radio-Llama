@@ -6,7 +6,7 @@ Listen: [replay page](https://marius-p1.github.io/Radio-Llama/) (available after
 
 ## Status
 
-Phase 1 is in progress. The pipeline, the API and the web app run end to end with a fake LLM and a fake voice. No real show has been generated yet: every run so far used the fakes, and the catalog holds placeholder tracks with test tones. The replay page and the release are next. Tag `v0-hackathon` holds the original hackathon code.
+Phase 1 is in progress. The pipeline, the API and the web app run end to end with a fake LLM and a fake voice. No real show has been generated yet: every run so far used the fakes. The catalog holds 48 real Creative Commons tracks; their audio is published as a release asset. The replay page and the release are next. Tag `v0-hackathon` holds the original hackathon code.
 
 ## Quickstart
 
@@ -24,7 +24,7 @@ Fill the keys in `.env`, then:
 docker compose up --build
 ```
 
-Open http://localhost:8000. Pick a style, a host and a language, press the button, and listen when the show is ready. The first start fetches the catalog audio into `catalog/audio/`. Shows are saved in `output/`, the voice cache in `cache/`.
+Open http://localhost:8000. Pick a style, an energy, a host and a language, press the button, and listen when the show is ready. The first start fetches the catalog audio into `catalog/audio/`. Shows are saved in `output/`, the voice cache in `cache/`.
 
 <!-- TODO Marius: screenshot or short GIF of the web app -->
 ![The web app](docs-assets/web-app.png)
@@ -39,16 +39,18 @@ Python 3.12, `uv` and ffmpeg on your path.
 ```
 uv sync
 uv run python catalog/download.py
-uv run radio-llama generate --fake --style jazz
+uv run radio-llama generate --fake --style jazz --energy calm
 ```
 
-You get `output/<show_id>/show.mp3` and `show.json`. The fake LLM returns a canned sentence and the fake voice is a faint hum, so the MP3 proves the pipeline, not the content.
+You get `output/<show_id>/show.mp3` and `show.json`. The fake LLM returns a canned sentence and the fake voice is a faint hum, so the MP3 proves the pipeline, not the content. `--energy` is optional: `calm`, `medium` or `upbeat`, any energy when left out. `--seed` fixes the track pick.
+
+Without the catalog audio, CI and the tests use the fixture catalog of test tones instead: `uv run python tests/fixtures/catalog/make_placeholder_audio.py`, then `CATALOG_PATH=tests/fixtures/catalog/catalog.json` in front of the command.
 
 ## How it works
 
-1. Pick tracks. The pipeline samples a few tracks of the chosen style from the local catalog. A seed makes the pick reproducible.
+1. Pick tracks. The pipeline samples a few tracks of the chosen style from the local catalog. When the listener asks for an energy, tracks with that energy come first, then tracks with no energy label, then the other energies, nearest first. A seed makes the pick reproducible.
 2. Load the host. A persona (calm, energetic or witty) and the prompt files for the chosen language set the tone and the rules.
-3. Write the script. One LLM call per spoken segment: an intro, a transition before each song after the first, an outro. Each call gets a word budget computed from a target length in seconds and a per-language speech rate. Transitions receive the next track's facts from the catalog.
+3. Write the script. One LLM call per spoken segment: an intro, a transition before each song after the first, an outro. Each call gets a word budget computed from a target length in seconds and a per-language speech rate. The intro receives the programme with each track's album, year and tags. Transitions receive the next track's album, year, tags, energy, its facts labelled artist or track, and the host notes from the catalog.
 4. Voice the script. Each segment goes through text to speech behind a disk cache. The same text with the same voice is never synthesised twice.
 5. Assemble the audio. ffmpeg trims each song and fades it in and out, normalises the loudness of every piece, then joins everything into one MP3.
 6. Save and serve. `show.json` holds the script, the track list, the timings and the credits, next to `show.mp3`. The API serves both and the web app plays them.
@@ -70,11 +72,12 @@ You get `output/<show_id>/show.mp3` and `show.json`. The fake LLM returns a cann
 - `prompts/en/` and `prompts/fr/`: system, intro, transition and outro prompts, plus the personas, one folder per language.
 - `catalog/`: `catalog.json`, the download script and the checksums. See [catalog/README.md](catalog/README.md).
 - `frontend/`: the React web app. See [frontend/README.md](frontend/README.md).
-- `tests/`: pytest, fakes only.
+- `tests/`: pytest, fakes only. `tests/fixtures/catalog/` holds the placeholder catalog of test tones that CI plays.
 
 ## Design notes
 
-- Music comes from a local catalog of Creative Commons tracks, not from Spotify. Spotify's terms forbid capturing audio and feeding its content to AI models, and the hackathon's recommendation endpoint is closed to new apps. A local catalog also gives the same inputs on every run, which the Phase 2 evaluation needs. Only CC-BY and CC-BY-SA tracks are accepted, every track is credited with a link, and every fact in the catalog has a source URL.
+- Music comes from a local catalog of Creative Commons tracks, not from Spotify. Spotify's terms forbid capturing audio and feeding its content to AI models, and the hackathon's recommendation endpoint is closed to new apps. A local catalog also gives the same inputs on every run, which the Phase 2 evaluation needs. Every fact in the catalog has a source URL and a quote.
+- Radio Llama is a non-commercial demo. Any Creative Commons license that allows redistribution with attribution is accepted, including non-commercial (NC) ones; ND is excluded. A show is a collection of tracks, not an adaptation: each track keeps its own license, and every show credits each track with its artist, album, license and source links.
 - The LLM is reached through my own thin interface, with Mistral and Anthropic adapters built on the official SDKs. No LiteLLM, no agent framework. I can explain every line, and Phase 2 compares providers and their tool-call formats, which a framework would hide.
 - Prompts are files, one folder per language, English and French. The two languages declare the same placeholders and a test checks it. Quality is evaluated in English only.
 - Text to speech sits behind a disk cache keyed by a hash of the text, the voice id, the model id and the voice settings. The filesystem is the index. Running the same show twice makes no second ElevenLabs call.
@@ -122,7 +125,8 @@ After an API change, run `uv run radio-llama export-openapi` and then `npm run g
 - Segment timing is estimated from a word count and a fixed speech rate, not measured from the speech.
 - One show generates at a time. A second request waits.
 - Everything so far was tested with fakes. No real LLM or ElevenLabs call has been made in this repo yet.
-- The catalog holds placeholder tones until real tracks are added.
+- The energy labels in the catalog are the curator's; all jazz tracks have none.
+- French shows receive the host notes in English.
 - The ElevenLabs voice ids in `prompts/*/personas.json` are placeholders.
 - The Anthropic adapter ignores `temperature`.
 - The web app has not been tested with a non-technical person yet.
@@ -132,8 +136,8 @@ After an API change, run `uv run radio-llama export-openapi` and then `npm run g
 
 For Marius, before tagging `v1.0`.
 
-1. Replace the placeholder catalog with real tracks and facts. See [catalog/README.md](catalog/README.md).
-2. Run `RELEASE_CHECK=1 uv run pytest`. It fails while any placeholder track remains.
+1. Publish the catalog audio: zip `catalog/audio/` without the `fake-*` files, attach it to a `catalog-v1` release, write its SHA-256 into `catalog/SHA256SUMS`. See [catalog/README.md](catalog/README.md).
+2. Run `uv run python catalog/download.py` from a clean checkout, then `uv run pytest`.
 3. Set the real ElevenLabs voice ids in `prompts/en/personas.json` and `prompts/fr/personas.json`.
 4. Run one real show with Mistral or Anthropic and ElevenLabs, and listen to it.
 5. Generate the replay shows and export them: `radio-llama export-replay <id>... --zip replay-shows.zip`. Attach the zip to the release.
