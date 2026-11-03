@@ -101,27 +101,43 @@ export function Player({ id, onBack }: Props) {
       <ul className="credits">
         {show.tracks.map((track) => (
           <li key={track.id}>
-            <strong>{track.title}</strong> by {track.artist} (
-            <a href={track.track_url} target="_blank" rel="noreferrer">
-              source
-            </a>
-            ), {track.license}
+            <Credit track={track} />
           </li>
         ))}
       </ul>
-
-      <footer>
-        <p className="muted">
-          Music under Creative Commons licenses, credited above. Voice by ElevenLabs.
-        </p>
-      </footer>
     </section>
+  )
+}
+
+/** The title to show and speak: the spoken title when the catalog sets one. */
+function displayTitle(track: Track): string {
+  return track.spoken_title ?? track.title
+}
+
+function Credit({ track }: { track: Track }) {
+  const release = [track.album, track.year].filter((part) => part).join(', ')
+  return (
+    <>
+      <strong>{displayTitle(track)}</strong> by{' '}
+      <a href={track.artist_url} target="_blank" rel="noreferrer">
+        {track.artist}
+      </a>
+      {release !== '' && <> ({release})</>},{' '}
+      <a href={track.license_url} target="_blank" rel="noreferrer">
+        {track.license}
+      </a>{' '}
+      (
+      <a href={track.track_url} target="_blank" rel="noreferrer">
+        source
+      </a>
+      )
+    </>
   )
 }
 
 function SegmentText({ segment, track }: { segment: Segment; track: Track | undefined }) {
   if (segment.kind === 'song') {
-    const title = track?.title ?? 'a song'
+    const title = track ? displayTitle(track) : 'a song'
     const artist = track?.artist ?? 'an unknown artist'
     return (
       <em>

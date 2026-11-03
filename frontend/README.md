@@ -37,7 +37,7 @@ The build goes to `frontend/dist/`, which the backend serves in production.
 
 ## Replay mode
 
-The replay page is the same app built read-only. It plays shows exported as static files, so it needs no backend and runs on GitHub Pages. The create screen is hidden, the shows are listed from `public/shows/index.json`, and the footer states the CC BY-SA 4.0 license and credits ElevenLabs for the voice.
+The replay page is the same app built read-only. It plays shows exported as static files, so it needs no backend and runs on GitHub Pages. The create screen is hidden and the shows are listed from `public/shows/index.json`. Each show credits its tracks with their own license, and the footer credits ElevenLabs for the voice.
 
 ```sh
 npm run build:replay

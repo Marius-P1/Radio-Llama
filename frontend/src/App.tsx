@@ -36,12 +36,10 @@ function App() {
       {view.name === 'progress' && <Progress id={view.id} onReady={goPlayer} onBack={goCreate} />}
       {view.name === 'player' && <Player id={view.id} onBack={goCreate} />}
       <footer className="site-footer">
-        {REPLAY && (
-          <p className="muted">
-            Shows published under CC BY-SA 4.0. Each show lists its music credits. Voice by
-            ElevenLabs.
-          </p>
-        )}
+        <p className="muted">
+          Music under Creative Commons licenses, credited per track. Voice by ElevenLabs.
+          Non-commercial demo.
+        </p>
         <p className="muted">
           <a href={REPO_URL} target="_blank" rel="noreferrer">
             Source code
