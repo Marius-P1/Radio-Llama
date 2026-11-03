@@ -1,0 +1,365 @@
+{
+  "version": 1,
+  "tracks": [
+    {
+      "id": "fake-jazz-1",
+      "style": "jazz",
+      "title": "Fake Jazz Track 1",
+      "artist": "Placeholder Artist 1",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-jazz-1",
+      "audio_file": "fake-jazz-1.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Jazz Track 1.",
+          "about": "track",
+          "source_url": "https://example.com/fake-jazz-1"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Jazz Track 1.",
+          "about": "track",
+          "source_url": "https://example.com/fake-jazz-1"
+        }
+      ]
+    },
+    {
+      "id": "fake-jazz-2",
+      "style": "jazz",
+      "title": "Fake Jazz Track 2",
+      "artist": "Placeholder Artist 2",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-jazz-2",
+      "audio_file": "fake-jazz-2.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Jazz Track 2.",
+          "about": "track",
+          "source_url": "https://example.com/fake-jazz-2"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Jazz Track 2.",
+          "about": "track",
+          "source_url": "https://example.com/fake-jazz-2"
+        }
+      ]
+    },
+    {
+      "id": "fake-jazz-3",
+      "style": "jazz",
+      "title": "Fake Jazz Track 3",
+      "artist": "Placeholder Artist 3",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-jazz-3",
+      "audio_file": "fake-jazz-3.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Jazz Track 3.",
+          "about": "track",
+          "source_url": "https://example.com/fake-jazz-3"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Jazz Track 3.",
+          "about": "track",
+          "source_url": "https://example.com/fake-jazz-3"
+        }
+      ]
+    },
+    {
+      "id": "fake-rock-1",
+      "style": "rock",
+      "title": "Fake Rock Track 1",
+      "artist": "Placeholder Artist 4",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-rock-1",
+      "audio_file": "fake-rock-1.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Rock Track 1.",
+          "about": "track",
+          "source_url": "https://example.com/fake-rock-1"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Rock Track 1.",
+          "about": "track",
+          "source_url": "https://example.com/fake-rock-1"
+        }
+      ]
+    },
+    {
+      "id": "fake-rock-2",
+      "style": "rock",
+      "title": "Fake Rock Track 2",
+      "artist": "Placeholder Artist 5",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-rock-2",
+      "audio_file": "fake-rock-2.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Rock Track 2.",
+          "about": "track",
+          "source_url": "https://example.com/fake-rock-2"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Rock Track 2.",
+          "about": "track",
+          "source_url": "https://example.com/fake-rock-2"
+        }
+      ]
+    },
+    {
+      "id": "fake-rock-3",
+      "style": "rock",
+      "title": "Fake Rock Track 3",
+      "artist": "Placeholder Artist 6",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-rock-3",
+      "audio_file": "fake-rock-3.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Rock Track 3.",
+          "about": "track",
+          "source_url": "https://example.com/fake-rock-3"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Rock Track 3.",
+          "about": "track",
+          "source_url": "https://example.com/fake-rock-3"
+        }
+      ]
+    },
+    {
+      "id": "fake-electronic-1",
+      "style": "electronic",
+      "title": "Fake Electronic Track 1",
+      "artist": "Placeholder Artist 7",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-electronic-1",
+      "audio_file": "fake-electronic-1.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Electronic Track 1.",
+          "about": "track",
+          "source_url": "https://example.com/fake-electronic-1"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Electronic Track 1.",
+          "about": "track",
+          "source_url": "https://example.com/fake-electronic-1"
+        }
+      ]
+    },
+    {
+      "id": "fake-electronic-2",
+      "style": "electronic",
+      "title": "Fake Electronic Track 2",
+      "artist": "Placeholder Artist 8",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-electronic-2",
+      "audio_file": "fake-electronic-2.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Electronic Track 2.",
+          "about": "track",
+          "source_url": "https://example.com/fake-electronic-2"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Electronic Track 2.",
+          "about": "track",
+          "source_url": "https://example.com/fake-electronic-2"
+        }
+      ]
+    },
+    {
+      "id": "fake-electronic-3",
+      "style": "electronic",
+      "title": "Fake Electronic Track 3",
+      "artist": "Placeholder Artist 9",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-electronic-3",
+      "audio_file": "fake-electronic-3.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Electronic Track 3.",
+          "about": "track",
+          "source_url": "https://example.com/fake-electronic-3"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Electronic Track 3.",
+          "about": "track",
+          "source_url": "https://example.com/fake-electronic-3"
+        }
+      ]
+    },
+    {
+      "id": "fake-lofi-1",
+      "style": "lofi",
+      "title": "Fake Lofi Track 1",
+      "artist": "Placeholder Artist 10",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-lofi-1",
+      "audio_file": "fake-lofi-1.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Lofi Track 1.",
+          "about": "track",
+          "source_url": "https://example.com/fake-lofi-1"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Lofi Track 1.",
+          "about": "track",
+          "source_url": "https://example.com/fake-lofi-1"
+        }
+      ]
+    },
+    {
+      "id": "fake-lofi-2",
+      "style": "lofi",
+      "title": "Fake Lofi Track 2",
+      "artist": "Placeholder Artist 11",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-lofi-2",
+      "audio_file": "fake-lofi-2.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Lofi Track 2.",
+          "about": "track",
+          "source_url": "https://example.com/fake-lofi-2"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Lofi Track 2.",
+          "about": "track",
+          "source_url": "https://example.com/fake-lofi-2"
+        }
+      ]
+    },
+    {
+      "id": "fake-lofi-3",
+      "style": "lofi",
+      "title": "Fake Lofi Track 3",
+      "artist": "Placeholder Artist 12",
+      "album": "Placeholder",
+      "year": null,
+      "duration_s": 25.0,
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "track_url": "https://example.com/fake-lofi-3",
+      "audio_file": "fake-lofi-3.mp3",
+      "artist_url": "https://example.com/placeholder-artist",
+      "tags": [
+        "placeholder",
+        "sine tone"
+      ],
+      "facts": [
+        {
+          "text": "Placeholder fact 1 about Fake Lofi Track 3.",
+          "about": "track",
+          "source_url": "https://example.com/fake-lofi-3"
+        },
+        {
+          "text": "Placeholder fact 2 about Fake Lofi Track 3.",
+          "about": "track",
+          "source_url": "https://example.com/fake-lofi-3"
+        }
+      ]
+    }
+  ]
+}

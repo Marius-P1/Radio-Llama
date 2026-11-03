@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parent.parent / "catalog" / "make_placeholder_audio.py"
+SCRIPT = Path(__file__).resolve().parent / "fixtures" / "catalog" / "make_placeholder_audio.py"
 
 
 def _load_make_tone():

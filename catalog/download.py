@@ -1,19 +1,17 @@
 """Fetch the catalog audio into `catalog/audio/`.
 
-Run as `uv run python catalog/download.py`. With a placeholder-only catalog it generates
-local test tones instead of downloading. With a real catalog it downloads the release
-archive, checks its SHA-256 against `SHA256SUMS`, and unpacks it (D002).
+Run as `uv run python catalog/download.py`. It downloads the release archive, checks its
+SHA-256 against `SHA256SUMS`, and unpacks it (D002). The asset does not exist until Marius
+publishes the `catalog-v1` release; until then the script fails on the download, which is
+expected. CI never runs it: the tests and the fake show use `tests/fixtures/catalog/`.
 """
 
 import hashlib
-import json
 import sys
 import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
-
-from make_placeholder_audio import generate as generate_placeholder_audio
 
 ARCHIVE_URL = (
     "https://github.com/Marius-P1/Radio-Llama/releases/download/catalog-v1/catalog-audio.zip"
@@ -21,7 +19,6 @@ ARCHIVE_URL = (
 ARCHIVE_NAME = "catalog-audio.zip"
 
 CATALOG_DIR = Path(__file__).resolve().parent
-CATALOG_PATH = CATALOG_DIR / "catalog.json"
 CHECKSUMS_PATH = CATALOG_DIR / "SHA256SUMS"
 AUDIO_DIR = CATALOG_DIR / "audio"
 
@@ -51,12 +48,6 @@ def download(url: str, target: Path) -> str:
 
 
 def main() -> None:
-    catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
-    if all(track.get("placeholder") for track in catalog["tracks"]):
-        print("Catalog contains only placeholder tracks. Generating local test audio with ffmpeg.")
-        generate_placeholder_audio()
-        return
-
     expected = expected_sha256()
     with tempfile.TemporaryDirectory() as tmp:
         archive = Path(tmp) / ARCHIVE_NAME

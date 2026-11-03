@@ -19,8 +19,12 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest
-      - run: uv run python catalog/download.py
+      # The real audio is a release asset and never reaches CI: the fake show plays the
+      # fixture catalog's test tones instead.
+      - run: uv run python tests/fixtures/catalog/make_placeholder_audio.py
       - run: uv run radio-llama generate --fake --style jazz --persona calm --seed 1
+        env:
+          CATALOG_PATH: tests/fixtures/catalog/catalog.json
       - run: test -f output/*/show.mp3
         shell: bash
       - name: OpenAPI schema is up to date
