@@ -1,5 +1,7 @@
 # Working notes for the rebuild stay on disk, never in git (Marius's choice).
 docs/
+# The agent kit (handover, per-ticket work files) stays local too.
+.claude/agent-kit/
 
 # Secrets and local environment
 .env
