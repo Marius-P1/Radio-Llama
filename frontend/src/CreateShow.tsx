@@ -59,7 +59,7 @@ export function CreateShow({ onCreated }: Props) {
 
   if (options === null) {
     return (
-      <section>
+      <section className="card">
         <h2>Create a show</h2>
         {error !== null ? (
           <p className="error">Could not load the choices: {error}</p>
@@ -71,7 +71,7 @@ export function CreateShow({ onCreated }: Props) {
   }
 
   return (
-    <section>
+    <section className="card">
       <h2>Create a show</h2>
 
       <fieldset disabled={busy}>
@@ -127,16 +127,16 @@ export function CreateShow({ onCreated }: Props) {
 
       <fieldset disabled={busy}>
         <legend>Host</legend>
-        <div className="choices personas">
+        <div className="choices">
           {personas.map((p) => (
             <button
               key={p.id}
               type="button"
-              className="choice persona"
+              className="choice"
               aria-pressed={p.id === persona}
               onClick={() => setPersona(p.id)}
             >
-              <strong>{p.name}</strong>
+              {p.name}
             </button>
           ))}
         </div>
@@ -144,14 +144,16 @@ export function CreateShow({ onCreated }: Props) {
 
       {error !== null && <p className="error">{error}</p>}
 
-      <button
-        type="button"
-        className="primary"
-        disabled={busy || style === '' || persona === ''}
-        onClick={submit}
-      >
-        {busy ? 'Starting...' : 'Create my show'}
-      </button>
+      <div className="actions">
+        <button
+          type="button"
+          className="primary"
+          disabled={busy || style === '' || persona === ''}
+          onClick={submit}
+        >
+          {busy ? 'Starting...' : 'Create my show'}
+        </button>
+      </div>
     </section>
   )
 }

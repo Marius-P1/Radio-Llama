@@ -1,19 +1,38 @@
-:root {
-  --accent: #b5452a;
-  --accent-dark: #8f3520;
-  --text: #1f1d1b;
-  --muted: #6b6560;
-  --border: #ddd8d2;
-  --bg: #fbf8f4;
-  --surface: #ffffff;
-  --highlight: #fbe9e2;
-  --error: #a3201f;
+/* The look of the hackathon frontend (D022): Azeret Mono, a full-screen
+   purple background, white text, translucent dark cards and magenta pills. */
 
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  font-size: 17px;
-  line-height: 1.5;
+/* Azeret Mono is self-hosted under the SIL Open Font License (public/fonts/OFL.txt).
+   One variable file covers every weight. Vite prefixes url(/fonts/...) and
+   url(/bg.jpg) with the base path at build time, so they also work on GitHub Pages. */
+@font-face {
+  font-family: 'Azeret Mono';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/fonts/AzeretMono-latin.woff2) format('woff2');
+}
+
+:root {
+  --magenta: #da43ff;
+  --magenta-dark: #b92ddb;
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.72);
+  --card: rgba(0, 0, 0, 0.6);
+  --pill: rgba(255, 255, 255, 0.12);
+  --pill-selected: rgba(255, 255, 255, 0.4);
+  --border: rgba(255, 255, 255, 0.35);
+  --link: #f0b3ff;
+  --error: #ffb3b3;
+  --radius: 16px;
+
+  font-family: 'Azeret Mono', ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+  /* The font's fi ligature eats the dot of the i in "Lofi". */
+  font-variant-ligatures: no-common-ligatures;
+  font-size: 15px;
+  line-height: 1.55;
   color: var(--text);
-  background: var(--bg);
+  /* Native controls (the audio player) render in their dark variant. */
+  color-scheme: dark;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -23,44 +42,84 @@
 
 body {
   margin: 0;
-  min-width: 0;
+  min-height: 100vh;
+  /* Shown until bg.jpg has loaded. */
+  background: #120a2e;
   overflow-x: hidden;
 }
 
+/* The background is a fixed layer behind the page. iOS ignores
+   background-attachment: fixed, but a fixed element works everywhere. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url(/bg.jpg) center / cover no-repeat;
+}
+
 main {
-  max-width: 720px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  padding: 16px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
-header {
-  margin-bottom: 32px;
+/* Header */
+
+/* The header and the footer sit on the bare background, which has a bright
+   pink patch: plain white text with a faint shadow stays readable there. */
+.site-header,
+footer {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-h1 {
-  font-size: 2rem;
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+}
+
+.site-header img {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.brand {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   margin: 0;
-  color: var(--accent);
 }
+
+.tagline {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* Text */
 
 h2 {
-  font-size: 1.35rem;
-  margin: 0 0 16px;
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 20px;
 }
 
 h3 {
-  font-size: 1.1rem;
-  margin: 32px 0 12px;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 28px 0 12px;
 }
 
 p {
   margin: 0 0 12px;
   overflow-wrap: anywhere;
-}
-
-.tagline {
-  color: var(--muted);
-  margin: 4px 0 0;
 }
 
 .muted {
@@ -71,9 +130,23 @@ p {
   color: var(--error);
 }
 
-section {
-  margin-bottom: 40px;
+a {
+  color: var(--link);
 }
+
+/* Cards */
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 32px;
+}
+
+.intro {
+  margin: 0;
+}
+
+/* Form */
 
 fieldset {
   border: 0;
@@ -83,13 +156,17 @@ fieldset {
 }
 
 legend {
-  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
   padding: 0;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 button {
   font: inherit;
+  color: inherit;
   cursor: pointer;
 }
 
@@ -98,64 +175,68 @@ button:disabled {
   opacity: 0.6;
 }
 
+button:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
 .choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
+}
+
+.choice,
+.primary,
+.back {
+  border-radius: 999px;
+  padding: 10px 20px;
 }
 
 .choice {
-  background: var(--surface);
+  background: var(--pill);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 14px;
-  color: var(--text);
   text-align: left;
 }
 
 .choice:hover:not(:disabled) {
-  border-color: var(--accent);
+  border-color: var(--text);
 }
 
 .choice[aria-pressed='true'] {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-  background: var(--highlight);
-}
-
-.personas {
-  flex-direction: column;
-}
-
-.persona {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  padding: 12px 14px;
+  background: var(--pill-selected);
+  border-color: var(--text);
 }
 
 .primary {
-  background: var(--accent);
-  color: #fff;
+  background: var(--magenta);
   border: 0;
-  border-radius: 8px;
-  padding: 12px 24px;
-  font-weight: 600;
-  width: 100%;
+  color: #fff;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 14px 28px;
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--accent-dark);
+  background: var(--magenta-dark);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .back {
-  background: none;
+  background: transparent;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 14px;
-  color: var(--text);
-  margin-bottom: 16px;
+  padding: 8px 18px;
+  margin-bottom: 20px;
+}
+
+.back:hover {
+  border-color: var(--text);
 }
 
 /* Past shows */
@@ -166,52 +247,53 @@ button:disabled {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .show-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 12px;
+  align-items: center;
+  gap: 6px 14px;
   width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 14px;
-  color: var(--text);
+  background: var(--pill);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 14px 18px;
   text-align: left;
 }
 
 button.show-row:hover {
-  border-color: var(--accent);
+  border-color: var(--text);
 }
 
 .show-date {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .show-meta {
   flex: 1 1 200px;
   color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .show-error {
   flex-basis: 100%;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .status {
-  font-size: 0.85rem;
-  padding: 2px 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: var(--bg);
   border: 1px solid var(--border);
 }
 
 .status-ready {
-  color: var(--accent);
-  border-color: var(--accent);
+  background: var(--magenta);
+  border-color: var(--magenta);
 }
 
 .status-failed {
@@ -222,8 +304,21 @@ button.show-row:hover {
 /* Progress */
 
 .progress-line {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.15rem;
+  font-weight: 700;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-line {
+    animation: none;
+  }
 }
 
 /* Player */
@@ -239,10 +334,18 @@ audio {
   margin: 0;
 }
 
+/* A flex row, so a time label can sit next to the text later (MAR-7). */
 .segment {
-  padding: 10px 14px;
-  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 12px;
   border-left: 3px solid transparent;
+}
+
+.segment-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .segment p {
@@ -250,8 +353,8 @@ audio {
 }
 
 .segment.current {
-  background: var(--highlight);
-  border-left-color: var(--accent);
+  background: var(--pill);
+  border-left-color: var(--magenta);
 }
 
 .credits {
@@ -260,21 +363,30 @@ audio {
 }
 
 .credits li {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   overflow-wrap: anywhere;
 }
 
-a {
-  color: var(--accent);
-}
+/* Footer */
 
 footer {
-  margin-top: 32px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
-.intro {
-  margin-bottom: 24px;
+footer .muted {
+  color: var(--text);
+}
+
+/* Phones */
+
+@media (max-width: 600px) {
+  .card {
+    padding: 20px;
+  }
+
+  .actions .primary {
+    width: 100%;
+  }
 }

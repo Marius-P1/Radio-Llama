@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listShows, type ShowSummary } from './api'
-import { dateLabel, languageLabel, statusLabel, styleLabel } from './labels'
+import { dateLabel, languageLabel, personaLabel, statusLabel, styleLabel } from './labels'
 
 type Props = {
   onOpen: (id: string) => void
@@ -25,7 +25,7 @@ export function PastShows({ onOpen }: Props) {
   }, [])
 
   return (
-    <section>
+    <section className="card">
       <h2>Past shows</h2>
       {error !== null && <p className="error">Could not load past shows: {error}</p>}
       {shows === null && error === null && <p className="muted">Loading...</p>}
@@ -48,7 +48,7 @@ function ShowRow({ show, onOpen }: { show: ShowSummary; onOpen: (id: string) => 
     <>
       <span className="show-date">{dateLabel(show.created_at)}</span>
       <span className="show-meta">
-        {styleLabel(show.config.style)}, {show.config.persona} host,{' '}
+        {styleLabel(show.config.style)}, {personaLabel(show.config.persona)} host,{' '}
         {languageLabel(show.config.language)}
       </span>
       <span className={`status status-${show.status}`}>{statusLabel(show.status)}</span>
