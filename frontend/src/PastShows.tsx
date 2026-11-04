@@ -51,6 +51,7 @@ function ShowRow({ show, onOpen }: { show: ShowSummary; onOpen: (id: string) => 
         {styleLabel(show.config.style)}, {personaLabel(show.config.persona)} host,{' '}
         {languageLabel(show.config.language)}
       </span>
+      {show.config.demo && <span className="tag">Demo</span>}
       <span className={`status status-${show.status}`}>{statusLabel(show.status)}</span>
     </>
   )
