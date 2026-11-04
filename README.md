@@ -7,6 +7,7 @@ Listen: [replay page](https://marius-p1.github.io/Radio-Llama/) (available after
 ## Status
 
 Phase 1 is in progress. The pipeline, the API and the web app run end to end with a fake LLM and a fake voice. No real show has been generated yet: every run so far used the fakes. The catalog holds 48 real Creative Commons tracks; their audio is published as a release asset. The replay page and the release are next. Tag `v0-hackathon` holds the original hackathon code.
+The web app uses the hackathon look: its font, its background and its magenta buttons.
 
 ## Quickstart
 

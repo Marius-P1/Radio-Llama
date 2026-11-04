@@ -44,12 +44,14 @@ export function Progress({ id, onReady, onBack }: Props) {
 
   if (message !== null) {
     return (
-      <section className="progress">
+      <section className="card">
         <h2>The show could not be made</h2>
         <p className="error">{message}</p>
-        <button type="button" className="primary" onClick={onBack}>
-          Try again
-        </button>
+        <div className="actions">
+          <button type="button" className="primary" onClick={onBack}>
+            Try again
+          </button>
+        </div>
       </section>
     )
   }
@@ -62,7 +64,7 @@ export function Progress({ id, onReady, onBack }: Props) {
   }
 
   return (
-    <section className="progress">
+    <section className="card">
       <h2>Making your show</h2>
       <p className="progress-line" aria-live="polite">
         {line}

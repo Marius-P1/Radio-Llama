@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { audioUrl, getShow, type Segment, type ShowResponse, type Track } from './api'
-import { languageLabel, styleLabel } from './labels'
+import { languageLabel, personaLabel, styleLabel } from './labels'
 
 type Props = {
   id: string
@@ -45,18 +45,18 @@ export function Player({ id, onBack }: Props) {
 
   if (error !== null) {
     return (
-      <section>
-        <p className="error">Could not load the show: {error}</p>
-        <button type="button" onClick={onBack}>
+      <section className="card">
+        <button type="button" className="back" onClick={onBack}>
           Back
         </button>
+        <p className="error">Could not load the show: {error}</p>
       </section>
     )
   }
 
   if (show === null) {
     return (
-      <section>
+      <section className="card">
         <p className="muted">Loading the show...</p>
       </section>
     )
@@ -65,13 +65,13 @@ export function Player({ id, onBack }: Props) {
   const tracksById = new Map(show.tracks.map((track) => [track.id, track]))
 
   return (
-    <section className="player">
+    <section className="card">
       <button type="button" className="back" onClick={onBack}>
         Back
       </button>
 
       <h2>
-        {styleLabel(show.config.style)} show, {show.config.persona} host,{' '}
+        {styleLabel(show.config.style)} show, {personaLabel(show.config.persona)} host,{' '}
         {languageLabel(show.config.language)}
       </h2>
 
@@ -89,10 +89,12 @@ export function Player({ id, onBack }: Props) {
       <ol className="script">
         {show.segments.map((segment, i) => (
           <li key={i} className={i === currentIndex ? 'segment current' : 'segment'}>
-            <SegmentText
-              segment={segment}
-              track={segment.track_id ? tracksById.get(segment.track_id) : undefined}
-            />
+            <div className="segment-text">
+              <SegmentText
+                segment={segment}
+                track={segment.track_id ? tracksById.get(segment.track_id) : undefined}
+              />
+            </div>
           </li>
         ))}
       </ol>

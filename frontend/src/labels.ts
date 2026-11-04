@@ -2,13 +2,22 @@ import type { ShowSummary } from './api'
 
 /** Plain-English labels for values the API returns as identifiers. */
 
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
 export function styleLabel(style: string): string {
-  return style.charAt(0).toUpperCase() + style.slice(1)
+  return capitalize(style)
 }
 
 export function energyLabel(energy: string | null | undefined): string {
   if (energy === null || energy === undefined) return 'Any'
-  return energy.charAt(0).toUpperCase() + energy.slice(1)
+  return capitalize(energy)
+}
+
+/** The persona id ("witty"), capitalised. The display name would need the options call. */
+export function personaLabel(persona: string): string {
+  return capitalize(persona)
 }
 
 export function languageLabel(language: string): string {
