@@ -120,6 +120,7 @@ def create_show(
             language=body.language,
             generator=body.generator,
             energy=body.energy,
+            demo=body.demo,
         ),
     )
     save_show(show, settings.output_dir / show.id)

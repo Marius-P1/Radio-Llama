@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -50,6 +51,45 @@ def test_show_json_carries_no_curator_notes(tmp_path: Path) -> None:
     assert '"notes"' not in text
     assert "Curator only" not in text
     assert load_show(tmp_path).tracks[0].notes == ""
+
+
+def test_load_show_accepts_the_old_song_length_field(tmp_path: Path) -> None:
+    """Shows written before D023 carry `song_length_s` and no `demo`. They still load."""
+    old = {
+        "id": "20261103-170852-00546e",
+        "created_at": "2026-11-03T17:08:52Z",
+        "config": {
+            "style": "electronic",
+            "persona": "energetic",
+            "language": "en",
+            "generator": "pipeline",
+            "energy": None,
+            "track_count": 3,
+            "song_length_s": 30.0,
+            "seed": None,
+        },
+        "status": "ready",
+        "error": None,
+        "segments": [
+            {"kind": "intro", "text": "Hello.", "audio_file": "00-intro.mp3", "duration_s": 4.1},
+            {
+                "kind": "song",
+                "track_id": "electronic-01",
+                "audio_file": "01-song.mp3",
+                "duration_s": 30.0,
+            },
+            {"kind": "outro", "text": "Bye.", "audio_file": "02-outro.mp3", "duration_s": 3.2},
+        ],
+        "tracks": [],
+        "audio_file": "show.mp3",
+    }
+    (tmp_path / SHOW_FILE).write_text(json.dumps(old), encoding="utf-8")
+
+    show = load_show(tmp_path)
+
+    assert show.config.demo is False
+    assert "song_length_s" not in show.config.model_dump()
+    assert show.segments[1].duration_s == 30.0
 
 
 def test_new_show_id_has_timestamp_and_suffix() -> None:

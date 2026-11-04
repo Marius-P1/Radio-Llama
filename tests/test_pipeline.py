@@ -29,7 +29,7 @@ def _show(**config) -> Show:
     return Show(
         id="test-show",
         created_at=datetime(2026, 10, 30, 12, 0, tzinfo=UTC),
-        config=ShowConfig(style="jazz", persona="calm", song_length_s=1.5, **config),
+        config=ShowConfig(style="jazz", persona="calm", **config),
     )
 
 

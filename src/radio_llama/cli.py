@@ -40,7 +40,9 @@ def generate(
         str | None, typer.Option(help="calm, medium or upbeat. Any energy when left out.")
     ] = None,
     tracks: Annotated[int, typer.Option(help="Number of songs.")] = 3,
-    song_length: Annotated[float, typer.Option(help="Seconds each song plays.")] = 30.0,
+    demo: Annotated[
+        bool, typer.Option("--demo", help="Cut each song to a 30 second excerpt, for a fast run.")
+    ] = False,
     seed: Annotated[int | None, typer.Option(help="Fix the random track pick.")] = None,
     fake: Annotated[
         bool, typer.Option("--fake", help="Use the fake LLM and fake TTS. No API keys needed.")
@@ -66,7 +68,7 @@ def generate(
             language=language or settings.radio_language,  # type: ignore[arg-type]
             energy=energy,  # type: ignore[arg-type]
             track_count=tracks,
-            song_length_s=song_length,
+            demo=demo,
             seed=seed,
         )
     except ValidationError as exc:

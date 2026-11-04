@@ -27,6 +27,7 @@ class CreateShowRequest(BaseModel):
     language: Literal["en", "fr"] = "en"
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1
     energy: Energy | None = None  # None: any energy (D020)
+    demo: bool = False  # True: 30 s excerpts instead of full songs (D023)
 
 
 class Progress(BaseModel):
