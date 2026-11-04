@@ -42,7 +42,6 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
   /* Shown until bg.jpg has loaded. */
   background: #120a2e;
   overflow-x: hidden;
@@ -84,8 +83,6 @@ footer {
 }
 
 .site-header img {
-  width: 48px;
-  height: 48px;
   flex-shrink: 0;
 }
 
@@ -190,13 +187,12 @@ button:focus-visible {
 .primary,
 .back {
   border-radius: 999px;
-  padding: 10px 20px;
 }
 
 .choice {
   background: var(--pill);
   border: 1px solid var(--border);
-  text-align: left;
+  padding: 10px 20px;
 }
 
 .choice:hover:not(:disabled) {
@@ -211,7 +207,6 @@ button:focus-visible {
 .primary {
   background: var(--magenta);
   border: 0;
-  color: #fff;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -343,6 +338,8 @@ audio {
   border-left: 3px solid transparent;
 }
 
+/* min-width: 0 lets the text column shrink below its content width,
+   so long words wrap inside the flex row instead of overflowing it. */
 .segment-text {
   flex: 1;
   min-width: 0;
@@ -350,6 +347,12 @@ audio {
 
 .segment p {
   margin: 0;
+}
+
+/* No italic file is shipped, so "Now playing" lines are muted upright text. */
+.segment em {
+  font-style: normal;
+  color: var(--muted);
 }
 
 .segment.current {
@@ -373,10 +376,6 @@ footer {
   padding-top: 16px;
   border-top: 1px solid var(--border);
   font-size: 0.85rem;
-}
-
-footer .muted {
-  color: var(--text);
 }
 
 /* Phones */

@@ -4,7 +4,7 @@ The web page for Radio Llama. You pick a music style, a host and a language, pre
 
 React, Vite and TypeScript. The API types in `src/api/schema.d.ts` are generated from `openapi.json`, which the backend exports.
 
-The look comes from the hackathon frontend. `public/` holds the background (`bg.jpg`, a web-sized copy of the hackathon image), the logo and the Azeret Mono font in `fonts/`, under the SIL Open Font License (`fonts/OFL.txt`).
+The look comes from the hackathon frontend. `public/` holds the background (`bg.jpg`, a web-sized copy of the hackathon image), the logo and the Azeret Mono font in `fonts/`, under the SIL Open Font License (`fonts/OFL.txt`). The original source of the background image is not recorded.
 
 ## Develop
 

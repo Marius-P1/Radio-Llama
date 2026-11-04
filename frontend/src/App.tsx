@@ -44,11 +44,11 @@ function App() {
       {view.name === 'progress' && <Progress id={view.id} onReady={goPlayer} onBack={goCreate} />}
       {view.name === 'player' && <Player id={view.id} onBack={goCreate} />}
       <footer>
-        <p className="muted">
+        <p>
           Music under Creative Commons licenses, credited per track. Voice by ElevenLabs.
           Non-commercial demo.
         </p>
-        <p className="muted">
+        <p>
           <a href={REPO_URL} target="_blank" rel="noreferrer">
             Source code
           </a>
