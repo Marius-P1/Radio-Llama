@@ -5,11 +5,11 @@ segment: the TTS output for speech, the catalog file for a song. The output fold
 one normalised MP3 per segment (`00-intro.mp3`, `01-song.mp3`, ...) and the joined
 `show.mp3`; the segments get their file names and durations filled in. The generator,
 not this module, writes `show.json`. Three ffmpeg steps do the work (D014): songs are
-faded in and out, and cut to `DEMO_SONG_LENGTH_S` with `-t` when the show is a demo
-(D023); every piece is loudness-normalised with `loudnorm` and resampled to 44.1 kHz
-stereo; then the pieces are joined with the concat demuxer and encoded to MP3 once. The
-single-pass `loudnorm` is deliberate: a two-pass run would double the runtime for a
-gain in accuracy a radio show of this kind does not need.
+faded in and out (and cut to `DEMO_SONG_LENGTH_S` with `-t` in demo mode, D023), every
+piece is loudness-normalised with `loudnorm` and resampled to 44.1 kHz stereo, then the
+pieces are joined with the concat demuxer and encoded to MP3 once. The single-pass
+`loudnorm` is deliberate: a two-pass run would double the runtime for a gain in
+accuracy this project does not need.
 """
 
 from pathlib import Path
@@ -41,8 +41,12 @@ def prepare_song(src: Path, dst: Path, demo: bool) -> None:
     fades and loudnorm run in one ffmpeg call with loudnorm last so the fades survive
     the normalisation.
     """
-    cut = ["-t", str(DEMO_SONG_LENGTH_S)] if demo else []
-    length_s = DEMO_SONG_LENGTH_S if demo else probe_duration(src)
+    if demo:
+        cut = ["-t", str(DEMO_SONG_LENGTH_S)]
+        length_s = DEMO_SONG_LENGTH_S
+    else:
+        cut = []
+        length_s = probe_duration(src)
     fade_out_start = max(length_s - FADE_OUT_S, 0.0)
     filters = ",".join(
         [

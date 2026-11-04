@@ -73,7 +73,12 @@ export function Player({ id, onBack }: Props) {
       <h2>
         {styleLabel(show.config.style)} show, {personaLabel(show.config.persona)} host,{' '}
         {languageLabel(show.config.language)}
-        {show.config.demo && <> <span className="tag">Demo</span></>}
+        {show.config.demo && (
+          <>
+            {' '}
+            <span className="tag">Demo</span>
+          </>
+        )}
       </h2>
 
       {show.status === 'ready' ? (

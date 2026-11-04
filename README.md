@@ -54,7 +54,7 @@ Without the catalog audio, CI and the tests use the fixture catalog of test tone
 2. Load the host. A persona (calm, energetic or witty) and the prompt files for the chosen language set the tone and the rules.
 3. Write the script. One LLM call per spoken segment: an intro, a transition before each song after the first, an outro. Each call gets a word budget computed from a target length in seconds and a per-language speech rate. The intro receives the programme with each track's album, year and tags. Transitions receive the next track's album, year, tags, energy, its facts labelled artist or track, and the host notes from the catalog.
 4. Voice the script. Each segment goes through text to speech behind a disk cache. The same text with the same voice is never synthesised twice.
-5. Assemble the audio. ffmpeg fades each song in and out, and cuts it to 30 seconds in demo mode, normalises the loudness of every piece, then joins everything into one MP3.
+5. Assemble the audio. ffmpeg fades each song in and out (and cuts it to 30 seconds in demo mode), normalises the loudness of every piece, then joins everything into one MP3.
 6. Save and serve. `show.json` holds the script, the track list, the timings and the credits, next to `show.mp3`. The API serves both and the web app plays them.
 
 ### Layout
@@ -83,7 +83,7 @@ Without the catalog audio, CI and the tests use the fixture catalog of test tone
 - The LLM is reached through my own thin interface, with Mistral and Anthropic adapters built on the official SDKs. No LiteLLM, no agent framework. I can explain every line, and Phase 2 compares providers and their tool-call formats, which a framework would hide.
 - Prompts are files, one folder per language, English and French. The two languages declare the same placeholders and a test checks it. Quality is evaluated in English only.
 - Text to speech sits behind a disk cache keyed by a hash of the text, the voice id, the model id and the voice settings. The filesystem is the index. Running the same show twice makes no second ElevenLabs call.
-- Loudness normalisation is single-pass. A two-pass run doubles the runtime for a gain a radio show of this kind does not need.
+- Loudness normalisation is single-pass. A two-pass run doubles the runtime for a gain in accuracy this project does not need.
 - The API is job-based: create a show, poll its status, fetch the audio. One show generates at a time. Shows are files in `output/`. No database, no task queue. One user at a time is the real use case.
 - The create request has a `generator` field that only accepts `pipeline` today. Phase 2 adds `agent` next to it, so the pipeline stays as the baseline the agent is compared against.
 - The web app is a separate React and Vite app. Its API types are generated from the backend's OpenAPI schema, so a breaking backend change fails the frontend build.
