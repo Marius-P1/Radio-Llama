@@ -5,10 +5,11 @@ segment: the TTS output for speech, the catalog file for a song. The output fold
 one normalised MP3 per segment (`00-intro.mp3`, `01-song.mp3`, ...) and the joined
 `show.mp3`; the segments get their file names and durations filled in. The generator,
 not this module, writes `show.json`. Three ffmpeg steps do the work (D014): songs are
-trimmed with `-t` and faded in and out, every piece is loudness-normalised with
-`loudnorm` and resampled to 44.1 kHz stereo, then the pieces are joined with the concat
-demuxer and encoded to MP3 once. The single-pass `loudnorm` is deliberate: a two-pass
-run would double the runtime for a gain in accuracy a demo does not need.
+faded in and out (and cut to `DEMO_SONG_LENGTH_S` with `-t` in demo mode, D023), every
+piece is loudness-normalised with `loudnorm` and resampled to 44.1 kHz stereo, then the
+pieces are joined with the concat demuxer and encoded to MP3 once. The single-pass
+`loudnorm` is deliberate: a two-pass run would double the runtime for a gain in
+accuracy this project does not need.
 """
 
 from pathlib import Path
@@ -20,7 +21,8 @@ SAMPLE_RATE = 44100  # every piece is resampled to this rate so the concat demux
 CHANNELS = 2  # stereo everywhere, for the same reason
 LOUDNORM = "loudnorm=I=-16:TP=-1.5:LRA=11"  # single-pass EBU R128 to -16 LUFS, true peak -1.5 dB
 FADE_IN_S = 1.0  # song fade-in length in seconds
-FADE_OUT_S = 3.0  # song fade-out length in seconds, ending where the trim cuts
+FADE_OUT_S = 3.0  # song fade-out length in seconds, ending where the song ends
+DEMO_SONG_LENGTH_S = 30.0  # a demo show cuts each song here; a normal show plays it whole
 MP3_QUALITY = "4"  # libmp3lame VBR quality, about 165 kbps
 
 _ENCODE = ["-ar", str(SAMPLE_RATE), "-ac", str(CHANNELS), "-c:a", "libmp3lame", "-q:a", MP3_QUALITY]
@@ -31,12 +33,20 @@ def normalize_voice(src: Path, dst: Path) -> None:
     run_ffmpeg(["-i", str(src), "-af", LOUDNORM, *_ENCODE, str(dst)])
 
 
-def prepare_song(src: Path, dst: Path, length_s: float) -> None:
-    """Trim a song to `length_s`, fade it in and out, normalise it, write it as MP3.
+def prepare_song(src: Path, dst: Path, demo: bool) -> None:
+    """Fade a song in and out, normalise it and write it as MP3; cut it short in a demo.
 
-    Trim, fades and loudnorm run in one filter chain with loudnorm last so the fades
-    survive the normalisation.
+    The fade-out ends where the song ends: at the cut in demo mode, at the end of the
+    track otherwise, which is why a full song is probed for its length first. Cut,
+    fades and loudnorm run in one ffmpeg call with loudnorm last so the fades survive
+    the normalisation.
     """
+    if demo:
+        cut = ["-t", str(DEMO_SONG_LENGTH_S)]
+        length_s = DEMO_SONG_LENGTH_S
+    else:
+        cut = []
+        length_s = probe_duration(src)
     fade_out_start = max(length_s - FADE_OUT_S, 0.0)
     filters = ",".join(
         [
@@ -45,7 +55,7 @@ def prepare_song(src: Path, dst: Path, length_s: float) -> None:
             LOUDNORM,
         ]
     )
-    run_ffmpeg(["-i", str(src), "-t", str(length_s), "-af", filters, *_ENCODE, str(dst)])
+    run_ffmpeg(["-i", str(src), *cut, "-af", filters, *_ENCODE, str(dst)])
 
 
 def concat_parts(parts: list[Path], dst: Path) -> None:
@@ -127,7 +137,7 @@ def assemble_show(show: Show, sources: list[Path], out_dir: Path) -> Show:
     for index, (segment, source) in enumerate(zip(show.segments, sources, strict=True)):
         part = out_dir / f"{index:02d}-{segment.kind}.mp3"
         if segment.kind == "song":
-            prepare_song(source, part, show.config.song_length_s)
+            prepare_song(source, part, show.config.demo)
         else:
             normalize_voice(source, part)
         segment.audio_file = part.name

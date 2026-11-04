@@ -16,6 +16,8 @@ export function CreateShow({ onCreated }: Props) {
   const [language, setLanguage] = useState<Language>('en')
   // null is "any energy": the backend then samples every track of the style.
   const [energy, setEnergy] = useState<Energy | null>(null)
+  // Off by default: the full songs play. A demo cuts each song to 30 seconds (D023).
+  const [demo, setDemo] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,7 +51,14 @@ export function CreateShow({ onCreated }: Props) {
     setBusy(true)
     setError(null)
     try {
-      const show = await createShow({ style, persona, language, generator: 'pipeline', energy })
+      const show = await createShow({
+        style,
+        persona,
+        language,
+        generator: 'pipeline',
+        energy,
+        demo,
+      })
       onCreated(show.id)
     } catch (err) {
       setError((err as Error).message)
@@ -140,6 +149,19 @@ export function CreateShow({ onCreated }: Props) {
             </button>
           ))}
         </div>
+      </fieldset>
+
+      <fieldset disabled={busy}>
+        <legend>Song length</legend>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={demo}
+            onChange={(event) => setDemo(event.target.checked)}
+          />
+          Demo
+          <span className="muted">30 second excerpts, a faster show</span>
+        </label>
       </fieldset>
 
       {error !== null && <p className="error">{error}</p>}

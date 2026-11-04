@@ -204,6 +204,27 @@ button:focus-visible {
   border-color: var(--text);
 }
 
+/* The Demo checkbox: a native box in the accent colour, its hint in muted text. */
+.checkbox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.checkbox input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--magenta);
+  cursor: pointer;
+}
+
+.checkbox .muted {
+  font-size: 0.9rem;
+}
+
 .primary {
   background: var(--magenta);
   border: 0;
@@ -277,13 +298,20 @@ button.show-row:hover {
   font-size: 0.85rem;
 }
 
-.status {
+/* Small pills: the status of a past show and the Demo tag of a demo show. */
+.status,
+.tag {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 3px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
+}
+
+h2 .tag {
+  vertical-align: middle;
+  font-weight: 400;
 }
 
 .status-ready {

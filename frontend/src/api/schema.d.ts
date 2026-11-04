@@ -79,6 +79,11 @@ export interface components {
     schemas: {
         /** CreateShowRequest */
         CreateShowRequest: {
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
             /** Energy */
             energy?: ("calm" | "medium" | "upbeat") | null;
             /**
@@ -170,6 +175,11 @@ export interface components {
         };
         /** ShowConfig */
         ShowConfig: {
+            /**
+             * Demo
+             * @default false
+             */
+            demo: boolean;
             /** Energy */
             energy?: ("calm" | "medium" | "upbeat") | null;
             /**
@@ -188,11 +198,6 @@ export interface components {
             persona: string;
             /** Seed */
             seed?: number | null;
-            /**
-             * Song Length S
-             * @default 30
-             */
-            song_length_s: number;
             /** Style */
             style: string;
             /**

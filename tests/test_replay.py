@@ -23,7 +23,7 @@ runner = CliRunner()
 
 READY_ID = "20261030-120000-abc123"
 FAILED_ID = "20261030-130000-def456"
-CONFIG = ShowConfig(style="jazz", persona="calm", song_length_s=1.5, seed=1)
+CONFIG = ShowConfig(style="jazz", persona="calm", seed=1)
 
 
 @pytest.fixture

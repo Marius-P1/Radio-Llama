@@ -110,6 +110,14 @@ def test_energy_is_stored_in_the_config(client: TestClient) -> None:
     assert _create(client, energy=None)["config"]["energy"] is None
 
 
+def test_demo_is_stored_in_the_config(client: TestClient) -> None:
+    created = _create(client, demo=True)
+
+    assert created["config"]["demo"] is True
+    assert client.get(f"/api/v1/shows/{created['id']}").json()["config"]["demo"] is True
+    assert _create(client)["config"]["demo"] is False  # full songs by default (D023)
+
+
 def test_unknown_energy_is_a_422(client: TestClient) -> None:
     response = client.post("/api/v1/shows", json={"style": "jazz", "energy": "frantic"})
 

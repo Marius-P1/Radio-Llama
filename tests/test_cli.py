@@ -29,9 +29,7 @@ def cli_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, tiny_catalog: Local
 
 
 def test_generate_fake_writes_an_mp3(cli_env: Path) -> None:
-    result = runner.invoke(
-        app, ["generate", "--fake", "--style", "jazz", "--seed", "1", "--song-length", "1.5"]
-    )
+    result = runner.invoke(app, ["generate", "--fake", "--style", "jazz", "--seed", "1"])
 
     assert result.exit_code == 0, result.output
     assert "show.mp3" in result.output
@@ -39,13 +37,22 @@ def test_generate_fake_writes_an_mp3(cli_env: Path) -> None:
     shows = list(cli_env.iterdir())
     assert len(shows) == 1
     assert (shows[0] / "show.mp3").exists()
-    assert (shows[0] / "show.json").exists()
+    show = json.loads((shows[0] / "show.json").read_text(encoding="utf-8"))
+    assert show["config"]["demo"] is False  # full songs by default (D023)
+
+
+def test_generate_demo_records_it(cli_env: Path) -> None:
+    result = runner.invoke(app, ["generate", "--fake", "--style", "jazz", "--demo"])
+
+    assert result.exit_code == 0, result.output
+    show = json.loads((next(cli_env.iterdir()) / "show.json").read_text(encoding="utf-8"))
+    assert show["config"]["demo"] is True
 
 
 def test_generate_with_energy_records_it(cli_env: Path) -> None:
     result = runner.invoke(
         app,
-        ["generate", "--fake", "--style", "rock", "--energy", "calm", "--song-length", "1.5"],
+        ["generate", "--fake", "--style", "rock", "--energy", "calm"],
     )
 
     assert result.exit_code == 0, result.output

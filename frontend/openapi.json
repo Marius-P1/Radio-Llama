@@ -3,6 +3,11 @@
     "schemas": {
       "CreateShowRequest": {
         "properties": {
+          "demo": {
+            "default": false,
+            "title": "Demo",
+            "type": "boolean"
+          },
           "energy": {
             "anyOf": [
               {
@@ -261,6 +266,11 @@
       },
       "ShowConfig": {
         "properties": {
+          "demo": {
+            "default": false,
+            "title": "Demo",
+            "type": "boolean"
+          },
           "energy": {
             "anyOf": [
               {
@@ -306,11 +316,6 @@
               }
             ],
             "title": "Seed"
-          },
-          "song_length_s": {
-            "default": 30.0,
-            "title": "Song Length S",
-            "type": "number"
           },
           "style": {
             "title": "Style",
