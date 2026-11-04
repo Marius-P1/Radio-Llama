@@ -60,10 +60,24 @@ def _loudness(path: Path) -> float:
 
 
 def _mean_volume(path: Path, start_s: float, length_s: float) -> float:
-    """Mean volume in dB of one slice of a file, measured by ffmpeg's volumedetect filter."""
+    """Mean volume in dB of one slice of a file: trim in the filter, then measure what is left.
+
+    Decoding the whole file and trimming in the filter is exact. An input seek (`-ss`)
+    on an MP3 is not: the first frame after the seek decodes muted and the slice reads
+    too quiet.
+    """
     result = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-ss", str(start_s), "-t", str(length_s), "-i", str(path)]
-        + ["-af", "volumedetect", "-f", "null", "-"],
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-i",
+            str(path),
+            "-af",
+            f"atrim=start={start_s}:duration={length_s},volumedetect",
+            "-f",
+            "null",
+            "-",
+        ],
         check=True,
         capture_output=True,
         text=True,
@@ -210,6 +224,26 @@ def test_assemble_show_writes_parts_and_mix(tmp_path: Path) -> None:
 
     total = sum(segment.duration_s or 0.0 for segment in result.segments)
     assert abs(probe_duration(out_dir / "show.mp3") - total) <= 0.5
+
+
+def test_assemble_show_in_demo_mode_cuts_the_song(tmp_path: Path) -> None:
+    kinds: list[SegmentKind] = ["intro", "song", "outro"]
+    show = _show(kinds, demo=True)
+    sources = []
+    for index, kind in enumerate(kinds):
+        src = tmp_path / f"src{index}.mp3"
+        if kind == "song":
+            _tone(src, DEMO_SONG_LENGTH_S + 5.0)
+        else:
+            _tone(src, 1.0, frequency=220.0, volume="-30dB")
+        sources.append(src)
+
+    result = assemble_show(show, sources, tmp_path / "out")
+
+    intro, song, outro = result.segments
+    assert song.duration_s is not None and abs(song.duration_s - DEMO_SONG_LENGTH_S) <= 0.3
+    for voice in (intro, outro):
+        assert voice.duration_s is not None and abs(voice.duration_s - 1.0) <= 0.3
 
 
 def test_run_ffmpeg_reports_failure(tmp_path: Path) -> None:
