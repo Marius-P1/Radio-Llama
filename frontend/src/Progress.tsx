@@ -65,7 +65,15 @@ export function Progress({ id, onReady, onBack }: Props) {
 
   return (
     <section className="card">
-      <h2>Making your show</h2>
+      <h2>
+        Making your show
+        {show?.config.demo && (
+          <>
+            {' '}
+            <span className="tag">Demo</span>
+          </>
+        )}
+      </h2>
       <p className="progress-line" aria-live="polite">
         {line}
       </p>
