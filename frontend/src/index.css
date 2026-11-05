@@ -369,12 +369,11 @@ audio {
 }
 
 /* The time range never wraps, so it stays on one line on a phone.
-   tabular-nums gives every digit the same width, so the ranges line up. */
+   The font is monospace, so the digits line up by themselves. */
 .segment-time {
   flex-shrink: 0;
   white-space: nowrap;
   font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
 
