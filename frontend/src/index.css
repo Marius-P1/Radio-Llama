@@ -357,13 +357,24 @@ audio {
   margin: 0;
 }
 
-/* A flex row, so a time label can sit next to the text later (MAR-7). */
+/* A flex row: the time range sits before the text (MAR-7). Baseline
+   alignment lines the smaller time up with the first line of the text. */
 .segment {
   display: flex;
+  align-items: baseline;
   gap: 12px;
   padding: 10px 16px;
   border-radius: 12px;
   border-left: 3px solid transparent;
+}
+
+/* The time range never wraps, so it stays on one line on a phone.
+   The font is monospace, so the digits line up by themselves. */
+.segment-time {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 /* min-width: 0 lets the text column shrink below its content width,
@@ -371,6 +382,8 @@ audio {
 .segment-text {
   flex: 1;
   min-width: 0;
+  /* Long words in a song line wrap too; the p rule does not reach the em. */
+  overflow-wrap: anywhere;
 }
 
 .segment p {
@@ -386,6 +399,10 @@ audio {
 .segment.current {
   background: var(--pill);
   border-left-color: var(--magenta);
+}
+
+.segment.current .segment-time {
+  color: var(--text);
 }
 
 .credits {
