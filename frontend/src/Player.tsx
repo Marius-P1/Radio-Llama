@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { audioUrl, getShow, type Segment, type ShowResponse, type Track } from './api'
 import { languageLabel, personaLabel, styleLabel } from './labels'
+import { formatRange } from './time'
 
 type Props = {
   id: string
@@ -95,6 +96,12 @@ export function Player({ id, onBack }: Props) {
       <ol className="script">
         {show.segments.map((segment, i) => (
           <li key={i} className={i === currentIndex ? 'segment current' : 'segment'}>
+            {/* A failed show has no durations: then there is no range to show. */}
+            {typeof segment.duration_s === 'number' && (
+              <span className="segment-time">
+                {formatRange(starts[i], starts[i] + segment.duration_s)}
+              </span>
+            )}
             <div className="segment-text">
               <SegmentText
                 segment={segment}
