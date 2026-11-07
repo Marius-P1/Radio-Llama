@@ -2,11 +2,11 @@
 
 Radio Llama is a radio show made by machines. An LLM writes a radio host's script between songs, a text-to-speech voice reads it, and the result is a short radio show as one MP3. The project is being rebuilt as a clean pipeline with a web app (Phase 1). A later phase turns the host into a tool-using agent with an evaluation harness (Phase 2).
 
-Listen: [replay page](https://marius-p1.github.io/Radio-Llama/) (available after the v1.0 release). It plays pre-generated shows with no backend.
+Listen: [replay page](https://marius-p1.github.io/Radio-Llama/). It plays five real shows, three in English and two in French, with no backend.
 
 ## Status
 
-Phase 1 is in progress. The pipeline, the API and the web app run end to end. The first real shows were generated with Claude Sonnet 5.5 and ElevenLabs, in English and in French. The tests and CI use a fake LLM and a fake voice. The catalog holds 48 Creative Commons tracks; their audio is published as the `catalog-v1` release. The replay page and the v1.0 release are next. Tag `v0-hackathon` holds the original hackathon code.
+Phase 1 is done (v1.0). The pipeline, the API, the web app and the replay page run end to end. The first real shows were generated with Claude Sonnet 5.5 and ElevenLabs, in English and in French. The tests and CI use a fake LLM and a fake voice. The catalog holds 48 Creative Commons tracks; their audio is published as the `catalog-v1` release. Phase 2 is next. Tag `v0-hackathon` holds the original hackathon code.
 The web app uses the hackathon look: its font, its background and its magenta buttons.
 Songs play in full by default. A demo mode plays 30 second excerpts instead.
 
@@ -124,7 +124,7 @@ After an API change, run `uv run radio-llama export-openapi` and then `npm run g
 - The host knows only the facts written by hand in the catalog, and the prompt tells it to use nothing else. It does not search the web.
 - Segment timing is estimated from a word count and a fixed speech rate, not measured from the speech.
 - One show generates at a time. A second request waits.
-- Only three real shows have been generated so far, all with Claude. The Mistral adapter is tested against recorded responses, not the live API.
+- Only seven real shows have been generated so far, all with Claude. The Mistral adapter is tested against recorded responses, not the live API.
 - The energy labels in the catalog are the curator's; all jazz tracks have none.
 - French shows receive the host notes in English.
 - The Anthropic adapter ignores `temperature`.
