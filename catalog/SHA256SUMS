@@ -1,1 +1,2 @@
-# Filled in when the real catalog audio is published as a GitHub Release asset. Format: <sha256>  catalog-audio.zip
+# SHA-256 of the catalog-v1 release asset. Format: <sha256>  catalog-audio.zip
+9ac12a57a3ff89c668e23d433e5d38a3edd6932ac9a514831146eb338183a45a  catalog-audio.zip

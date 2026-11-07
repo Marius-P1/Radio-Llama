@@ -117,6 +117,6 @@ Every URL starts with `https://`.
 
 ## Getting the audio locally
 
-Run `uv run python catalog/download.py`. It downloads the release archive, checks it against `SHA256SUMS`, and unpacks it into `catalog/audio/`. Until the `catalog-v1` release exists, the download fails.
+Run `uv run python catalog/download.py`. It downloads the release archive, checks it against `SHA256SUMS`, and unpacks it into `catalog/audio/`.
 
 To run the pipeline without the real audio, point it at the fixture catalog: generate the tones with `uv run python tests/fixtures/catalog/make_placeholder_audio.py`, then set `CATALOG_PATH=tests/fixtures/catalog/catalog.json`. That is what CI does.

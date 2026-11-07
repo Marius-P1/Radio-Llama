@@ -1,11 +1,12 @@
-# Deploys the replay build to GitHub Pages when a v* tag is pushed.
+# Deploys the replay build to GitHub Pages when a v1 or later tag is pushed.
+# Earlier tags (v0.5) have no replay-shows.zip, so they do not deploy.
 # Nothing happens until Marius creates a release with replay-shows.zip attached
 # and enables Pages (source: GitHub Actions) in the repo settings.
 name: Replay page
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v[1-9]*"]
   workflow_dispatch:
 
 permissions:
