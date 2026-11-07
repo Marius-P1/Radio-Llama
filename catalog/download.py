@@ -1,9 +1,9 @@
 """Fetch the catalog audio into `catalog/audio/`.
 
 Run as `uv run python catalog/download.py`. It downloads the release archive, checks its
-SHA-256 against `SHA256SUMS`, and unpacks it (D002). The asset does not exist until Marius
-publishes the `catalog-v1` release; until then the script fails on the download, which is
-expected. CI never runs it: the tests and the fake show use `tests/fixtures/catalog/`.
+SHA-256 against `SHA256SUMS`, and unpacks it (D002). The archive is the `catalog-audio.zip`
+asset of the `catalog-v1` release. CI never runs it: the tests and the fake show use
+`tests/fixtures/catalog/`.
 """
 
 import hashlib
