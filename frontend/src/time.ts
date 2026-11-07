@@ -9,8 +9,3 @@ export function formatTime(seconds: number): string {
   const rest = whole % 60
   return `${minutes}:${String(rest).padStart(2, '0')}`
 }
-
-/** The time range of a segment in the show, for example `0:21 - 0:51`. */
-export function formatRange(start: number, end: number): string {
-  return `${formatTime(start)} - ${formatTime(end)}`
-}
