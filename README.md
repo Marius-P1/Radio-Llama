@@ -6,7 +6,7 @@ Listen: [replay page](https://marius-p1.github.io/Radio-Llama/) (available after
 
 ## Status
 
-Phase 1 is in progress. The pipeline, the API and the web app run end to end with a fake LLM and a fake voice. No real show has been generated yet: every run so far used the fakes. The catalog holds 48 real Creative Commons tracks; their audio is published as a release asset. The replay page and the release are next. Tag `v0-hackathon` holds the original hackathon code.
+Phase 1 is in progress. The pipeline, the API and the web app run end to end. The first real shows were generated with Claude Sonnet 5.5 and ElevenLabs, in English and in French. The tests and CI use a fake LLM and a fake voice. The catalog holds 48 Creative Commons tracks; their audio is published as the `catalog-v1` release. The replay page and the v1.0 release are next. Tag `v0-hackathon` holds the original hackathon code.
 The web app uses the hackathon look: its font, its background and its magenta buttons.
 Songs play in full by default. A demo mode plays 30 second excerpts instead.
 
@@ -28,11 +28,9 @@ docker compose up --build
 
 Open http://localhost:8000. Pick a style, an energy, a host and a language, tick Demo for a short show, press the button, and listen when the show is ready. The first start fetches the catalog audio into `catalog/audio/`. Shows are saved in `output/`, the voice cache in `cache/`.
 
-<!-- TODO Marius: screenshot or short GIF of the web app -->
-![The web app](docs-assets/web-app.png)
+![The web app playing a real show: the player, then the script with each segment's time range](docs-assets/web-app.jpg)
 
-Audio sample: one minute of a real English show, attached to the release.
-<!-- TODO Marius: link the release asset and list the track credits -->
+Audio sample: [the first minute of a real English show](https://github.com/Marius-P1/Radio-Llama/releases/download/v0.5/radio-llama-sample-en.mp3) (MP3, 1 MB), attached to the v0.5 release. Electronic style, calm host, demo mode. Script by Claude Sonnet 5.5, voice by ElevenLabs. Music: [Unrealness](https://freemusicarchive.org/music/Ketsa/upbeat-street/unrealness/) by [Ketsa](https://ketsa.bandcamp.com/), from Upbeat Street, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 ### Try the pipeline without any key
 
@@ -102,7 +100,7 @@ uv run ruff format --check .
 uv run pytest
 ```
 
-Tests never call a paid API. The Python side is linted and formatted with ruff, the frontend is linted with oxlint.
+Tests never call a paid API. The Python side is linted and formatted with ruff, the frontend is linted with oxlint. To contribute, read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Dev mode
 
@@ -126,23 +124,12 @@ After an API change, run `uv run radio-llama export-openapi` and then `npm run g
 - The host knows only the facts written by hand in the catalog, and the prompt tells it to use nothing else. It does not search the web.
 - Segment timing is estimated from a word count and a fixed speech rate, not measured from the speech.
 - One show generates at a time. A second request waits.
-- Everything so far was tested with fakes. No real LLM or ElevenLabs call has been made in this repo yet.
+- Only three real shows have been generated so far, all with Claude. The Mistral adapter is tested against recorded responses, not the live API.
 - The energy labels in the catalog are the curator's; all jazz tracks have none.
 - French shows receive the host notes in English.
 - The Anthropic adapter ignores `temperature`.
 - The web app has not been tested with a non-technical person yet.
 - The web app has no deep links. Reloading the page returns to the first screen.
-
-## Release checklist
-
-For Marius, before tagging `v1.0`.
-
-1. Publish the catalog audio: zip `catalog/audio/` without the `fake-*` files, attach it to a `catalog-v1` release, write its SHA-256 into `catalog/SHA256SUMS`. See [catalog/README.md](catalog/README.md).
-2. Run `uv run python catalog/download.py` from a clean checkout, then `uv run pytest`.
-3. Run one real show with Mistral or Anthropic and ElevenLabs, and listen to it.
-4. Generate the replay shows and export them: `radio-llama export-replay <id>... --zip replay-shows.zip`. Attach the zip to the release.
-5. Take the screenshot and cut the one minute audio sample. Link both above.
-6. Tag.
 
 ## Origins
 
