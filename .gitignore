@@ -2,6 +2,9 @@
 docs/
 # The agent kit (handover, per-ticket work files) stays local too.
 .claude/agent-kit/
+# Agent instructions stay local; contributors read CONTRIBUTING.md.
+CLAUDE.md
+AGENTS.md
 
 # Secrets and local environment
 .env
