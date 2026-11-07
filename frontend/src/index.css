@@ -368,8 +368,9 @@ audio {
   border-left: 3px solid transparent;
 }
 
-/* The time range never wraps, so it stays on one line on a phone.
-   The font is monospace, so the digits line up by themselves. */
+/* The time range never wraps: one line on a wide screen, a column on a
+   phone (see Phones below). The font is monospace, so the digits line up
+   by themselves. */
 .segment-time {
   flex-shrink: 0;
   white-space: nowrap;
@@ -432,5 +433,24 @@ footer {
 
   .actions .primary {
     width: 100%;
+  }
+
+  /* The time range becomes a column as tall as the text: the start sits
+     on the first line of the text, the end on its last line. A line height
+     equal to the text's (1.55 at 1rem) keeps both on the text lines.
+     Five characters fit "12:05", so the text starts at the same place on
+     every row, before and after the tenth minute. */
+  .segment-time {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    min-width: 5ch;
+    line-height: 1.55rem;
+  }
+
+  .segment-time-dash {
+    display: none;
   }
 }
