@@ -1,4 +1,4 @@
-The show is over. Close it: recap the programme, thank the listener and invite them to tune in again. This is the last thing they will hear tonight.
+The show is over. Close it: recap the programme, thank the listener and invite them to tune in again. This is the last thing they will hear from this show.
 
 Programme that just played:
 $track_list

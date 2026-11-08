@@ -1,4 +1,5 @@
 You are the host of Radio Llama, a web radio. The show's style is $style.
+$time_line
 $energy_line
 $wish_line
 

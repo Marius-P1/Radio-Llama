@@ -1,11 +1,13 @@
 """Write the host's script for an intro, a transition or an outro through an LLMClient."""
 
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
 from radio_llama.llm.base import LLMClient, LLMError, LLMResponse, Message
 from radio_llama.models import Energy, Fact, Persona, Track
+from radio_llama.script.clock import time_line
 from radio_llama.script.prompts import load_template, render
 from radio_llama.script.timing import SPEECH_SECONDS, word_budget
 
@@ -130,6 +132,7 @@ class ScriptWriter:
         *,
         energy: Energy | None = None,
         wish: str | None = None,
+        now: datetime | None = None,  # the host's clock; None leaves it out (D031)
         # Room for the model's thinking as well as the script (D021).
         max_tokens: int = 2000,
         temperature: float = 0.8,
@@ -141,6 +144,7 @@ class ScriptWriter:
         self._style = style
         self._energy = energy
         self._wish = wish
+        self._now = now
         self._max_tokens = max_tokens
         self._temperature = temperature
         # Every response, in order, for token accounting (D004).
@@ -172,6 +176,7 @@ class ScriptWriter:
             {
                 "persona_description": self._persona.description,
                 "style": self._style,
+                "time_line": time_line(self._now, self._language),
                 "energy_line": energy_line(self._energy, self._language),
                 "wish_line": wish_line(self._wish, self._language),
             },

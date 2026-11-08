@@ -1,6 +1,7 @@
 """The Phase 1 generator: a fixed template of intro, songs, transitions and outro."""
 
 import random
+from datetime import datetime
 from pathlib import Path
 
 from radio_llama.audio.assemble import assemble_show
@@ -67,6 +68,7 @@ class PipelineGenerator:
             config.style,
             energy=config.energy,
             wish=config.wish,
+            now=datetime.now(self._settings.tzinfo),
         )
         voice = voice_for(persona, self._settings)
 

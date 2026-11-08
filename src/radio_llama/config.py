@@ -1,9 +1,11 @@
 """Settings read from the environment and from a `.env` file."""
 
+from datetime import datetime, tzinfo
 from pathlib import Path
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import SecretStr, ValidationError
+from pydantic import SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +29,9 @@ class Settings(BaseSettings):
 
     # Radio settings
     radio_language: Literal["en", "fr"] = "en"
+    # IANA name such as Europe/Paris. The host greets by this clock (D031). Unset: the
+    # machine's local time, which is UTC inside a Docker container.
+    radio_timezone: str | None = None
     llm_provider: Literal["mistral", "anthropic", "fake"] = "mistral"
     llm_model: str = "mistral-small-latest"
     tts_backend: Literal["elevenlabs", "fake"] = "elevenlabs"
@@ -39,6 +44,27 @@ class Settings(BaseSettings):
     prompts_dir: Path = Path("prompts")
     # Built frontend served at `/` when the folder exists.
     frontend_dist: Path = Path("frontend/dist")
+
+    @field_validator("radio_timezone")
+    @classmethod
+    def _known_timezone(cls, value: str | None) -> str | None:
+        if value is not None:
+            try:
+                ZoneInfo(value)
+            except (ZoneInfoNotFoundError, ValueError):
+                raise ValueError(
+                    "unknown timezone, use an IANA name such as Europe/Paris"
+                ) from None
+        return value
+
+    @property
+    def tzinfo(self) -> tzinfo:
+        """The timezone the host lives in."""
+        if self.radio_timezone is not None:
+            return ZoneInfo(self.radio_timezone)
+        local = datetime.now().astimezone().tzinfo
+        assert local is not None  # astimezone() always fills it in
+        return local
 
     def require_api_key(self, provider: str) -> str:
         """Return the API key for `provider` as a plain string, or raise ConfigError."""
