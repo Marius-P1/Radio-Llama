@@ -26,21 +26,6 @@ def test_defaults_load_without_env() -> None:
     assert settings.mistral_api_key is None
 
 
-def test_timezone_defaults_to_the_machine_and_accepts_an_iana_name(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    assert load_settings().radio_timezone is None
-    assert load_settings().tzinfo is not None
-    monkeypatch.setenv("RADIO_TIMEZONE", "Europe/Paris")
-    assert str(load_settings().tzinfo) == "Europe/Paris"
-
-
-def test_unknown_timezone_names_the_variable(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("RADIO_TIMEZONE", "Paris")
-    with pytest.raises(ConfigError, match="RADIO_TIMEZONE.*Europe/Paris"):
-        load_settings()
-
-
 def test_require_api_key_missing_names_the_variable() -> None:
     settings = load_settings()
     with pytest.raises(ConfigError, match="MISTRAL_API_KEY"):
