@@ -25,6 +25,8 @@ UI_STRINGS = {
             "medium": "The listener asked for a medium-energy show.",
             "upbeat": "The listener asked for an upbeat show.",
         },
+        "any_energy": "any",
+        "wish_line": "The listener asked for: {wish}",
     },
     "fr": {
         "by": "de",
@@ -39,6 +41,8 @@ UI_STRINGS = {
             "medium": "L'auditeur a demandé une émission d'énergie moyenne.",
             "upbeat": "L'auditeur a demandé une émission entraînante.",
         },
+        "any_energy": "indifférente",
+        "wish_line": "L'auditeur a demandé : {wish}",
     },
 }
 
@@ -108,6 +112,13 @@ def energy_line(energy: Energy | None, language: str) -> str:
     return UI_STRINGS[language]["energy_line"][energy]
 
 
+def wish_line(wish: str | None, language: str) -> str:
+    """The sentence quoting the listener's wish, or an empty string (D030)."""
+    if not wish:
+        return ""
+    return UI_STRINGS[language]["wish_line"].format(wish=wish)
+
+
 class ScriptWriter:
     def __init__(
         self,
@@ -118,6 +129,7 @@ class ScriptWriter:
         style: str,
         *,
         energy: Energy | None = None,
+        wish: str | None = None,
         # Room for the model's thinking as well as the script (D021).
         max_tokens: int = 2000,
         temperature: float = 0.8,
@@ -128,6 +140,7 @@ class ScriptWriter:
         self._persona = persona
         self._style = style
         self._energy = energy
+        self._wish = wish
         self._max_tokens = max_tokens
         self._temperature = temperature
         # Every response, in order, for token accounting (D004).
@@ -160,6 +173,7 @@ class ScriptWriter:
                 "persona_description": self._persona.description,
                 "style": self._style,
                 "energy_line": energy_line(self._energy, self._language),
+                "wish_line": wish_line(self._wish, self._language),
             },
         )
         budget = word_budget(SPEECH_SECONDS[kind], self._language)
