@@ -10,6 +10,7 @@ like a catalog file. Jamendo has no SDK, so the calls go through httpx.
 import html
 import logging
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -28,6 +29,10 @@ TIMEOUT_S = 60.0
 SEARCH_LIMIT = 50  # candidates per search; the pipeline samples a few of them
 # Songs between one and ten minutes: shorter is a jingle, longer is an ambient piece.
 DURATION_RANGE = "60_600"
+# Jamendo sometimes answers a successful but empty list for a query that has thousands
+# of matches (seen live on 2026-11-08, about one call in three). A second try works.
+EMPTY_RETRIES = 2
+RETRY_PAUSE_S = 0.5
 
 # Jamendo's featured genres (from its API docs) plus lofi, each with the tag searched for it.
 STYLE_TAGS = {
@@ -171,6 +176,11 @@ class JamendoSource:
             **query.params(),
         }
         results = self._get("tracks", params)
+        for _ in range(EMPTY_RETRIES):
+            if results:
+                break
+            time.sleep(RETRY_PAUSE_S)
+            results = self._get("tracks", params)
         artists = self._artist_infos({str(raw["artist_id"]) for raw in results})
         return self._remember(results, style, artists)
 

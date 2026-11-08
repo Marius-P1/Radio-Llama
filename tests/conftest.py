@@ -8,7 +8,7 @@ import httpx
 import pytest
 
 from radio_llama.config import Settings
-from radio_llama.music import JamendoSource, LocalCatalog
+from radio_llama.music import JamendoSource, LocalCatalog, jamendo
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 TONE_SECONDS = 3.0
@@ -93,12 +93,15 @@ class FakeJamendo:
 
     `requests` records every request. A request carrying any parameter named in
     `reject_params` gets an empty result list, which exercises the query relaxation.
-    `api_error` makes every API call answer that Jamendo error code.
+    `empty_replies` is how many tracks calls answer an empty list before the real one,
+    like the live API does now and then. `api_error` makes every API call answer that
+    Jamendo error code.
     """
 
     def __init__(self, cache_dir: Path, tone: bytes) -> None:
         self.requests: list[httpx.Request] = []
         self.reject_params: set[str] = set()
+        self.empty_replies = 0
         self.api_error: tuple[int, str] | None = None
         self._tone = tone
         self._tracks = json.loads((JAMENDO_FIXTURES / "tracks.json").read_text(encoding="utf-8"))
@@ -121,6 +124,9 @@ class FakeJamendo:
             body = dict(self._tracks)
             if self.reject_params & set(params):
                 body = {**body, "results": []}
+            elif self.empty_replies > 0:
+                self.empty_replies -= 1
+                body = {**body, "results": []}
             elif "id" in params:
                 wanted = params["id"].split()
                 body = {**body, "results": [r for r in body["results"] if r["id"] in wanted]}
@@ -133,7 +139,8 @@ class FakeJamendo:
 
 
 @pytest.fixture
-def fake_jamendo(tmp_path: Path) -> FakeJamendo:
+def fake_jamendo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeJamendo:
+    monkeypatch.setattr(jamendo, "RETRY_PAUSE_S", 0.0)
     tone_path = tmp_path / "jamendo-tone.mp3"
     _tone(tone_path, 330.0, TONE_SECONDS)
     return FakeJamendo(tmp_path / "cache", tone_path.read_bytes())

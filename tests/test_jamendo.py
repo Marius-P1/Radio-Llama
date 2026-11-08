@@ -162,11 +162,33 @@ def test_find_tracks_relaxes_the_wish_then_the_speed(fake_jamendo: FakeJamendo) 
     tracks_params = [
         _params(request) for request in fake_jamendo.requests if request.url.path == "/v3.0/tracks/"
     ]
+    # Each empty step is retried twice before the query is relaxed.
     assert [sorted(set(p) & {"fuzzytags", "speed"}) for p in tracks_params] == [
         ["fuzzytags", "speed"],
+        ["fuzzytags", "speed"],
+        ["fuzzytags", "speed"],
+        ["speed"],
+        ["speed"],
         ["speed"],
         [],
     ]
+
+
+def test_an_empty_reply_is_retried_before_giving_up(fake_jamendo: FakeJamendo) -> None:
+    fake_jamendo.empty_replies = 1
+
+    tracks = fake_jamendo.source.list_tracks("jazz")
+
+    assert len(tracks) == 4
+    tracks_calls = [r for r in fake_jamendo.requests if r.url.path == "/v3.0/tracks/"]
+    assert len(tracks_calls) == 2
+
+
+def test_a_truly_empty_style_gives_up_after_the_retries(fake_jamendo: FakeJamendo) -> None:
+    fake_jamendo.empty_replies = 99
+
+    assert fake_jamendo.source.list_tracks("jazz") == []
+    assert len([r for r in fake_jamendo.requests if r.url.path == "/v3.0/tracks/"]) == 3
 
 
 def test_find_tracks_stops_relaxing_once_enough(fake_jamendo: FakeJamendo) -> None:
