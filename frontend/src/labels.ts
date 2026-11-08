@@ -20,6 +20,12 @@ export function personaLabel(persona: string): string {
   return capitalize(persona)
 }
 
+/** The music source as a short tag. The catalog is the default and gets no tag. */
+export function sourceTag(source: ShowSummary['config']['source']): string | null {
+  if (source === 'jamendo') return 'Jamendo'
+  return null
+}
+
 export function languageLabel(language: string): string {
   if (language === 'en') return 'English'
   if (language === 'fr') return 'French'

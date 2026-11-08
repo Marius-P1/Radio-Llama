@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getShow, type ShowResponse } from './api'
+import { sourceTag } from './labels'
 
 type Props = {
   id: string
@@ -67,6 +68,12 @@ export function Progress({ id, onReady, onBack }: Props) {
     <section className="card">
       <h2>
         Making your show
+        {show && sourceTag(show.config.source) && (
+          <>
+            {' '}
+            <span className="tag">{sourceTag(show.config.source)}</span>
+          </>
+        )}
         {show?.config.demo && (
           <>
             {' '}
