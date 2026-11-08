@@ -31,13 +31,19 @@ def main() -> None:
 
 @app.command()
 def generate(
-    style: Annotated[str, typer.Option(help="Music style from the catalog, for example jazz.")],
+    style: Annotated[str, typer.Option(help="Music style of the source, for example jazz.")],
     persona: Annotated[str, typer.Option(help="Host persona id.")] = "calm",
     language: Annotated[
         str | None, typer.Option(help="en or fr. Defaults to RADIO_LANGUAGE.")
     ] = None,
     energy: Annotated[
         str | None, typer.Option(help="calm, medium or upbeat. Any energy when left out.")
+    ] = None,
+    source: Annotated[
+        str, typer.Option(help="Where the songs come from: catalog or jamendo.")
+    ] = "catalog",
+    wish: Annotated[
+        str | None, typer.Option(help="Free text that refines the search. Jamendo only.")
     ] = None,
     tracks: Annotated[int, typer.Option(help="Number of songs.")] = 3,
     demo: Annotated[
@@ -67,6 +73,8 @@ def generate(
             persona=persona,
             language=language or settings.radio_language,  # type: ignore[arg-type]
             energy=energy,  # type: ignore[arg-type]
+            source=source,  # type: ignore[arg-type]
+            wish=wish,
             track_count=tracks,
             demo=demo,
             seed=seed,

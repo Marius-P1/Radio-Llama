@@ -44,9 +44,30 @@
             "title": "Persona",
             "type": "string"
           },
+          "source": {
+            "default": "catalog",
+            "enum": [
+              "catalog",
+              "jamendo"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
           "style": {
             "title": "Style",
             "type": "string"
+          },
+          "wish": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wish"
           }
         },
         "required": [
@@ -143,16 +164,16 @@
             "title": "Personas",
             "type": "object"
           },
-          "styles": {
+          "sources": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/SourceOption"
             },
-            "title": "Styles",
+            "title": "Sources",
             "type": "array"
           }
         },
         "required": [
-          "styles",
+          "sources",
           "personas",
           "languages",
           "energies"
@@ -317,6 +338,15 @@
             ],
             "title": "Seed"
           },
+          "source": {
+            "default": "catalog",
+            "enum": [
+              "catalog",
+              "jamendo"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
           "style": {
             "title": "Style",
             "type": "string"
@@ -325,6 +355,17 @@
             "default": 3,
             "title": "Track Count",
             "type": "integer"
+          },
+          "wish": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wish"
           }
         },
         "required": [
@@ -459,6 +500,41 @@
           "config"
         ],
         "title": "ShowSummary",
+        "type": "object"
+      },
+      "SourceOption": {
+        "properties": {
+          "id": {
+            "enum": [
+              "catalog",
+              "jamendo"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "styles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Styles",
+            "type": "array"
+          },
+          "wish": {
+            "title": "Wish",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "styles",
+          "wish"
+        ],
+        "title": "SourceOption",
         "type": "object"
       },
       "Track": {

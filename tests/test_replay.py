@@ -30,7 +30,9 @@ CONFIG = ShowConfig(style="jazz", persona="calm", seed=1)
 def output_dir(fake_settings: Settings, tiny_catalog: LocalCatalog) -> Path:
     """One ready show made with the fakes and one failed show written by hand."""
     tts = CachedTextToSpeech(FakeTTS(fake_settings.cache_dir / "tts-raw"), fake_settings.cache_dir)
-    generator = PipelineGenerator(FakeLLM(["A fake script."]), tts, tiny_catalog, fake_settings)
+    generator = PipelineGenerator(
+        FakeLLM(["A fake script."]), tts, {"catalog": tiny_catalog}, fake_settings
+    )
     ready = Show(id=READY_ID, created_at=datetime(2026, 10, 30, 12, 0, tzinfo=UTC), config=CONFIG)
     show = run_generation(generator, ready, fake_settings.output_dir / READY_ID)
     assert show.status == "ready"

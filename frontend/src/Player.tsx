@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { audioUrl, getShow, type Segment, type ShowResponse, type Track } from './api'
-import { languageLabel, personaLabel, styleLabel } from './labels'
+import { languageLabel, personaLabel, sourceTag, styleLabel } from './labels'
 import { formatTime } from './time'
 
 type Props = {
@@ -74,6 +74,12 @@ export function Player({ id, onBack }: Props) {
       <h2>
         {styleLabel(show.config.style)} show, {personaLabel(show.config.persona)} host,{' '}
         {languageLabel(show.config.language)}
+        {sourceTag(show.config.source) && (
+          <>
+            {' '}
+            <span className="tag">{sourceTag(show.config.source)}</span>
+          </>
+        )}
         {show.config.demo && (
           <>
             {' '}
@@ -81,6 +87,7 @@ export function Player({ id, onBack }: Props) {
           </>
         )}
       </h2>
+      {show.config.wish && <p className="muted">You asked for: {show.config.wish}</p>}
 
       {show.status === 'ready' ? (
         <audio

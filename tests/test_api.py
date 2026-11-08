@@ -17,6 +17,7 @@ from typer.testing import CliRunner
 from radio_llama.api.app import create_app
 from radio_llama.cli import app as cli_app
 from radio_llama.config import Settings
+from radio_llama.llm import FakeLLM
 from radio_llama.models import Show, ShowConfig
 from radio_llama.music import LocalCatalog
 from radio_llama.storage import save_show
@@ -47,12 +48,14 @@ def _create(client: TestClient, **body) -> dict:
     return response.json()
 
 
-def test_options_lists_styles_personas_and_languages(client: TestClient) -> None:
+def test_options_lists_sources_personas_and_languages(client: TestClient) -> None:
     response = client.get("/api/v1/options")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["styles"] == ["jazz", "rock"]
+    assert body["sources"] == [
+        {"id": "catalog", "name": "Local catalog", "styles": ["jazz", "rock"], "wish": False}
+    ]
     assert body["languages"] == ["en", "fr"]
     assert body["energies"] == ["calm", "medium", "upbeat"]
     assert sorted(body["personas"]) == ["en", "fr"]
@@ -247,3 +250,92 @@ def test_api_works_without_a_built_frontend(fake_settings: Settings, tmp_path: P
     with TestClient(create_app(settings)) as client:
         assert client.get("/").status_code == 404
         assert client.get("/api/v1/options").status_code == 200
+
+
+# Music sources (D029, D030).
+
+
+@pytest.fixture
+def client_with_jamendo(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo
+) -> TestClient:
+    sources = {"catalog": tiny_catalog, "jamendo": fake_jamendo.source}
+    with TestClient(create_app(fake_settings, sources)) as client:
+        yield client
+
+
+def test_options_list_jamendo_when_configured(client_with_jamendo: TestClient) -> None:
+    body = client_with_jamendo.get("/api/v1/options").json()
+
+    assert [source["id"] for source in body["sources"]] == ["catalog", "jamendo"]
+    jamendo = body["sources"][1]
+    assert jamendo["name"] == "Jamendo"
+    assert jamendo["wish"] is True
+    assert {"jazz", "rock", "lofi", "hiphop"} <= set(jamendo["styles"])
+
+
+def test_create_a_jamendo_show_with_a_wish(client_with_jamendo: TestClient) -> None:
+    client_with_jamendo.app.state.jobs._generator._llm = FakeLLM(
+        ['{"tags": ["piano"], "vocal": null, "lang": null, "search": null}', *(["Script."] * 4)]
+    )
+
+    created = _create(client_with_jamendo, source="jamendo", wish="  piano, please  ")
+    show = client_with_jamendo.get(f"/api/v1/shows/{created['id']}").json()
+
+    assert created["config"]["source"] == "jamendo"
+    assert created["config"]["wish"] == "piano, please"
+    assert show["status"] == "ready", show["error"]
+    assert all(track["id"].startswith("jamendo-") for track in show["tracks"])
+    assert all(
+        track["track_url"].startswith("https://www.jamendo.com/") for track in show["tracks"]
+    )
+
+
+def test_blank_wish_is_no_wish(client_with_jamendo: TestClient) -> None:
+    created = _create(client_with_jamendo, source="jamendo", wish="   ")
+
+    assert created["config"]["wish"] is None
+
+
+def test_catalog_show_defaults_stay(client: TestClient) -> None:
+    created = _create(client)
+
+    assert created["config"]["source"] == "catalog"
+    assert created["config"]["wish"] is None
+
+
+def test_unconfigured_source_is_a_400_naming_the_variable(client: TestClient) -> None:
+    response = client.post("/api/v1/shows", json={"style": "jazz", "source": "jamendo"})
+
+    assert response.status_code == 400
+    assert "JAMENDO_CLIENT_ID" in response.json()["detail"]
+
+
+def test_unknown_source_is_a_422(client: TestClient) -> None:
+    response = client.post("/api/v1/shows", json={"style": "jazz", "source": "spotify"})
+
+    assert response.status_code == 422
+
+
+def test_wish_on_the_catalog_is_a_400(client: TestClient) -> None:
+    response = client.post("/api/v1/shows", json={"style": "jazz", "wish": "anything"})
+
+    assert response.status_code == 400
+    assert "jamendo" in response.json()["detail"]
+
+
+def test_too_long_wish_is_a_422(client_with_jamendo: TestClient) -> None:
+    response = client_with_jamendo.post(
+        "/api/v1/shows", json={"style": "jazz", "source": "jamendo", "wish": "x" * 201}
+    )
+
+    assert response.status_code == 422
+
+
+def test_style_is_checked_against_the_chosen_source(client_with_jamendo: TestClient) -> None:
+    # "lofi" exists on Jamendo, not in the tiny catalog.
+    assert client_with_jamendo.post("/api/v1/shows", json={"style": "lofi"}).status_code == 400
+    response = client_with_jamendo.post(
+        "/api/v1/shows", json={"style": "lofi", "source": "jamendo"}
+    )
+    assert response.status_code == 202

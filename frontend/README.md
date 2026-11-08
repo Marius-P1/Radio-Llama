@@ -1,6 +1,6 @@
 # Radio Llama frontend
 
-The web page for Radio Llama. You pick a music style, a host and a language, press one button, follow the progress, then listen to the show with its script and track credits. Past shows can be replayed.
+The web page for Radio Llama. You pick a music source, a style, a host and a language, add a wish for Jamendo if you like, press one button, follow the progress, then listen to the show with its script and track credits. Past shows can be replayed.
 
 React, Vite and TypeScript. The API types in `src/api/schema.d.ts` are generated from `openapi.json`, which the backend exports.
 

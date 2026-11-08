@@ -28,6 +28,8 @@ docker compose up --build
 
 Open http://localhost:8000. Pick a style, an energy, a host and a language, tick Demo for a short show, press the button, and listen when the show is ready. The first start fetches the catalog audio into `catalog/audio/`. Shows are saved in `output/`, the voice cache in `cache/`.
 
+With a free Jamendo client id in `.env` (`JAMENDO_CLIENT_ID`, from [devportal.jamendo.com](https://devportal.jamendo.com/)), the create screen also offers Jamendo as the music source: thirteen styles from its catalog of Creative Commons music, and an optional free-text wish ("piano for a rainy sunday") that refines the search. Jamendo audio is fetched once into `cache/jamendo/`.
+
 ![The web app playing a real show: the player, then the script with each segment's time range](docs-assets/web-app.jpg)
 
 Audio sample: [the first minute of a real English show](https://github.com/Marius-P1/Radio-Llama/releases/download/v0.5/radio-llama-sample-en.mp3) (MP3, 1 MB), attached to the v0.5 release. Electronic style, calm host, demo mode. Script by Claude Sonnet 5.5, voice by ElevenLabs. Music: [Unrealness](https://freemusicarchive.org/music/Ketsa/upbeat-street/unrealness/) by [Ketsa](https://ketsa.bandcamp.com/), from Upbeat Street, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
@@ -42,13 +44,13 @@ uv run python catalog/download.py
 uv run radio-llama generate --fake --style jazz --energy calm --demo
 ```
 
-You get `output/<show_id>/show.mp3` and `show.json`. The fake LLM returns a canned sentence and the fake voice is a faint hum, so the MP3 proves the pipeline, not the content. `--demo` cuts each song to 30 seconds for a fast first run; without it the show plays the full tracks, about 11 minutes with 3 tracks. `--energy` is optional: `calm`, `medium` or `upbeat`, any energy when left out. `--seed` fixes the track pick.
+You get `output/<show_id>/show.mp3` and `show.json`. The fake LLM returns a canned sentence and the fake voice is a faint hum, so the MP3 proves the pipeline, not the content. `--demo` cuts each song to 30 seconds for a fast first run; without it the show plays the full tracks, about 11 minutes with 3 tracks. `--energy` is optional: `calm`, `medium` or `upbeat`, any energy when left out. `--seed` fixes the track pick. With a Jamendo client id, `--source jamendo --style lounge --wish "something with a trumpet"` searches Jamendo instead of the catalog (the wish needs a real LLM).
 
 Without the catalog audio, CI and the tests use the fixture catalog of test tones instead: `uv run python tests/fixtures/catalog/make_placeholder_audio.py`, then `CATALOG_PATH=tests/fixtures/catalog/catalog.json` in front of the command.
 
 ## How it works
 
-1. Pick tracks. The pipeline samples a few tracks of the chosen style from the local catalog. When the listener asks for an energy, tracks with that energy come first, then tracks with no energy label, then the other energies, nearest first. A seed makes the pick reproducible.
+1. Pick tracks. The pipeline samples a few tracks of the chosen style from the music source. The local catalog lists its tracks; Jamendo is searched by the style's tag and, when the listener gave one, by the wish, which one LLM call turns into Jamendo filters (tags, vocal or instrumental, lyrics language, an artist name). When the listener asks for an energy, tracks with that energy come first, then tracks with no energy label, then the other energies, nearest first. A seed makes the pick reproducible on the catalog.
 2. Load the host. A persona (calm, energetic or witty) and the prompt files for the chosen language set the tone and the rules.
 3. Write the script. One LLM call per spoken segment: an intro, a transition before each song after the first, an outro. Each call gets a word budget computed from a target length in seconds and a per-language speech rate. The intro receives the programme with each track's album, year and tags. Transitions receive the next track's album, year, tags, energy, its facts labelled artist or track, and the host notes from the catalog.
 4. Voice the script. Each segment goes through text to speech behind a disk cache. The same text with the same voice is never synthesised twice.
@@ -60,24 +62,25 @@ Without the catalog audio, CI and the tests use the fixture catalog of test tone
 - `src/radio_llama/`: the Python package.
   - `config.py`: settings from the environment and `.env`.
   - `models.py`: `Track`, `Fact`, `Persona`, `ShowConfig`, `Segment`, `Show`.
-  - `music/`: the `MusicSource` interface and the local catalog.
+  - `music/`: the `MusicSource` interface, the local catalog and the Jamendo source.
   - `llm/`: the `LLMClient` interface, the Mistral and Anthropic adapters, the fake.
-  - `script/`: prompt loading, word budgets, the script writer.
+  - `script/`: prompt loading, word budgets, the script writer, the wish mapper.
   - `voice/`: the `TextToSpeech` interface, ElevenLabs, the disk cache, the fake.
   - `audio/`: ffmpeg calls and the show assembler.
   - `generator/`: the `ShowGenerator` interface, the pipeline, the run lifecycle.
   - `api/`: the FastAPI app, the `/api/v1` routes, the background jobs.
   - `cli.py`: the `radio-llama` command.
   - `storage.py`: reading and writing `show.json`.
-- `prompts/en/` and `prompts/fr/`: system, intro, transition and outro prompts, plus the personas, one folder per language.
+- `prompts/en/` and `prompts/fr/`: system, intro, transition, outro and wish prompts, plus the personas, one folder per language.
 - `catalog/`: `catalog.json`, the download script and the checksums. See [catalog/README.md](catalog/README.md).
 - `frontend/`: the React web app. See [frontend/README.md](frontend/README.md).
-- `tests/`: pytest, fakes only. `tests/fixtures/catalog/` holds the placeholder catalog of test tones that CI plays.
+- `tests/`: pytest, fakes only. `tests/fixtures/catalog/` holds the placeholder catalog of test tones that CI plays; `tests/fixtures/jamendo/` holds recorded Jamendo replies.
 
 ## Design notes
 
 - Music comes from a local catalog of Creative Commons tracks, not from Spotify. Spotify's terms forbid capturing audio and feeding its content to AI models, and the hackathon's recommendation endpoint is closed to new apps. A local catalog also gives the same inputs on every run, which the Phase 2 evaluation needs. Every fact in the catalog has a source URL and a quote.
-- Radio Llama is a non-commercial demo. Any Creative Commons license that allows redistribution with attribution is accepted, including non-commercial (NC) ones; ND is excluded. A show is a collection of tracks, not an adaptation: each track keeps its own license, and every show credits each track with its artist, album, license and source links.
+- Radio Llama is a non-commercial demo. Any Creative Commons license that allows redistribution with attribution is accepted, including non-commercial (NC) ones; the hand-written catalog leaves ND tracks out. A show is a collection of tracks, not an adaptation: each track keeps its own license, and every show credits each track with its artist, album, license and source links.
+- Jamendo is the first online music source. It hosts Creative Commons music, answers plain HTTP requests with JSON, and gives a free client id for non-commercial apps. A Jamendo show uses the track's own license, whatever Creative Commons variant it is, and its audio is fetched through the track's stream URL into `cache/jamendo/`. The host's facts for a Jamendo artist come from the description the artist wrote on their Jamendo page, with that page as the source. Spotify, YouTube and SoundCloud were looked at: see the Limitations.
 - The LLM is reached through my own thin interface, with Mistral and Anthropic adapters built on the official SDKs. No LiteLLM, no agent framework. I can explain every line, and Phase 2 compares providers and their tool-call formats, which a framework would hide.
 - Prompts are files, one folder per language, English and French. The two languages declare the same placeholders and a test checks it. Quality is evaluated in English only.
 - Text to speech sits behind a disk cache keyed by a hash of the text, the voice id, the model id and the voice settings. The filesystem is the index. Running the same show twice makes no second ElevenLabs call.
@@ -121,7 +124,9 @@ After an API change, run `uv run radio-llama export-openapi` and then `npm run g
 ## Limitations
 
 - French generation runs end to end, but its quality is not evaluated. Only English is.
-- The host knows only the facts written by hand in the catalog, and the prompt tells it to use nothing else. It does not search the web.
+- The host knows only the facts written by hand in the catalog, or the artist's own Jamendo description for a Jamendo track, and the prompt tells it to use nothing else. It does not search the web.
+- Jamendo shows are not reproducible: a search returns whatever is popular that month, and the catalog stays the source for the evaluation. The style to tag mapping and the wish filters have been checked against the API documentation, not yet against many live searches.
+- No famous music yet. Spotify's developer rules since February 2026 need a Premium owner, cap an app at five users and forbid capturing audio. SoundCloud only registers apps for paid Artist Pro accounts. YouTube embeds are the planned route to famous songs.
 - Segment timing is estimated from a word count and a fixed speech rate, not measured from the speech.
 - One show generates at a time. A second request waits.
 - Only seven real shows have been generated so far, all with Claude. The Mistral adapter is tested against recorded responses, not the live API.

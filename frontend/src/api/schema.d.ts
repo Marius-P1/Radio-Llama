@@ -103,8 +103,16 @@ export interface components {
              * @default calm
              */
             persona: string;
+            /**
+             * Source
+             * @default catalog
+             * @enum {string}
+             */
+            source: "catalog" | "jamendo";
             /** Style */
             style: string;
+            /** Wish */
+            wish?: string | null;
         };
         /** Fact */
         Fact: {
@@ -138,8 +146,8 @@ export interface components {
             personas: {
                 [key: string]: components["schemas"]["PersonaOption"][];
             };
-            /** Styles */
-            styles: string[];
+            /** Sources */
+            sources: components["schemas"]["SourceOption"][];
         };
         /** PersonaOption */
         PersonaOption: {
@@ -198,6 +206,12 @@ export interface components {
             persona: string;
             /** Seed */
             seed?: number | null;
+            /**
+             * Source
+             * @default catalog
+             * @enum {string}
+             */
+            source: "catalog" | "jamendo";
             /** Style */
             style: string;
             /**
@@ -205,6 +219,8 @@ export interface components {
              * @default 3
              */
             track_count: number;
+            /** Wish */
+            wish?: string | null;
         };
         /** ShowResponse */
         ShowResponse: {
@@ -248,6 +264,20 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "generating" | "ready" | "failed";
+        };
+        /** SourceOption */
+        SourceOption: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "catalog" | "jamendo";
+            /** Name */
+            name: string;
+            /** Styles */
+            styles: string[];
+            /** Wish */
+            wish: boolean;
         };
         /** Track */
         Track: {

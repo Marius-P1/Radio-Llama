@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     mistral_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
     elevenlabs_api_key: SecretStr | None = None
+    # Jamendo client id from devportal.jamendo.com. Not a secret, but unset means no Jamendo.
+    jamendo_client_id: str | None = None
 
     # Radio settings
     radio_language: Literal["en", "fr"] = "en"

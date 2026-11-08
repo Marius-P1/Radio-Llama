@@ -4,6 +4,10 @@ import { energyLabel, languageLabel, styleLabel } from './labels'
 
 type Language = 'en' | 'fr'
 type Energy = NonNullable<CreateShowRequest['energy']>
+type Source = CreateShowRequest['source']
+
+// The API caps the wish at this length (WISH_MAX_CHARS).
+const WISH_MAX_CHARS = 200
 
 type Props = {
   onCreated: (id: string) => void
@@ -11,11 +15,15 @@ type Props = {
 
 export function CreateShow({ onCreated }: Props) {
   const [options, setOptions] = useState<Options | null>(null)
+  // The music source: the local catalog, or Jamendo when the backend has a client id (D029).
+  const [source, setSource] = useState<Source>('catalog')
   const [style, setStyle] = useState('')
   const [persona, setPersona] = useState('')
   const [language, setLanguage] = useState<Language>('en')
   // null is "any energy": the backend then samples every track of the style.
   const [energy, setEnergy] = useState<Energy | null>(null)
+  // Free text that refines the Jamendo search; sent as null when blank (D030).
+  const [wish, setWish] = useState('')
   // Off by default: the full songs play. A demo cuts each song to 30 seconds (D023).
   const [demo, setDemo] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -27,7 +35,9 @@ export function CreateShow({ onCreated }: Props) {
       .then((loaded) => {
         if (cancelled) return
         setOptions(loaded)
-        setStyle(loaded.styles[0] ?? '')
+        const first = loaded.sources[0]
+        setSource(first?.id ?? 'catalog')
+        setStyle(first?.styles[0] ?? '')
         setPersona(loaded.personas.en?.[0]?.id ?? '')
       })
       .catch((err: Error) => {
@@ -39,6 +49,15 @@ export function CreateShow({ onCreated }: Props) {
   }, [])
 
   const personas = options?.personas[language] ?? []
+  const selectedSource = options?.sources.find((s) => s.id === source)
+  const styles = selectedSource?.styles ?? []
+
+  const chooseSource = (next: Source) => {
+    setSource(next)
+    // Each source has its own styles: keep the style when both offer it, else take the first.
+    const available = options?.sources.find((s) => s.id === next)?.styles ?? []
+    if (!available.includes(style)) setStyle(available[0] ?? '')
+  }
 
   const chooseLanguage = (next: Language) => {
     setLanguage(next)
@@ -57,6 +76,8 @@ export function CreateShow({ onCreated }: Props) {
         language,
         generator: 'pipeline',
         energy,
+        source,
+        wish: selectedSource?.wish && wish.trim() !== '' ? wish.trim() : null,
         demo,
       })
       onCreated(show.id)
@@ -83,10 +104,29 @@ export function CreateShow({ onCreated }: Props) {
     <section className="card">
       <h2>Create a show</h2>
 
+      {options.sources.length > 1 && (
+        <fieldset disabled={busy}>
+          <legend>Music from</legend>
+          <div className="choices">
+            {options.sources.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className="choice"
+                aria-pressed={s.id === source}
+                onClick={() => chooseSource(s.id)}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
       <fieldset disabled={busy}>
         <legend>Music style</legend>
         <div className="choices">
-          {options.styles.map((s) => (
+          {styles.map((s) => (
             <button
               key={s}
               type="button"
@@ -133,6 +173,24 @@ export function CreateShow({ onCreated }: Props) {
           ))}
         </div>
       </fieldset>
+
+      {selectedSource?.wish && (
+        <fieldset disabled={busy}>
+          <legend>Anything else?</legend>
+          <label className="wish">
+            <span className="muted">
+              Optional. A mood, an instrument, a decade, an artist. The search follows it.
+            </span>
+            <input
+              type="text"
+              value={wish}
+              maxLength={WISH_MAX_CHARS}
+              placeholder="piano for a rainy sunday"
+              onChange={(event) => setWish(event.target.value)}
+            />
+          </label>
+        </fieldset>
+      )}
 
       <fieldset disabled={busy}>
         <legend>Host</legend>

@@ -16,6 +16,7 @@ from radio_llama.config import ConfigError
 from radio_llama.generator.base import GenerationError, ProgressCallback, ShowGenerator
 from radio_llama.llm.base import LLMError
 from radio_llama.models import Show
+from radio_llama.music import MusicSourceError
 from radio_llama.storage import save_show
 from radio_llama.voice.base import TTSError
 
@@ -28,6 +29,7 @@ EXPECTED_ERRORS = (
     LLMError,
     TTSError,
     AudioError,
+    MusicSourceError,
     ConfigError,
     ValueError,
     OSError,

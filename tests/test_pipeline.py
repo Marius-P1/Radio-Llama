@@ -13,6 +13,7 @@ from radio_llama.models import Show, ShowConfig, Track
 from radio_llama.music import LocalCatalog
 from radio_llama.storage import load_show
 from radio_llama.voice import CachedTextToSpeech, FakeTTS, TextToSpeech, TTSError, Voice
+from tests.conftest import FakeJamendo
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -38,7 +39,7 @@ def _generator(
 ) -> PipelineGenerator:
     if tts is None:
         tts = CachedTextToSpeech(FakeTTS(settings.cache_dir / "tts-raw"), settings.cache_dir)
-    return PipelineGenerator(FakeLLM([CANNED]), tts, catalog, settings)
+    return PipelineGenerator(FakeLLM([CANNED]), tts, {"catalog": catalog}, settings)
 
 
 def test_run_generation_builds_a_ready_show(
@@ -220,3 +221,106 @@ def test_french_show_reaches_ready(
     show = run_generation(_generator(fake_settings, tiny_catalog), _show(language="fr"), tmp_path)
 
     assert show.status == "ready"
+
+
+# Jamendo shows (D030): the same pipeline on a remote source, through the fake transport.
+
+FILTERS_JSON = '{"tags": ["piano", "rainy"], "vocal": "instrumental", "lang": null, "search": null}'
+
+
+def _jamendo_generator(
+    settings: Settings, catalog: LocalCatalog, jamendo: FakeJamendo, llm: FakeLLM
+) -> PipelineGenerator:
+    tts = CachedTextToSpeech(FakeTTS(settings.cache_dir / "tts-raw"), settings.cache_dir)
+    return PipelineGenerator(llm, tts, {"catalog": catalog, "jamendo": jamendo.source}, settings)
+
+
+def test_jamendo_show_reaches_ready_with_cached_audio_and_facts(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+
+    show = run_generation(generator, _show(source="jamendo", seed=1), tmp_path / "out")
+
+    assert show.status == "ready", show.error
+    assert show.config.source == "jamendo"
+    assert [segment.kind for segment in show.segments] == EXPECTED_KINDS
+    assert all(track.id.startswith("jamendo-") for track in show.tracks)
+    assert all(track.license.startswith("CC") for track in show.tracks)
+    assert all(
+        track.track_url.startswith("https://www.jamendo.com/track/") for track in show.tracks
+    )
+    for track in show.tracks:
+        assert (fake_settings.cache_dir / "jamendo" / track.audio_file).exists()
+    downloads = [r for r in fake_jamendo.requests if r.url.host == "prod-1.storage.jamendo.com"]
+    assert len(downloads) == 3
+    assert len(generator.last_responses) == 4  # no wish: no mapping call
+
+
+def test_jamendo_show_with_a_wish_maps_it_first(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    llm = FakeLLM([FILTERS_JSON, *([CANNED] * 4)])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm)
+
+    show = run_generation(
+        generator, _show(source="jamendo", wish="piano for a rainy sunday", energy="calm"), tmp_path
+    )
+
+    assert show.status == "ready", show.error
+    assert "piano for a rainy sunday" in llm.calls[0][0].content
+    params = dict(fake_jamendo.requests[0].url.params)
+    assert params["fuzzytags"] == "piano rainy"
+    assert params["vocalinstrumental"] == "instrumental"
+    assert params["speed"] == "verylow low"
+    assert len(generator.last_responses) == 5
+    # The host hears the wish.
+    system = llm.calls[1][0]
+    assert "The listener asked for: piano for a rainy sunday" in system.content
+
+
+def test_jamendo_show_with_a_bad_wish_reply_fails_readably(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM(["nope"]))
+
+    show = run_generation(generator, _show(source="jamendo", wish="anything"), tmp_path)
+
+    assert show.status == "failed"
+    assert show.error is not None
+    assert "invalid search filters" in show.error
+
+
+def test_jamendo_error_marks_the_show_failed(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    fake_jamendo.api_error = (6, "Rate Limit Exceeded")
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+
+    show = run_generation(generator, _show(source="jamendo"), tmp_path)
+
+    assert show.status == "failed"
+    assert show.error is not None
+    assert "rate limit" in show.error
+
+
+def test_unconfigured_source_fails_with_the_variable_name(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, tmp_path: Path
+) -> None:
+    show = run_generation(
+        _generator(fake_settings, tiny_catalog), _show(source="jamendo"), tmp_path
+    )
+
+    assert show.status == "failed"
+    assert show.error is not None
+    assert "JAMENDO_CLIENT_ID" in show.error
+
+
+def test_wish_on_the_catalog_fails(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, tmp_path: Path
+) -> None:
+    show = run_generation(_generator(fake_settings, tiny_catalog), _show(wish="anything"), tmp_path)
+
+    assert show.status == "failed"
+    assert show.error is not None
+    assert "jamendo" in show.error

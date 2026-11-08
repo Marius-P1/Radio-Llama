@@ -7,9 +7,10 @@ from radio_llama.audio.assemble import assemble_show
 from radio_llama.config import Settings
 from radio_llama.generator.base import GenerationError, ProgressCallback
 from radio_llama.llm.base import LLMClient, LLMResponse
-from radio_llama.models import ENERGIES, Energy, Segment, Show, Track
-from radio_llama.music.local_catalog import LocalCatalog
+from radio_llama.models import ENERGIES, Energy, Segment, Show, ShowConfig, Track
+from radio_llama.music import JamendoSource, MusicSource, missing_source_message
 from radio_llama.personas import get_persona
+from radio_llama.script.wish import map_wish
 from radio_llama.script.writer import ScriptWriter
 from radio_llama.voice.base import TextToSpeech
 from radio_llama.voice.factory import voice_for
@@ -17,11 +18,15 @@ from radio_llama.voice.factory import voice_for
 
 class PipelineGenerator:
     def __init__(
-        self, llm: LLMClient, tts: TextToSpeech, music: LocalCatalog, settings: Settings
+        self,
+        llm: LLMClient,
+        tts: TextToSpeech,
+        sources: dict[str, MusicSource],
+        settings: Settings,
     ) -> None:
         self._llm = llm
         self._tts = tts
-        self._music = music
+        self._sources = sources
         self._settings = settings
         # Every LLM response of the last run, so the CLI can print token totals (D004).
         self.last_responses: list[LLMResponse] = []
@@ -30,10 +35,14 @@ class PipelineGenerator:
         self, show: Show, out_dir: Path, on_progress: ProgressCallback | None = None
     ) -> Show:
         config = show.config
+        music = self._sources.get(config.source)
+        if music is None:
+            raise GenerationError(missing_source_message(config.source))
 
-        # Pick the tracks: a seeded random sample of the style (D017), the listener's energy
-        # first (D020), every audio file present.
-        candidates = self._music.list_tracks(config.style)
+        # Pick the tracks: a seeded random sample of the candidates (D017), the listener's
+        # energy first (D020), every audio file present (fetched first for a remote source).
+        self.last_responses = []
+        candidates = self._candidates(config, music)
         if len(candidates) < config.track_count:
             raise GenerationError(
                 f"Style {config.style!r} has {len(candidates)} tracks, {config.track_count} needed."
@@ -42,7 +51,7 @@ class PipelineGenerator:
             candidates, config.track_count, config.energy, random.Random(config.seed)
         )
         for track in tracks:
-            path = self._music.audio_path(track)
+            path = music.audio_path(track)
             if not path.exists():
                 raise GenerationError(
                     f"Audio file missing: {path}. Run `uv run python catalog/download.py`."
@@ -57,6 +66,7 @@ class PipelineGenerator:
             persona,
             config.style,
             energy=config.energy,
+            wish=config.wish,
         )
         voice = voice_for(persona, self._settings)
 
@@ -64,11 +74,11 @@ class PipelineGenerator:
         plan = _plan(tracks)
         total = len(plan)
 
-        # Write and voice each speech segment, point each song at its catalog file.
+        # Write and voice each speech segment, point each song at its audio file.
         sources: list[Path] = []
         for done, segment in enumerate(plan, start=1):
             if segment.kind == "song":
-                sources.append(self._music.audio_path(_track_by_id(tracks, segment.track_id)))
+                sources.append(music.audio_path(_track_by_id(tracks, segment.track_id)))
             else:
                 segment.text = _write_speech(writer, segment, tracks)
                 sources.append(self._tts.synthesize(segment.text, voice))
@@ -80,8 +90,29 @@ class PipelineGenerator:
         show.tracks = tracks
         show.segments = plan
         assemble_show(show, sources, out_dir)
-        self.last_responses = writer.responses
+        self.last_responses.extend(writer.responses)
         return show
+
+    def _candidates(self, config: ShowConfig, music: MusicSource) -> list[Track]:
+        """The tracks to sample from. Jamendo searches with the energy and the wish (D030)."""
+        if isinstance(music, JamendoSource):
+            filters = None
+            if config.wish:
+                filters, response = map_wish(
+                    self._llm,
+                    self._settings.prompts_dir,
+                    config.language,
+                    wish=config.wish,
+                    style=config.style,
+                    energy=config.energy,
+                )
+                self.last_responses.append(response)
+            return music.find_tracks(
+                config.style, energy=config.energy, filters=filters, minimum=config.track_count
+            )
+        if config.wish:
+            raise GenerationError("A wish needs the 'jamendo' music source.")
+        return music.list_tracks(config.style)
 
 
 def pick_tracks(

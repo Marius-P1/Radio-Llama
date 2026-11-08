@@ -1,0 +1,61 @@
+{
+  "headers": {
+    "status": "success",
+    "code": 0,
+    "error_message": "",
+    "warnings": "",
+    "results_count": 3
+  },
+  "results": [
+    {
+      "id": "2001",
+      "name": "Example Band",
+      "website": "http://example.com",
+      "joindate": "2011-12-29",
+      "image": "https://usercontent.jamendo.com?type=artist&id=2001&width=300",
+      "shorturl": "https://jamen.do/a/2001",
+      "shareurl": "https://www.jamendo.com/artist/2001",
+      "musicinfo": {
+        "tags": ["jazz", "instrumental"],
+        "description": {
+          "en": "<p>Formed in Lyon in 2009, <b>Example Band</b> plays jazz with a hip hop pulse. Their second album came out in 2015 &amp; toured France.</p><p>More at http://example.com</p><p>Enjoy!</p>",
+          "fr": "<p>Formé à Lyon en 2009.</p>",
+          "es": "", "de": "", "pl": "", "it": "", "ru": "", "pt": "", "ja": ""
+        }
+      }
+    },
+    {
+      "id": "2002",
+      "name": "Lea Example",
+      "website": "",
+      "joindate": "2018-05-02",
+      "image": "",
+      "shorturl": "https://jamen.do/a/2002",
+      "shareurl": "https://www.jamendo.com/artist/2002",
+      "musicinfo": {
+        "tags": ["folk"],
+        "description": {
+          "en": "",
+          "fr": "<p>Chanteuse basée à Montréal, elle écrit des chansons folk depuis 2012.</p>",
+          "es": "", "de": "", "pl": "", "it": "", "ru": "", "pt": "", "ja": ""
+        }
+      }
+    },
+    {
+      "id": "2003",
+      "name": "We Are FM",
+      "website": "https://www.facebook.com/wearefm",
+      "joindate": "2020-01-15",
+      "image": "",
+      "shorturl": "https://jamen.do/a/2003",
+      "shareurl": "https://www.jamendo.com/artist/2003",
+      "musicinfo": {
+        "tags": [],
+        "description": {
+          "en": "<p>https://www.facebook.com/wearefm</p>",
+          "fr": "", "es": "", "de": "", "pl": "", "it": "", "ru": "", "pt": "", "ja": ""
+        }
+      }
+    }
+  ]
+}

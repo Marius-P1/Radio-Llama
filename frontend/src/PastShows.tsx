@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { listShows, type ShowSummary } from './api'
-import { dateLabel, languageLabel, personaLabel, statusLabel, styleLabel } from './labels'
+import {
+  dateLabel,
+  languageLabel,
+  personaLabel,
+  sourceTag,
+  statusLabel,
+  styleLabel,
+} from './labels'
 
 type Props = {
   onOpen: (id: string) => void
@@ -51,6 +58,9 @@ function ShowRow({ show, onOpen }: { show: ShowSummary; onOpen: (id: string) => 
         {styleLabel(show.config.style)}, {personaLabel(show.config.persona)} host,{' '}
         {languageLabel(show.config.language)}
       </span>
+      {sourceTag(show.config.source) && (
+        <span className="tag">{sourceTag(show.config.source)}</span>
+      )}
       {show.config.demo && <span className="tag">Demo</span>}
       <span className={`status status-${show.status}`}>{statusLabel(show.status)}</span>
     </>

@@ -3,9 +3,19 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from radio_llama.models import Energy, Segment, Show, ShowConfig, ShowStatus, Track
+from radio_llama.models import (
+    Energy,
+    MusicSourceName,
+    Segment,
+    Show,
+    ShowConfig,
+    ShowStatus,
+    Track,
+)
+
+WISH_MAX_CHARS = 200
 
 
 class PersonaOption(BaseModel):
@@ -14,8 +24,15 @@ class PersonaOption(BaseModel):
     description: str
 
 
+class SourceOption(BaseModel):
+    id: MusicSourceName
+    name: str  # "Local catalog", "Jamendo"
+    styles: list[str]  # the styles this source offers
+    wish: bool  # whether a free-text wish refines the search on this source (D030)
+
+
 class OptionsResponse(BaseModel):
-    styles: list[str]
+    sources: list[SourceOption]  # the configured music sources, the local catalog first
     personas: dict[str, list[PersonaOption]]  # keyed by language: {"en": [...], "fr": [...]}
     languages: list[str]  # ["en", "fr"]
     energies: list[str]  # ["calm", "medium", "upbeat"]; a request may also leave energy out
@@ -27,6 +44,8 @@ class CreateShowRequest(BaseModel):
     language: Literal["en", "fr"] = "en"
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1
     energy: Energy | None = None  # None: any energy (D020)
+    source: MusicSourceName = "catalog"  # D029
+    wish: str | None = Field(default=None, max_length=WISH_MAX_CHARS)  # Jamendo only (D030)
     demo: bool = False  # True: 30 s excerpts instead of full songs (D023)
 
 
