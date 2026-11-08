@@ -153,6 +153,20 @@ def test_system_prompt_names_the_energy_only_when_asked() -> None:
     assert "listener asked" not in llm.calls[1][0].content
 
 
+def test_system_prompt_carries_the_clock_when_given() -> None:
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    llm = FakeLLM([CANNED])
+    persona = get_persona(PROMPTS_DIR, "en", "calm")
+    now = datetime(2026, 11, 8, 16, 45, tzinfo=ZoneInfo("Europe/Paris"))
+    ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz", now=now).write_intro(TRACKS)
+    ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz").write_intro(TRACKS)
+
+    assert "Sunday 8 November 2026, 16:45, in the afternoon" in llm.calls[0][0].content
+    assert "Local time" not in llm.calls[1][0].content
+
+
 def test_format_helpers_leave_out_missing_parts() -> None:
     bare = make_track(5, album="", year=None, tags=[])
 
