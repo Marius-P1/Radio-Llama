@@ -82,3 +82,19 @@ def test_generate_with_too_many_tracks_fails_cleanly(cli_env: Path) -> None:
     assert result.exit_code == 1
     assert "needed" in result.output
     assert "Traceback" not in result.output
+
+
+def test_generate_jamendo_without_a_client_id_explains_the_variable(cli_env: Path) -> None:
+    result = runner.invoke(app, ["generate", "--fake", "--style", "jazz", "--source", "jamendo"])
+
+    assert result.exit_code == 1
+    assert "JAMENDO_CLIENT_ID" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_generate_with_unknown_source_fails_cleanly(cli_env: Path) -> None:
+    result = runner.invoke(app, ["generate", "--fake", "--style", "jazz", "--source", "spotify"])
+
+    assert result.exit_code == 1
+    assert "source" in result.output
+    assert "Traceback" not in result.output

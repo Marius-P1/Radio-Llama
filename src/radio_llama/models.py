@@ -55,12 +55,17 @@ class Persona(BaseModel):
     voice_id: str  # ElevenLabs voice id
 
 
+MusicSourceName = Literal["catalog", "jamendo"]  # D029: the local catalog or Jamendo
+
+
 class ShowConfig(BaseModel):
-    style: str
+    style: str  # a style of the chosen source
     persona: str  # Persona.id
     language: Literal["en", "fr"] = "en"
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1
-    energy: Energy | None = None  # the listener's wish; None means any (D020)
+    energy: Energy | None = None  # the listener's choice; None means any (D020)
+    source: MusicSourceName = "catalog"  # where the songs come from (D029)
+    wish: str | None = None  # free text that refines the search; Jamendo only (D030)
     track_count: int = 3
     demo: bool = False  # cut each song to a 30 s excerpt, for a fast short show
     seed: int | None = None  # fixes the random track pick, for reproducible runs (D017)

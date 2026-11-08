@@ -16,10 +16,11 @@ from radio_llama.api.schemas import (
     PersonaOption,
     ShowResponse,
     ShowSummary,
+    SourceOption,
 )
 from radio_llama.config import Settings
 from radio_llama.models import ENERGIES, Show, ShowConfig
-from radio_llama.music import LocalCatalog
+from radio_llama.music import SOURCE_NAMES, MusicSource, missing_source_message
 from radio_llama.personas import load_personas
 from radio_llama.storage import SHOW_FILE, load_show, new_show_id, save_show
 
@@ -35,8 +36,8 @@ def get_settings(request: Request) -> Settings:
     return request.app.state.settings
 
 
-def get_music(request: Request) -> LocalCatalog:
-    return request.app.state.music
+def get_sources(request: Request) -> dict[str, MusicSource]:
+    return request.app.state.sources
 
 
 def get_jobs(request: Request) -> Jobs:
@@ -44,7 +45,7 @@ def get_jobs(request: Request) -> Jobs:
 
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
-MusicDep = Annotated[LocalCatalog, Depends(get_music)]
+SourcesDep = Annotated[dict[str, MusicSource], Depends(get_sources)]
 JobsDep = Annotated[Jobs, Depends(get_jobs)]
 
 
@@ -71,7 +72,7 @@ def _summary(show: Show) -> ShowSummary:
 
 
 @router.get("/options")
-def get_options(settings: SettingsDep, music: MusicDep) -> OptionsResponse:
+def get_options(settings: SettingsDep, sources: SourcesDep) -> OptionsResponse:
     personas = {
         language: [
             PersonaOption(id=persona.id, name=persona.name, description=persona.description)
@@ -80,7 +81,15 @@ def get_options(settings: SettingsDep, music: MusicDep) -> OptionsResponse:
         for language in LANGUAGES
     }
     return OptionsResponse(
-        styles=music.list_styles(),
+        sources=[
+            SourceOption(
+                id=name,  # type: ignore[arg-type]
+                name=SOURCE_NAMES[name],
+                styles=music.list_styles(),
+                wish=name == "jamendo",
+            )
+            for name, music in sources.items()
+        ],
         personas=personas,
         languages=LANGUAGES,
         energies=list(ENERGIES),
@@ -92,15 +101,25 @@ def create_show(
     body: CreateShowRequest,
     background_tasks: BackgroundTasks,
     settings: SettingsDep,
-    music: MusicDep,
+    sources: SourcesDep,
     jobs: JobsDep,
 ) -> ShowSummary:
+    music = sources.get(body.source)
+    if music is None:
+        raise HTTPException(status_code=400, detail=missing_source_message(body.source))
     styles = music.list_styles()
     if body.style not in styles:
         raise HTTPException(
             status_code=400,
-            detail=f"Unknown style {body.style!r}. Known styles: {', '.join(styles)}.",
+            detail=(
+                f"Unknown style {body.style!r} for source {body.source!r}. "
+                f"Known styles: {', '.join(styles)}."
+            ),
         )
+    # A blank wish is no wish. A wish only means something on Jamendo (D030).
+    wish = (body.wish or "").strip() or None
+    if wish is not None and body.source != "jamendo":
+        raise HTTPException(status_code=400, detail="A wish needs the 'jamendo' music source.")
     persona_ids = [persona.id for persona in load_personas(settings.prompts_dir, body.language)]
     if body.persona not in persona_ids:
         raise HTTPException(
@@ -120,6 +139,8 @@ def create_show(
             language=body.language,
             generator=body.generator,
             energy=body.energy,
+            source=body.source,
+            wish=wish,
             demo=body.demo,
         ),
     )
