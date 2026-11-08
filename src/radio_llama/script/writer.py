@@ -9,6 +9,7 @@ from radio_llama.llm.base import LLMClient, LLMError, LLMResponse, Message
 from radio_llama.models import Energy, Fact, Persona, Track
 from radio_llama.script.clock import time_line
 from radio_llama.script.prompts import load_template, render
+from radio_llama.script.shapes import Shape
 from radio_llama.script.timing import SPEECH_SECONDS, word_budget
 
 # Language-dependent strings that are not prompts: labels and short sentences the writer
@@ -23,12 +24,14 @@ UI_STRINGS = {
         "tags": "Tags:",
         "energy": "Energy:",
         "energy_line": {
-            "calm": "The listener asked for a calm show.",
-            "medium": "The listener asked for a medium-energy show.",
-            "upbeat": "The listener asked for an upbeat show.",
+            "calm": "Listeners asked for a calm show.",
+            "medium": "Listeners asked for a medium-energy show.",
+            "upbeat": "Listeners asked for an upbeat show.",
         },
         "any_energy": "any",
-        "wish_line": "The listener asked for: {wish}",
+        "wish_line": "Listeners asked for: {wish}",
+        "nothing_yet": "(nothing yet)",
+        "kinds": {"intro": "Opening", "transition": "Break", "outro": "Closing"},
     },
     "fr": {
         "by": "de",
@@ -39,12 +42,14 @@ UI_STRINGS = {
         "tags": "Tags :",
         "energy": "Énergie :",
         "energy_line": {
-            "calm": "L'auditeur a demandé une émission calme.",
-            "medium": "L'auditeur a demandé une émission d'énergie moyenne.",
-            "upbeat": "L'auditeur a demandé une émission entraînante.",
+            "calm": "Les auditeurs ont demandé une émission calme.",
+            "medium": "Les auditeurs ont demandé une émission d'énergie moyenne.",
+            "upbeat": "Les auditeurs ont demandé une émission entraînante.",
         },
         "any_energy": "indifférente",
-        "wish_line": "L'auditeur a demandé : {wish}",
+        "wish_line": "Les auditeurs ont demandé : {wish}",
+        "nothing_yet": "(rien encore)",
+        "kinds": {"intro": "Ouverture", "transition": "Intervention", "outro": "Clôture"},
     },
 }
 
@@ -140,7 +145,7 @@ class ScriptWriter:
         self._llm = llm
         self._prompts_dir = prompts_dir
         self._language = language
-        self._persona = persona
+        self.persona = persona
         self._style = style
         self._energy = energy
         self._wish = wish
@@ -149,39 +154,53 @@ class ScriptWriter:
         self._temperature = temperature
         # Every response, in order, for token accounting (D004).
         self.responses: list[LLMResponse] = []
+        # Every script written so far, in order, so later breaks know what was said (D033).
+        self.transcript: list[tuple[str, str]] = []  # (kind, text)
 
     def write_intro(self, tracks: list[Track]) -> str:
-        return self._write("intro", {"track_list": format_programme(tracks, self._language)})
+        values = {"track_list": format_programme(tracks, self._language)}
+        return self._write("intro", values, SPEECH_SECONDS["intro"])
 
-    def write_transition(self, previous: Track, next_track: Track) -> str:
-        return self._write(
-            "transition",
-            {
-                "previous_title": previous.display_title,
-                "previous_artist": previous.artist,
-                "next_title": next_track.display_title,
-                "next_artist": next_track.artist,
-                "next_details": format_track_details(next_track, self._language),
-                "facts": format_facts(next_track.facts, self._language),
-                "host_notes": next_track.host_notes or UI_STRINGS[self._language]["no_notes"],
-            },
-        )
+    def write_transition(self, previous: Track, next_track: Track, shape: Shape) -> str:
+        values = {
+            "instructions": shape.instruction,
+            "previous_title": previous.display_title,
+            "previous_artist": previous.artist,
+            "next_title": next_track.display_title,
+            "next_artist": next_track.artist,
+            "next_details": format_track_details(next_track, self._language),
+            "facts": format_facts(next_track.facts, self._language),
+            "host_notes": next_track.host_notes or UI_STRINGS[self._language]["no_notes"],
+            "transcript": self.transcript_text(),
+        }
+        return self._write("transition", values, shape.seconds)
 
     def write_outro(self, tracks: list[Track]) -> str:
-        return self._write("outro", {"track_list": format_track_list(tracks, self._language)})
+        values = {
+            "track_list": format_track_list(tracks, self._language),
+            "transcript": self.transcript_text(),
+        }
+        return self._write("outro", values, SPEECH_SECONDS["outro"])
 
-    def _write(self, kind: str, values: dict[str, str]) -> str:
+    def transcript_text(self) -> str:
+        """What the host already said, one line per segment, for the prompts."""
+        strings = UI_STRINGS[self._language]
+        if not self.transcript:
+            return strings["nothing_yet"]
+        return "\n".join(f"- {strings['kinds'][kind]}: {text}" for kind, text in self.transcript)
+
+    def _write(self, kind: str, values: dict[str, str], seconds: float) -> str:
         system = render(
             load_template(self._prompts_dir, self._language, "system"),
             {
-                "persona_description": self._persona.description,
+                "persona_description": self.persona.description,
                 "style": self._style,
                 "time_line": time_line(self._now, self._language),
                 "energy_line": energy_line(self._energy, self._language),
                 "wish_line": wish_line(self._wish, self._language),
             },
         )
-        budget = word_budget(SPEECH_SECONDS[kind], self._language)
+        budget = word_budget(seconds, self._language)
         user = render(
             load_template(self._prompts_dir, self._language, kind),
             {**values, "word_budget": str(budget)},
@@ -195,4 +214,5 @@ class ScriptWriter:
         script = clean_script(response.text)
         if not script:
             raise LLMError(f"The model returned an empty {kind} script.")
+        self.transcript.append((kind, script))
         return script

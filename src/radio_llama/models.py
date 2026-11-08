@@ -78,6 +78,7 @@ class Segment(BaseModel):
     kind: SegmentKind
     text: str | None = None  # the host's script; None for a song
     track_id: str | None = None  # the song for "song" segments; the next song for "transition"
+    shape: str | None = None  # the break shape of a "transition" (D033), from shapes.json
     audio_file: str | None = None  # file name inside the show's output folder
     duration_s: float | None = None
 

@@ -58,7 +58,7 @@ PARTS_OF_DAY = {
 }
 TEMPLATES = {
     "en": "Local time: {weekday} {day} {month} {year}, {hour:02d}:{minute:02d}, {part}. "
-    "Greet the listener for this time of day.",
+    "Greet everyone for this time of day.",
     "fr": "Heure locale : {weekday} {day} {month} {year}, {hour} h {minute:02d}, {part}. "
     "Salue l'auditeur selon ce moment de la journée.",
 }

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "handover",
+    "seconds": 5,
+    "needs_facts": false,
+    "instruction": "Enchaîne d'un souffle : le titre du morceau suivant et son artiste, rien d'autre."
+  },
+  {
+    "id": "back_announce",
+    "seconds": 8,
+    "needs_facts": false,
+    "instruction": "Dis ce qui vient de passer et l'effet que ça fait, en une ou deux phrases, puis donne le titre et l'artiste du morceau suivant. Pas d'anecdote cette fois."
+  },
+  {
+    "id": "aside",
+    "seconds": 12,
+    "needs_facts": false,
+    "instruction": "Commence par un court aparté qui ne parle pas des morceaux : l'heure qu'il est, la station, ou ce que les auditeurs nous ont demandé. Puis lance le morceau suivant avec son titre et son artiste."
+  },
+  {
+    "id": "long_intro",
+    "seconds": 15,
+    "needs_facts": false,
+    "instruction": "Prépare le morceau suivant : son album, son année, ses tags, ce qu'il faut écouter. Donne le titre et l'artiste à la fin, comme un passage de relais."
+  },
+  {
+    "id": "story",
+    "seconds": 25,
+    "needs_facts": true,
+    "instruction": "Raconte quelque chose de vrai sur l'artiste ou le morceau suivant, tiré des anecdotes ci-dessous et dit avec tes mots, comme une courte histoire. Puis lance le morceau avec son titre et son artiste."
+  }
+]

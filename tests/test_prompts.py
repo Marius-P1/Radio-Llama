@@ -11,6 +11,7 @@ EXPECTED_PLACEHOLDERS = {
     "system": {"persona_description", "style", "time_line", "energy_line", "wish_line"},
     "intro": {"track_list", "word_budget"},
     "transition": {
+        "instructions",
         "previous_title",
         "previous_artist",
         "next_title",
@@ -18,9 +19,10 @@ EXPECTED_PLACEHOLDERS = {
         "next_details",
         "facts",
         "host_notes",
+        "transcript",
         "word_budget",
     },
-    "outro": {"track_list", "word_budget"},
+    "outro": {"track_list", "transcript", "word_budget"},
     "wish": {"wish", "style", "energy"},
 }
 

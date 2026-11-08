@@ -5,7 +5,13 @@ import pytest
 from radio_llama.llm import FakeLLM, LLMError
 from radio_llama.models import Fact, Track
 from radio_llama.personas import get_persona
-from radio_llama.script import SPEECH_SECONDS, ScriptWriter, clean_script, word_budget
+from radio_llama.script import (
+    SPEECH_SECONDS,
+    ScriptWriter,
+    clean_script,
+    load_shapes,
+    word_budget,
+)
 from radio_llama.script.writer import (
     UI_STRINGS,
     energy_line,
@@ -17,6 +23,9 @@ from radio_llama.script.writer import (
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 CANNED = "Good evening, this is Radio Llama."
+SHAPES = {shape.id: shape for shape in load_shapes(PROMPTS_DIR, "en")}
+STORY = SHAPES["story"]
+HANDOVER = SHAPES["handover"]
 
 
 def make_track(number: int, facts: list[Fact] | None = None, **overrides) -> Track:
@@ -81,7 +90,7 @@ def test_an_empty_script_is_an_error() -> None:
     writer = ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz")
 
     with pytest.raises(LLMError, match="empty transition script"):
-        writer.write_transition(TRACKS[0], TRACKS[1])
+        writer.write_transition(TRACKS[0], TRACKS[1], STORY)
 
 
 def test_intro_prompt_carries_tracks_budget_persona_and_style() -> None:
@@ -103,7 +112,7 @@ def test_intro_prompt_carries_tracks_budget_persona_and_style() -> None:
 
 def test_transition_prompt_carries_both_tracks_and_next_facts() -> None:
     writer, llm = make_writer()
-    writer.write_transition(TRACKS[0], TRACKS[1])
+    writer.write_transition(TRACKS[0], TRACKS[1], STORY)
 
     _, user = llm.calls[0]
     assert TRACKS[0].title in user.content
@@ -113,12 +122,53 @@ def test_transition_prompt_carries_both_tracks_and_next_facts() -> None:
     for fact in TRACKS[1].facts:
         assert fact.text in user.content
     assert TRACKS[0].facts[0].text not in user.content
-    assert str(word_budget(SPEECH_SECONDS["transition"], "en")) in user.content
+    assert STORY.instruction in user.content
+    assert str(word_budget(STORY.seconds, "en")) in user.content
+
+
+def test_break_length_follows_the_shape() -> None:
+    writer, llm = make_writer()
+    writer.write_transition(TRACKS[0], TRACKS[1], HANDOVER)
+
+    _, user = llm.calls[0]
+    assert HANDOVER.instruction in user.content
+    assert f"About {word_budget(HANDOVER.seconds, 'en')} words" in user.content
+    assert word_budget(HANDOVER.seconds, "en") < word_budget(STORY.seconds, "en")
+
+
+def test_later_calls_carry_the_transcript_so_far() -> None:
+    llm = FakeLLM(["Welcome, everyone.", "Here comes the trumpet.", "Thanks, all."])
+    persona = get_persona(PROMPTS_DIR, "en", "calm")
+    writer = ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz")
+
+    writer.write_intro(TRACKS)
+    writer.write_transition(TRACKS[0], TRACKS[1], HANDOVER)
+    writer.write_outro(TRACKS)
+
+    _, first = llm.calls[0]
+    _, second = llm.calls[1]
+    _, third = llm.calls[2]
+    assert "Welcome, everyone." not in first.content
+    assert "- Opening: Welcome, everyone." in second.content
+    assert "Here comes the trumpet." not in second.content
+    assert "- Opening: Welcome, everyone." in third.content
+    assert "- Break: Here comes the trumpet." in third.content
+    assert writer.transcript == [
+        ("intro", "Welcome, everyone."),
+        ("transition", "Here comes the trumpet."),
+        ("outro", "Thanks, all."),
+    ]
+
+
+def test_transcript_text_before_anything_was_said() -> None:
+    writer, _ = make_writer()
+    assert writer.transcript_text() == "(nothing yet)"
+    assert make_writer("fr")[0].transcript_text() == "(rien encore)"
 
 
 def test_transition_prompt_carries_details_labelled_facts_and_host_notes() -> None:
     writer, llm = make_writer()
-    writer.write_transition(TRACKS[0], SPOKEN)
+    writer.write_transition(TRACKS[0], SPOKEN, STORY)
 
     _, user = llm.calls[0]
     assert "Blue Window Four by The Lanterns 4" in user.content
@@ -149,8 +199,8 @@ def test_system_prompt_names_the_energy_only_when_asked() -> None:
     ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz", energy="upbeat").write_intro(TRACKS)
     ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz").write_intro(TRACKS)
 
-    assert "The listener asked for an upbeat show." in llm.calls[0][0].content
-    assert "listener asked" not in llm.calls[1][0].content
+    assert "Listeners asked for an upbeat show." in llm.calls[0][0].content
+    assert "asked for" not in llm.calls[1][0].content
 
 
 def test_system_prompt_carries_the_clock_when_given() -> None:
@@ -176,12 +226,12 @@ def test_format_helpers_leave_out_missing_parts() -> None:
     assert format_track_details(make_track(6, tags=[]), "fr") == "Album : Blue Windows (2019)"
     assert format_facts([], "fr") == UI_STRINGS["fr"]["no_facts"]
     assert energy_line(None, "fr") == ""
-    assert energy_line("calm", "fr") == "L'auditeur a demandé une émission calme."
+    assert energy_line("calm", "fr") == "Les auditeurs ont demandé une émission calme."
 
 
 def test_transition_without_facts_says_so() -> None:
     writer, llm = make_writer()
-    writer.write_transition(TRACKS[1], TRACKS[2])
+    writer.write_transition(TRACKS[1], TRACKS[2], HANDOVER)
 
     _, user = llm.calls[0]
     assert UI_STRINGS["en"]["no_facts"] in user.content
@@ -205,7 +255,7 @@ def test_outro_prompt_carries_tracks_budget_persona_and_style() -> None:
 def test_responses_accumulate_across_calls() -> None:
     writer, _ = make_writer()
     writer.write_intro(TRACKS)
-    writer.write_transition(TRACKS[0], TRACKS[1])
+    writer.write_transition(TRACKS[0], TRACKS[1], STORY)
     writer.write_outro(TRACKS)
     assert len(writer.responses) == 3
 
@@ -233,7 +283,7 @@ def test_clean_script_keeps_inner_quotes() -> None:
 def test_french_writer_runs_all_three_kinds() -> None:
     writer, llm = make_writer("fr")
     writer.write_intro(TRACKS)
-    writer.write_transition(TRACKS[0], TRACKS[1])
+    writer.write_transition(TRACKS[0], TRACKS[1], load_shapes(PROMPTS_DIR, "fr")[0])
     writer.write_outro(TRACKS)
 
     assert len(writer.responses) == 3

@@ -176,6 +176,8 @@ export interface components {
              * @enum {string}
              */
             kind: "intro" | "song" | "transition" | "outro";
+            /** Shape */
+            shape?: string | null;
             /** Text */
             text?: string | null;
             /** Track Id */

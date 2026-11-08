@@ -256,6 +256,17 @@
             "title": "Kind",
             "type": "string"
           },
+          "shape": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shape"
+          },
           "text": {
             "anyOf": [
               {

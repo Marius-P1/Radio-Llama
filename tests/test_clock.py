@@ -30,7 +30,7 @@ def test_time_line_in_english() -> None:
 
     assert time_line(now, "en") == (
         "Local time: Sunday 8 November 2026, 16:45, in the afternoon. "
-        "Greet the listener for this time of day."
+        "Greet everyone for this time of day."
     )
 
 

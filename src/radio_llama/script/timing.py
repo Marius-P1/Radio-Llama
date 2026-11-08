@@ -3,8 +3,8 @@
 # Typical radio speech rate. French runs a little slower in words.
 WORDS_PER_SECOND = {"en": 2.5, "fr": 2.3}
 
-# Spoken segment lengths in seconds (D017).
-SPEECH_SECONDS = {"intro": 15.0, "transition": 10.0, "outro": 10.0}
+# Intro and outro lengths in seconds (D017). A break's length comes from its shape (D033).
+SPEECH_SECONDS = {"intro": 15.0, "outro": 10.0}
 
 
 def word_budget(seconds: float, language: str) -> int:

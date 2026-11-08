@@ -11,6 +11,7 @@ from radio_llama.llm.base import LLMClient, LLMResponse
 from radio_llama.models import ENERGIES, Energy, Segment, Show, ShowConfig, Track
 from radio_llama.music import JamendoSource, MusicSource, missing_source_message
 from radio_llama.personas import get_persona
+from radio_llama.script.shapes import Shape, load_shapes, plan_shapes
 from radio_llama.script.wish import map_wish
 from radio_llama.script.writer import ScriptWriter
 from radio_llama.voice.base import TextToSpeech
@@ -35,28 +36,74 @@ class PipelineGenerator:
     def generate(
         self, show: Show, out_dir: Path, on_progress: ProgressCallback | None = None
     ) -> Show:
-        config = show.config
-        music = self._sources.get(config.source)
-        if music is None:
-            raise GenerationError(missing_source_message(config.source))
+        music, tracks, plan, shapes, writer = self._prepare(show)
 
-        # Pick the tracks: a seeded random sample of the candidates (D017), the listener's
-        # energy first (D020), every audio file present (fetched first for a remote source).
-        self.last_responses = []
-        candidates = self._candidates(config, music)
-        if len(candidates) < config.track_count:
-            raise GenerationError(
-                f"Style {config.style!r} has {len(candidates)} tracks, {config.track_count} needed."
-            )
-        tracks = pick_tracks(
-            candidates, config.track_count, config.energy, random.Random(config.seed)
-        )
+        # Every audio file present, fetched first for a remote source, before any LLM call.
         for track in tracks:
             path = music.audio_path(track)
             if not path.exists():
                 raise GenerationError(
                     f"Audio file missing: {path}. Run `uv run python catalog/download.py`."
                 )
+        voice = voice_for(writer.persona, self._settings)
+
+        # Write and voice each speech segment, point each song at its audio file.
+        total = len(plan)
+        sources: list[Path] = []
+        for done, segment in enumerate(plan, start=1):
+            if segment.kind == "song":
+                sources.append(music.audio_path(_track_by_id(tracks, segment.track_id)))
+            else:
+                segment.text = _write_speech(writer, segment, tracks, shapes)
+                sources.append(self._tts.synthesize(segment.text, voice))
+            if on_progress is not None:
+                on_progress(done, total)
+
+        # Assemble the audio; this fills audio_file and duration_s. Status and show.json
+        # belong to the lifecycle owner.
+        show.tracks = tracks
+        show.segments = plan
+        assemble_show(show, sources, out_dir)
+        self.last_responses.extend(writer.responses)
+        return show
+
+    def write_script(self, show: Show) -> Show:
+        """Pick the tracks and write every spoken segment, with no voice and no audio.
+
+        For the `radio-llama script` command: reading ten scripts costs cents, voicing
+        them does not (D033).
+        """
+        _, tracks, plan, shapes, writer = self._prepare(show)
+        for segment in plan:
+            if segment.kind != "song":
+                segment.text = _write_speech(writer, segment, tracks, shapes)
+        show.tracks = tracks
+        show.segments = plan
+        self.last_responses.extend(writer.responses)
+        return show
+
+    def _prepare(
+        self, show: Show
+    ) -> tuple[MusicSource, list[Track], list[Segment], dict[str, Shape], ScriptWriter]:
+        """Pick the tracks and the break shapes, build the plan and the writer."""
+        config = show.config
+        music = self._sources.get(config.source)
+        if music is None:
+            raise GenerationError(missing_source_message(config.source))
+
+        # A seeded random sample of the candidates (D017), the listener's energy first
+        # (D020); the same generator then picks the break shapes (D033).
+        self.last_responses = []
+        candidates = self._candidates(config, music)
+        if len(candidates) < config.track_count:
+            raise GenerationError(
+                f"Style {config.style!r} has {len(candidates)} tracks, {config.track_count} needed."
+            )
+        rng = random.Random(config.seed)
+        tracks = pick_tracks(candidates, config.track_count, config.energy, rng)
+        shapes = load_shapes(self._settings.prompts_dir, config.language)
+        breaks = plan_shapes(shapes, [bool(track.facts) for track in tracks[1:]], rng)
+        plan = _plan(tracks, breaks)
 
         # The host: persona text for the prompts, voice for the TTS.
         persona = get_persona(self._settings.prompts_dir, config.language, config.persona)
@@ -70,30 +117,7 @@ class PipelineGenerator:
             wish=config.wish,
             now=datetime.now(self._settings.tzinfo),
         )
-        voice = voice_for(persona, self._settings)
-
-        # The plan: intro, then each song followed by a transition to the next, then outro.
-        plan = _plan(tracks)
-        total = len(plan)
-
-        # Write and voice each speech segment, point each song at its audio file.
-        sources: list[Path] = []
-        for done, segment in enumerate(plan, start=1):
-            if segment.kind == "song":
-                sources.append(music.audio_path(_track_by_id(tracks, segment.track_id)))
-            else:
-                segment.text = _write_speech(writer, segment, tracks)
-                sources.append(self._tts.synthesize(segment.text, voice))
-            if on_progress is not None:
-                on_progress(done, total)
-
-        # Assemble the audio; this fills audio_file and duration_s. Status and show.json
-        # belong to the lifecycle owner.
-        show.tracks = tracks
-        show.segments = plan
-        assemble_show(show, sources, out_dir)
-        self.last_responses.extend(writer.responses)
-        return show
+        return music, tracks, plan, {shape.id: shape for shape in shapes}, writer
 
     def _candidates(self, config: ShowConfig, music: MusicSource) -> list[Track]:
         """The tracks to sample from. Jamendo searches with the energy and the wish (D030)."""
@@ -142,25 +166,34 @@ def pick_tracks(
     return picked
 
 
-def _plan(tracks: list[Track]) -> list[Segment]:
-    """intro, song, transition, song, ..., song, outro. A transition names the next track."""
+def _plan(tracks: list[Track], breaks: list[Shape]) -> list[Segment]:
+    """intro, song, transition, song, ..., song, outro.
+
+    A transition names the next track and carries the shape of its break (D033).
+    """
     plan = [Segment(kind="intro")]
     for index, track in enumerate(tracks):
         plan.append(Segment(kind="song", track_id=track.id))
         if index < len(tracks) - 1:
-            plan.append(Segment(kind="transition", track_id=tracks[index + 1].id))
+            plan.append(
+                Segment(kind="transition", track_id=tracks[index + 1].id, shape=breaks[index].id)
+            )
     plan.append(Segment(kind="outro"))
     return plan
 
 
-def _write_speech(writer: ScriptWriter, segment: Segment, tracks: list[Track]) -> str:
+def _write_speech(
+    writer: ScriptWriter, segment: Segment, tracks: list[Track], shapes: dict[str, Shape]
+) -> str:
     if segment.kind == "intro":
         return writer.write_intro(tracks)
     if segment.kind == "outro":
         return writer.write_outro(tracks)
     next_track = _track_by_id(tracks, segment.track_id)
     previous = tracks[tracks.index(next_track) - 1]
-    return writer.write_transition(previous, next_track)
+    if segment.shape is None:
+        raise ValueError("A transition segment needs a shape.")
+    return writer.write_transition(previous, next_track, shapes[segment.shape])
 
 
 def _track_by_id(tracks: list[Track], track_id: str | None) -> Track:
