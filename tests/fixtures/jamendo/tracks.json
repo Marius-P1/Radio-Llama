@@ -1,0 +1,139 @@
+{
+  "headers": {
+    "status": "success",
+    "code": 0,
+    "error_message": "",
+    "warnings": "",
+    "results_count": 4
+  },
+  "results": [
+    {
+      "id": "1001",
+      "name": "Blue Window",
+      "duration": 214,
+      "artist_id": "2001",
+      "artist_name": "Example Band",
+      "album_name": "Night Sessions",
+      "album_id": "3001",
+      "license_ccurl": "http://creativecommons.org/licenses/by-nc-nd/3.0/",
+      "position": 1,
+      "releasedate": "2015-03-21",
+      "album_image": "https://usercontent.jamendo.com?type=album&id=3001&width=300",
+      "audio": "https://prod-1.storage.jamendo.com/?trackid=1001&format=mp32&from=app-test",
+      "audiodownload": "https://prod-1.storage.jamendo.com/download/track/1001/mp32/",
+      "prourl": "",
+      "shorturl": "https://jamen.do/t/1001",
+      "shareurl": "https://www.jamendo.com/track/1001",
+      "audiodownload_allowed": true,
+      "image": "https://usercontent.jamendo.com?type=album&id=3001&width=300",
+      "musicinfo": {
+        "vocalinstrumental": "instrumental",
+        "lang": "",
+        "gender": "",
+        "acousticelectric": "acoustic",
+        "speed": "high",
+        "tags": {
+          "genres": ["jazz"],
+          "instruments": ["piano", "doublebass"],
+          "vartags": ["energetic"]
+        }
+      }
+    },
+    {
+      "id": "1002",
+      "name": "Rainy Corner",
+      "duration": 187,
+      "artist_id": "2001",
+      "artist_name": "Example Band",
+      "album_name": "",
+      "album_id": "",
+      "license_ccurl": "http://creativecommons.org/licenses/by/3.0/",
+      "position": 1,
+      "releasedate": "",
+      "album_image": "",
+      "audio": "https://prod-1.storage.jamendo.com/?trackid=1002&format=mp32&from=app-test",
+      "audiodownload": "",
+      "prourl": "",
+      "shorturl": "https://jamen.do/t/1002",
+      "shareurl": "https://www.jamendo.com/track/1002",
+      "audiodownload_allowed": false,
+      "image": "https://usercontent.jamendo.com?type=track&id=1002&width=300",
+      "musicinfo": {
+        "vocalinstrumental": "instrumental",
+        "lang": "",
+        "gender": "",
+        "acousticelectric": "acoustic",
+        "speed": "verylow",
+        "tags": {
+          "genres": ["jazz", "lounge"],
+          "instruments": ["piano"],
+          "vartags": ["relaxing", "rainy"]
+        }
+      }
+    },
+    {
+      "id": "1003",
+      "name": "Montreal Streets",
+      "duration": 241,
+      "artist_id": "2002",
+      "artist_name": "Lea Example",
+      "album_name": "Folk Letters",
+      "album_id": "3002",
+      "license_ccurl": "http://creativecommons.org/licenses/by-sa/3.0/",
+      "position": 4,
+      "releasedate": "2019-11-02",
+      "album_image": "https://usercontent.jamendo.com?type=album&id=3002&width=300",
+      "audio": "https://prod-1.storage.jamendo.com/?trackid=1003&format=mp32&from=app-test",
+      "audiodownload": "https://prod-1.storage.jamendo.com/download/track/1003/mp32/",
+      "prourl": "",
+      "shorturl": "https://jamen.do/t/1003",
+      "shareurl": "https://www.jamendo.com/track/1003",
+      "audiodownload_allowed": true,
+      "image": "https://usercontent.jamendo.com?type=album&id=3002&width=300",
+      "musicinfo": {
+        "vocalinstrumental": "vocal",
+        "lang": "fr",
+        "gender": "female",
+        "acousticelectric": "acoustic",
+        "speed": "medium",
+        "tags": {
+          "genres": ["jazz", "folk"],
+          "instruments": ["guitar"],
+          "vartags": []
+        }
+      }
+    },
+    {
+      "id": "1004",
+      "name": "Late Shift",
+      "duration": 302,
+      "artist_id": "2003",
+      "artist_name": "We Are FM",
+      "album_name": "Transmissions",
+      "album_id": "3003",
+      "license_ccurl": "http://creativecommons.org/licenses/by-nc-sa/3.0/us/",
+      "position": 2,
+      "releasedate": "2021-04-11",
+      "album_image": "https://usercontent.jamendo.com?type=album&id=3003&width=300",
+      "audio": "https://prod-1.storage.jamendo.com/?trackid=1004&format=mp32&from=app-test",
+      "audiodownload": "https://prod-1.storage.jamendo.com/download/track/1004/mp32/",
+      "prourl": "",
+      "shorturl": "https://jamen.do/t/1004",
+      "shareurl": "https://www.jamendo.com/track/1004",
+      "audiodownload_allowed": true,
+      "image": "https://usercontent.jamendo.com?type=album&id=3003&width=300",
+      "musicinfo": {
+        "vocalinstrumental": "vocal",
+        "lang": "en",
+        "gender": "male",
+        "acousticelectric": "electric",
+        "speed": "veryhigh",
+        "tags": {
+          "genres": ["jazz", "funk"],
+          "instruments": ["saxophone"],
+          "vartags": ["groovy"]
+        }
+      }
+    }
+  ]
+}
