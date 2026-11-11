@@ -62,11 +62,13 @@ PARTS_OF_DAY = {
 }
 TEMPLATES = {
     "en": "Local time: {weekday} {day} {month} {year}, {part}. "
-    "Greet everyone for this time of day, but never say the exact time: "
-    "the show is heard later than it is written.",
+    "Greet everyone for this time of day. Mention the day or the date once in a "
+    "while, not in every break. Never say the exact time: the show is heard later "
+    "than it is written.",
     "fr": "Heure locale : {weekday} {day} {month} {year}, {part}. "
-    "Salue tout le monde selon ce moment de la journée, mais ne donne jamais "
-    "l'heure exacte : l'émission est écoutée plus tard qu'elle n'est écrite.",
+    "Salue tout le monde selon ce moment de la journée. Glisse le jour ou la date "
+    "de temps en temps, pas à chaque intervention. Ne donne jamais l'heure exacte : "
+    "l'émission est écoutée plus tard qu'elle n'est écrite.",
 }
 
 

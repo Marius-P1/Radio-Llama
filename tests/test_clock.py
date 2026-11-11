@@ -30,8 +30,9 @@ def test_time_line_in_english() -> None:
 
     assert time_line(now, "en") == (
         "Local time: Sunday 8 November 2026, in the afternoon. "
-        "Greet everyone for this time of day, but never say the exact time: "
-        "the show is heard later than it is written."
+        "Greet everyone for this time of day. Mention the day or the date once in a "
+        "while, not in every break. Never say the exact time: the show is heard later "
+        "than it is written."
     )
     assert "16:45" not in time_line(now, "en")
 
@@ -41,8 +42,9 @@ def test_time_line_in_french() -> None:
 
     assert time_line(now, "fr") == (
         "Heure locale : lundi 9 novembre 2026, le matin. "
-        "Salue tout le monde selon ce moment de la journée, mais ne donne jamais "
-        "l'heure exacte : l'émission est écoutée plus tard qu'elle n'est écrite."
+        "Salue tout le monde selon ce moment de la journée. Glisse le jour ou la date "
+        "de temps en temps, pas à chaque intervention. Ne donne jamais l'heure exacte : "
+        "l'émission est écoutée plus tard qu'elle n'est écrite."
     )
     assert "7 h 05" not in time_line(now, "fr")
 
