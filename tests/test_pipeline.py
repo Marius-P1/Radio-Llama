@@ -7,13 +7,13 @@ import pytest
 
 from radio_llama.config import Settings
 from radio_llama.generator import GenerationError, PipelineGenerator, run_generation
-from radio_llama.generator.pipeline import pick_tracks
+from radio_llama.generator.pipeline import MAX_TRACK_FACTS, merge_facts, pick_tracks
 from radio_llama.llm import FakeLLM
-from radio_llama.models import Show, ShowConfig, Track
+from radio_llama.models import Fact, Show, ShowConfig, Track
 from radio_llama.music import LocalCatalog
 from radio_llama.storage import load_show
 from radio_llama.voice import CachedTextToSpeech, FakeTTS, TextToSpeech, TTSError, Voice
-from tests.conftest import FakeJamendo
+from tests.conftest import FakeFactServices, FakeJamendo
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -258,10 +258,16 @@ FILTERS_JSON = '{"tags": ["piano", "rainy"], "vocal": "instrumental", "lang": nu
 
 
 def _jamendo_generator(
-    settings: Settings, catalog: LocalCatalog, jamendo: FakeJamendo, llm: FakeLLM
+    settings: Settings,
+    catalog: LocalCatalog,
+    jamendo: FakeJamendo,
+    llm: FakeLLM,
+    facts: FakeFactServices | None = None,
 ) -> PipelineGenerator:
     tts = CachedTextToSpeech(FakeTTS(settings.cache_dir / "tts-raw"), settings.cache_dir)
-    return PipelineGenerator(llm, tts, {"catalog": catalog, "jamendo": jamendo.source}, settings)
+    sources = {"catalog": catalog, "jamendo": jamendo.source}
+    lookup = facts.lookup if facts is not None else None
+    return PipelineGenerator(llm, tts, sources, settings, facts=lookup)
 
 
 def test_jamendo_show_reaches_ready_with_cached_audio_and_facts(
@@ -353,3 +359,130 @@ def test_wish_on_the_catalog_fails(
     assert show.status == "failed"
     assert show.error is not None
     assert "jamendo" in show.error
+
+
+# Facts looked up on Wikipedia and MusicBrainz (D029). The fake services answer every
+# artist with the recorded Kevin MacLeod pages.
+
+WIKIPEDIA_FIRST = "Kevin MacLeod is an American composer and music producer."
+
+
+def test_jamendo_tracks_get_looked_up_facts_after_their_own(
+    fake_settings: Settings,
+    tiny_catalog: LocalCatalog,
+    fake_jamendo: FakeJamendo,
+    fake_facts: FakeFactServices,
+    tmp_path: Path,
+) -> None:
+    llm = FakeLLM([CANNED])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm, fake_facts)
+
+    show = run_generation(generator, _show(source="jamendo", seed=1), tmp_path / "out")
+
+    assert show.status == "ready", show.error
+    for track in show.tracks:
+        own = fake_jamendo.source.get_track(track.id).facts
+        assert track.facts[: len(own)] == own
+        assert len(track.facts) <= MAX_TRACK_FACTS
+        assert any(fact.source_type == "wikipedia" for fact in track.facts)
+        # The source keeps the track as Jamendo described it.
+        assert all(fact.source_type == "jamendo_artist_page" for fact in own)
+    # The host reads the Wikipedia sentence in a break.
+    assert any(WIKIPEDIA_FIRST in message.content for call in llm.calls for message in call)
+    # show.json carries the facts with their links, for the credits.
+    saved = load_show(tmp_path / "out")
+    assert saved.tracks == show.tracks
+
+
+def test_a_lookup_miss_keeps_the_jamendo_facts(
+    fake_settings: Settings,
+    tiny_catalog: LocalCatalog,
+    fake_jamendo: FakeJamendo,
+    fake_facts: FakeFactServices,
+    tmp_path: Path,
+) -> None:
+    fake_facts.replies["musicbrainz_artist_search"]["artists"] = []
+    llm = FakeLLM([CANNED])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm, fake_facts)
+
+    show = run_generation(generator, _show(source="jamendo", seed=1), tmp_path / "out")
+
+    assert show.status == "ready", show.error
+    for track in show.tracks:
+        assert track.facts == fake_jamendo.source.get_track(track.id).facts
+
+
+def test_a_failed_lookup_does_not_fail_the_show(
+    fake_settings: Settings,
+    tiny_catalog: LocalCatalog,
+    fake_jamendo: FakeJamendo,
+    fake_facts: FakeFactServices,
+    tmp_path: Path,
+) -> None:
+    fake_facts.errors["musicbrainz_artist_search"] = 503
+    llm = FakeLLM([CANNED])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm, fake_facts)
+
+    show = run_generation(generator, _show(source="jamendo", seed=1), tmp_path / "out")
+
+    assert show.status == "ready", show.error
+
+
+def test_catalog_tracks_are_never_looked_up(
+    fake_settings: Settings,
+    tiny_catalog: LocalCatalog,
+    fake_jamendo: FakeJamendo,
+    fake_facts: FakeFactServices,
+) -> None:
+    generator = _jamendo_generator(
+        fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]), fake_facts
+    )
+
+    show = generator.write_script(_show(seed=1))
+
+    assert fake_facts.requests == []
+    for track in show.tracks:
+        assert track.facts == tiny_catalog.get_track(track.id).facts
+
+
+def _story_breaks_before(generator: PipelineGenerator, track_id: str) -> int:
+    """How many of 30 seeded scripts give `track_id` the story break."""
+    count = 0
+    for seed in range(30):
+        show = generator.write_script(_show(source="jamendo", seed=seed))
+        count += sum(
+            1
+            for segment in show.segments
+            if segment.kind == "transition"
+            and segment.track_id == track_id
+            and segment.shape == "story"
+        )
+    return count
+
+
+def test_looked_up_facts_open_the_story_break(
+    fake_settings: Settings,
+    tiny_catalog: LocalCatalog,
+    fake_jamendo: FakeJamendo,
+    fake_facts: FakeFactServices,
+) -> None:
+    # "We Are FM" (jamendo-1004) has no usable description: no facts of its own.
+    assert fake_jamendo.source.get_track("jamendo-1004").facts == []
+    llm = FakeLLM([CANNED])
+    without = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm)
+    with_lookup = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm, fake_facts)
+
+    assert _story_breaks_before(without, "jamendo-1004") == 0
+    assert _story_breaks_before(with_lookup, "jamendo-1004") > 0
+
+
+def test_merge_facts_drops_repeats_and_caps_the_list() -> None:
+    def fact(text: str) -> Fact:
+        return Fact(text=text, source_url="https://example.com")
+
+    own = [fact("One."), fact("Two.")]
+    found = [fact("two."), fact("Three."), fact("Four."), fact("Five.")]
+
+    merged = merge_facts(own, found)
+
+    assert [f.text for f in merged] == ["One.", "Two.", "Three.", "Four."]

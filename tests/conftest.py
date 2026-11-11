@@ -11,6 +11,7 @@ import pytest
 from radio_llama import facts
 from radio_llama.config import Settings
 from radio_llama.facts import FactLookup
+from radio_llama.generator import factory
 from radio_llama.music import JamendoSource, LocalCatalog, jamendo
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
@@ -202,3 +203,15 @@ class FakeFactServices:
 def fake_facts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeFactServices:
     monkeypatch.setattr(facts, "MUSICBRAINZ_PAUSE_S", 0.0)
     return FakeFactServices(tmp_path / "cache")
+
+
+@pytest.fixture(autouse=True)
+def offline_fact_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`make_generator` builds a real FactLookup. In tests it gets a transport that answers
+    404 to everything, so no test reaches MusicBrainz or Wikipedia."""
+
+    def offline(cache_dir: Path) -> FactLookup:
+        transport = httpx.MockTransport(lambda request: httpx.Response(404))
+        return FactLookup(cache_dir, http=httpx.Client(transport=transport))
+
+    monkeypatch.setattr(factory, "FactLookup", offline)
