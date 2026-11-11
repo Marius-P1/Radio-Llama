@@ -1,4 +1,5 @@
-"""Shared fixtures: a tiny catalog with real (tone) audio and settings that use the fakes."""
+"""Shared fixtures: a tiny catalog with real (tone) audio, settings that use the fakes, and
+the remote services (Jamendo, MusicBrainz, Wikidata, Wikipedia) on mock transports."""
 
 import json
 import subprocess
@@ -7,7 +8,9 @@ from pathlib import Path
 import httpx
 import pytest
 
+from radio_llama import facts
 from radio_llama.config import Settings
+from radio_llama.facts import FactLookup
 from radio_llama.music import JamendoSource, LocalCatalog, jamendo
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
@@ -144,3 +147,58 @@ def fake_jamendo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeJamendo
     tone_path = tmp_path / "jamendo-tone.mp3"
     _tone(tone_path, 330.0, TONE_SECONDS)
     return FakeJamendo(tmp_path / "cache", tone_path.read_bytes())
+
+
+FACTS_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "facts"
+
+
+class FakeFactServices:
+    """A FactLookup on a mock transport that answers recorded JSON for Kevin MacLeod.
+
+    The replies were recorded on 2026-11-11 and trimmed. Every artist search gets the same
+    reply. `replies` maps a route (a fixture file name) to the JSON it answers; tests edit
+    it. `errors` maps a route to an HTTP status or an exception to raise instead.
+    `requests` records every request.
+    """
+
+    def __init__(self, cache_dir: Path) -> None:
+        self.requests: list[httpx.Request] = []
+        self.replies: dict[str, dict] = {
+            path.stem: json.loads(path.read_text(encoding="utf-8"))
+            for path in FACTS_FIXTURES.glob("*.json")
+        }
+        self.errors: dict[str, int | Exception] = {}
+        client = httpx.Client(transport=httpx.MockTransport(self._handle))
+        self.lookup = FactLookup(cache_dir, http=client)
+
+    @staticmethod
+    def route(request: httpx.Request) -> str:
+        host, path = request.url.host, request.url.path
+        if host == "musicbrainz.org":
+            return "musicbrainz_artist_search" if path == "/ws/2/artist/" else "musicbrainz_artist"
+        if host == "www.wikidata.org":
+            return "wikidata_entity"
+        if host.endswith(".wikipedia.org"):
+            return f"wikipedia_summary_{host.split('.')[0]}"
+        return "unknown"
+
+    def _handle(self, request: httpx.Request) -> httpx.Response:
+        self.requests.append(request)
+        route = self.route(request)
+        error = self.errors.get(route)
+        if isinstance(error, Exception):
+            raise error
+        if error is not None:
+            return httpx.Response(error, json={"error": "fake error"})
+        if route not in self.replies:
+            return httpx.Response(404, json={"error": "not found"})
+        return httpx.Response(200, json=self.replies[route])
+
+    def routes(self) -> list[str]:
+        return [self.route(request) for request in self.requests]
+
+
+@pytest.fixture
+def fake_facts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeFactServices:
+    monkeypatch.setattr(facts, "MUSICBRAINZ_PAUSE_S", 0.0)
+    return FakeFactServices(tmp_path / "cache")

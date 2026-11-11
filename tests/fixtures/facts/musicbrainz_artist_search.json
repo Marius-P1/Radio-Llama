@@ -1,0 +1,52 @@
+{
+  "created": "2026-11-11T19:38:14.072Z",
+  "count": 3,
+  "offset": 0,
+  "artists": [
+    {
+      "id": "8292bf44-2dd1-4bad-8019-276ec38f28e7",
+      "type": "Person",
+      "score": 100,
+      "name": "Kevin MacLeod",
+      "sort-name": "MacLeod, Kevin",
+      "country": "US",
+      "area": {
+        "name": "United States"
+      },
+      "life-span": {
+        "begin": "1972-09-28",
+        "ended": null
+      },
+      "disambiguation": "royalty‐free library music composer"
+    },
+    {
+      "id": "d0429304-ae84-40a9-8e3e-14745354862a",
+      "type": "Person",
+      "score": 73,
+      "name": "Kevin Macleod",
+      "sort-name": "Macleod, Kevin",
+      "area": {
+        "name": "Scotland"
+      },
+      "life-span": {
+        "ended": null
+      },
+      "disambiguation": "Scottish traditional & folk musician"
+    },
+    {
+      "id": "f8b6948b-932a-43f5-9873-a431698ad02f",
+      "type": "Person",
+      "score": 73,
+      "name": "Kevin MacLeod",
+      "sort-name": "MacLeod, Kevin",
+      "country": "GB",
+      "area": {
+        "name": "United Kingdom"
+      },
+      "life-span": {
+        "ended": null
+      },
+      "disambiguation": "trombone, jazz, UK"
+    }
+  ]
+}

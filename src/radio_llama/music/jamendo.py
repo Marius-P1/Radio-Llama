@@ -18,6 +18,7 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, Field
 
+from radio_llama.facts import usable_sentences
 from radio_llama.models import Energy, Fact, Track
 from radio_llama.music.base import MusicSourceError, UnknownTrackError
 
@@ -64,13 +65,10 @@ SPEED_ENERGY: dict[str, Energy] = {
 # Languages tried for the artist description, in order. English first, like the catalog facts.
 DESCRIPTION_LANGUAGES = ("en", "fr", "es", "de", "it", "pt")
 MAX_FACTS = 2
-MIN_FACT_WORDS = 4
-MAX_FACT_CHARS = 300
 
 _LICENSE = re.compile(r"creativecommons\.org/licenses/([a-z-]+)/(\d+\.\d+)(?:/([a-z]{2}))?")
 _PUBLIC_DOMAIN = re.compile(r"creativecommons\.org/publicdomain/zero/(\d+\.\d+)")
 _TAGS = re.compile(r"<[^>]+>")
-_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 
 
 class JamendoError(MusicSourceError):
@@ -338,7 +336,7 @@ def description_facts(description: dict[str, str], source_url: str) -> list[Fact
     """One Fact per usable sentence of the artist description, at most MAX_FACTS.
 
     The description is HTML written by the artist. The first language with text wins,
-    English first. A sentence is usable when it has a few words, no URL and a sane length.
+    English first. Sentences are picked like Wikipedia's (`facts.usable_sentences`).
     """
     text = ""
     for language in (*DESCRIPTION_LANGUAGES, *sorted(description)):
@@ -346,22 +344,13 @@ def description_facts(description: dict[str, str], source_url: str) -> list[Fact
             text = description[language]
             break
     plain = html.unescape(_TAGS.sub(" ", text))
-    plain = " ".join(plain.split())
-    facts = []
-    for sentence in _SENTENCE_END.split(plain):
-        sentence = sentence.strip()
-        words = sentence.split()
-        if len(words) < MIN_FACT_WORDS or len(sentence) > MAX_FACT_CHARS or "http" in sentence:
-            continue
-        facts.append(
-            Fact(
-                text=sentence,
-                about="artist",
-                source_url=source_url,
-                quote=sentence,
-                source_type="jamendo_artist_page",
-            )
+    return [
+        Fact(
+            text=sentence,
+            about="artist",
+            source_url=source_url,
+            quote=sentence,
+            source_type="jamendo_artist_page",
         )
-        if len(facts) == MAX_FACTS:
-            break
-    return facts
+        for sentence in usable_sentences(plain, MAX_FACTS)
+    ]
