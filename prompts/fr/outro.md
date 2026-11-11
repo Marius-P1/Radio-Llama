@@ -1,6 +1,9 @@
-L'émission se termine. Clôture-la : rappelle la programmation, remercie l'auditeur et invite-le à revenir. C'est la dernière chose qu'il entendra ce soir.
+L'émission se termine. Clôture-la : remercie tous ceux qui écoutent et invite-les à revenir. Ne reliste pas tous les morceaux ; un temps fort au plus.
 
 Programmation qui vient d'être diffusée :
 $track_list
+
+Ce que tu as déjà dit à l'antenne dans cette émission, dans l'ordre. N'en reprends ni une ouverture, ni une clôture :
+$transcript
 
 Environ $word_budget mots.

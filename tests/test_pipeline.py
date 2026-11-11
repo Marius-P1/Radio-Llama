@@ -73,8 +73,37 @@ def test_run_generation_builds_a_ready_show(
     assert [segment.track_id for segment in show.segments if segment.kind == "song"] == [
         track.id for track in show.tracks
     ]
+    breaks = [segment for segment in show.segments if segment.kind == "transition"]
+    assert all(segment.shape for segment in breaks)
+    assert breaks[0].shape != breaks[1].shape
+    assert all(segment.shape is None for segment in show.segments if segment.kind != "transition")
     assert progress == [(done, 7) for done in range(1, 8)]
     assert len(generator.last_responses) == 4
+
+
+def test_same_seed_picks_the_same_breaks(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, tmp_path: Path
+) -> None:
+    first = run_generation(_generator(fake_settings, tiny_catalog), _show(seed=3), tmp_path / "a")
+    second = run_generation(_generator(fake_settings, tiny_catalog), _show(seed=3), tmp_path / "b")
+
+    assert [s.shape for s in first.segments] == [s.shape for s in second.segments]
+
+
+def test_write_script_writes_text_without_audio(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, tmp_path: Path
+) -> None:
+    generator = _generator(fake_settings, tiny_catalog)
+
+    show = generator.write_script(_show(seed=1))
+
+    assert [segment.kind for segment in show.segments] == EXPECTED_KINDS
+    assert all(segment.text == CANNED for segment in show.segments if segment.kind != "song")
+    assert all(segment.audio_file is None for segment in show.segments)
+    assert show.audio_file is None
+    assert len(show.tracks) == 3
+    assert len(generator.last_responses) == 4
+    assert not (tmp_path / "output").exists()
 
 
 def test_same_seed_picks_the_same_tracks(
@@ -276,7 +305,7 @@ def test_jamendo_show_with_a_wish_maps_it_first(
     assert len(generator.last_responses) == 5
     # The host hears the wish.
     system = llm.calls[1][0]
-    assert "The listener asked for: piano for a rainy sunday" in system.content
+    assert "Listeners asked for: piano for a rainy sunday" in system.content
 
 
 def test_jamendo_show_with_a_bad_wish_reply_fails_readably(

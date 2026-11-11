@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from radio_llama.api.app import create_app
 from radio_llama.config import ConfigError, load_settings
 from radio_llama.generator import make_generator, run_generation
+from radio_llama.generator.lifecycle import EXPECTED_ERRORS
 from radio_llama.models import Show, ShowConfig
 from radio_llama.replay import export_replay, zip_replay
 from radio_llama.storage import new_show_id
@@ -49,7 +50,7 @@ def generate(
     demo: Annotated[
         bool, typer.Option("--demo", help="Cut each song to a 30 second excerpt, for a fast run.")
     ] = False,
-    seed: Annotated[int | None, typer.Option(help="Fix the random track pick.")] = None,
+    seed: Annotated[int | None, typer.Option(help="Fix the track and break pick.")] = None,
     fake: Annotated[
         bool, typer.Option("--fake", help="Use the fake LLM and fake TTS. No API keys needed.")
     ] = False,
@@ -102,6 +103,76 @@ def generate(
     tokens_out = sum(response.output_tokens for response in generator.last_responses)
     typer.echo(f"Show written to {out_dir / show.audio_file}")
     typer.echo(f"Segments: {len(show.segments)}")
+    typer.echo(f"LLM tokens: {tokens_in} in, {tokens_out} out")
+
+
+@app.command()
+def script(
+    style: Annotated[str, typer.Option(help="Music style of the source, for example jazz.")],
+    persona: Annotated[str, typer.Option(help="Host persona id.")] = "calm",
+    language: Annotated[
+        str | None, typer.Option(help="en or fr. Defaults to RADIO_LANGUAGE.")
+    ] = None,
+    energy: Annotated[
+        str | None, typer.Option(help="calm, medium or upbeat. Any energy when left out.")
+    ] = None,
+    source: Annotated[
+        str, typer.Option(help="Where the songs come from: catalog or jamendo.")
+    ] = "catalog",
+    wish: Annotated[
+        str | None, typer.Option(help="Free text that refines the search. Jamendo only.")
+    ] = None,
+    tracks: Annotated[int, typer.Option(help="Number of songs.")] = 3,
+    seed: Annotated[int | None, typer.Option(help="Fix the track and break pick.")] = None,
+    fake: Annotated[
+        bool, typer.Option("--fake", help="Use the fake LLM. No API key needed.")
+    ] = False,
+) -> None:
+    """Write a show's script and print it, with no voice and no audio. For tuning prompts."""
+    try:
+        settings = load_settings()
+        if fake:
+            settings = settings.model_copy(update={"llm_provider": "fake", "tts_backend": "fake"})
+        generator = make_generator(settings)
+        config = ShowConfig(
+            style=style,
+            persona=persona,
+            language=language or settings.radio_language,  # type: ignore[arg-type]
+            energy=energy,  # type: ignore[arg-type]
+            source=source,  # type: ignore[arg-type]
+            wish=wish,
+            track_count=tracks,
+            seed=seed,
+        )
+    except ConfigError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from None
+    except ValidationError as exc:
+        for error in exc.errors():
+            typer.echo(f"{error['loc'][0]}: {error['msg']}", err=True)
+        raise typer.Exit(code=1) from None
+
+    now = datetime.now(UTC)
+    show = Show(id=new_show_id(now), created_at=now, config=config)
+    try:
+        show = generator.write_script(show)
+    except EXPECTED_ERRORS as exc:
+        typer.echo(f"Script failed: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+
+    tracks_by_id = {track.id: track for track in show.tracks}
+    for segment in show.segments:
+        if segment.kind == "song":
+            track = tracks_by_id[segment.track_id or ""]
+            typer.echo(f"[song] {track.display_title} by {track.artist}")
+            continue
+        label = f"{segment.kind}: {segment.shape}" if segment.shape else segment.kind
+        words = len((segment.text or "").split())
+        typer.echo(f"[{label}, {words} words]")
+        typer.echo(segment.text or "")
+        typer.echo("")
+    tokens_in = sum(response.input_tokens for response in generator.last_responses)
+    tokens_out = sum(response.output_tokens for response in generator.last_responses)
     typer.echo(f"LLM tokens: {tokens_in} in, {tokens_out} out")
 
 

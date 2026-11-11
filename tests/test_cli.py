@@ -84,6 +84,27 @@ def test_generate_with_too_many_tracks_fails_cleanly(cli_env: Path) -> None:
     assert "Traceback" not in result.output
 
 
+def test_script_prints_the_segments_and_writes_nothing(cli_env: Path) -> None:
+    result = runner.invoke(app, ["script", "--fake", "--style", "jazz", "--seed", "1"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.count("[song]") == 3
+    assert "[intro, " in result.output
+    assert "[outro, " in result.output
+    assert result.output.count("[transition: ") == 2
+    assert "This is a fake radio script." in result.output
+    assert "LLM tokens:" in result.output
+    assert not cli_env.exists()
+
+
+def test_script_jamendo_without_a_client_id_explains_the_variable(cli_env: Path) -> None:
+    result = runner.invoke(app, ["script", "--fake", "--style", "jazz", "--source", "jamendo"])
+
+    assert result.exit_code == 1
+    assert "JAMENDO_CLIENT_ID" in result.output
+    assert "Traceback" not in result.output
+
+
 def test_generate_jamendo_without_a_client_id_explains_the_variable(cli_env: Path) -> None:
     result = runner.invoke(app, ["generate", "--fake", "--style", "jazz", "--source", "jamendo"])
 

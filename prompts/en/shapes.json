@@ -1,0 +1,32 @@
+[
+  {
+    "id": "handover",
+    "seconds": 5,
+    "needs_facts": false,
+    "instruction": "Hand over in one breath: the next song's title and its artist, and nothing else."
+  },
+  {
+    "id": "back_announce",
+    "seconds": 8,
+    "needs_facts": false,
+    "instruction": "Say what just played and how it landed, in a sentence or two, then name the next song and its artist. No facts this time."
+  },
+  {
+    "id": "aside",
+    "seconds": 12,
+    "needs_facts": false,
+    "instruction": "Start with a short aside that is not about the songs: the time of day, the station, or what people asked us for. Then bring in the next song with its title and artist."
+  },
+  {
+    "id": "long_intro",
+    "seconds": 15,
+    "needs_facts": false,
+    "instruction": "Set up the next song: its album, its year, its tags, what to listen for. Name the title and the artist at the end, as the hand-over."
+  },
+  {
+    "id": "story",
+    "seconds": 25,
+    "needs_facts": true,
+    "instruction": "Tell something true about the next artist or song, taken from the facts below and told in your own words, like a short story. Then bring the song in with its title and artist."
+  }
+]
