@@ -158,8 +158,10 @@ class FakeFactServices:
 
     The replies were recorded on 2026-11-11 and trimmed. Every artist search gets the same
     reply. `replies` maps a route (a fixture file name) to the JSON it answers; tests edit
-    it. `errors` maps a route to an HTTP status or an exception to raise instead.
-    `requests` records every request.
+    it. `errors` maps a route to an HTTP status or an exception to raise instead, or to a
+    list of them, used up one per request. `requests` records every request.
+    `new_lookup()` gives another FactLookup on the same services and cache, like a later
+    show.
     """
 
     def __init__(self, cache_dir: Path) -> None:
@@ -168,9 +170,13 @@ class FakeFactServices:
             path.stem: json.loads(path.read_text(encoding="utf-8"))
             for path in FACTS_FIXTURES.glob("*.json")
         }
-        self.errors: dict[str, int | Exception] = {}
-        client = httpx.Client(transport=httpx.MockTransport(self._handle))
-        self.lookup = FactLookup(cache_dir, http=client)
+        self.errors: dict[str, int | Exception | list[int | Exception]] = {}
+        self._cache_dir = cache_dir
+        self._client = httpx.Client(transport=httpx.MockTransport(self._handle))
+        self.lookup = self.new_lookup()
+
+    def new_lookup(self) -> FactLookup:
+        return FactLookup(self._cache_dir, http=self._client)
 
     @staticmethod
     def route(request: httpx.Request) -> str:
@@ -187,6 +193,8 @@ class FakeFactServices:
         self.requests.append(request)
         route = self.route(request)
         error = self.errors.get(route)
+        if isinstance(error, list):
+            error = error.pop(0) if error else None
         if isinstance(error, Exception):
             raise error
         if error is not None:

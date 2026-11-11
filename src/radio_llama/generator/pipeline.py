@@ -19,7 +19,7 @@ from radio_llama.voice.base import TextToSpeech
 from radio_llama.voice.factory import voice_for
 
 # Facts kept per track once the looked-up ones are added. The host uses at most two.
-MAX_TRACK_FACTS = 4
+MAX_TRACK_FACTS = 5
 
 
 class PipelineGenerator:

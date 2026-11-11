@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from radio_llama import facts
-from radio_llama.facts import USER_AGENT, cache_key, musicbrainz_artist_fact
+from radio_llama.facts import USER_AGENT, cache_key, musicbrainz_artist_fact, usable_sentences
 from tests.conftest import FakeFactServices
 
 KEVIN_MBID = "8292bf44-2dd1-4bad-8019-276ec38f28e7"
@@ -42,7 +42,9 @@ def test_full_chain_in_english(fake_facts: FakeFactServices) -> None:
 
 
 def test_requests_follow_the_matching_chain(fake_facts: FakeFactServices) -> None:
-    fake_facts.lookup.artist_facts('Kevin "KM" MacLeod', "en")
+    name = 'Kevin "KM" MacLeod'  # quotes to escape in the query
+    fake_facts.replies["musicbrainz_artist_search"]["artists"][0]["name"] = name
+    fake_facts.lookup.artist_facts(name, "en")
 
     search, artist, wikidata, summary = fake_facts.requests
     assert search.url.params["query"] == 'artist:"Kevin \\"KM\\" MacLeod"'
@@ -83,13 +85,28 @@ def test_a_page_in_the_other_language_is_used_when_the_show_language_has_none(
     assert found[0].source_url == "https://fr.wikipedia.org/wiki/Kevin_MacLeod_(musicien)"
 
 
+def test_a_top_hit_with_another_name_gives_no_facts(fake_facts: FakeFactServices) -> None:
+    # Recorded live: a search for "MacLeod" scores Kevin MacLeod 100.
+    other_name = fake_facts.replies["musicbrainz_artist_search_other_name"]
+    fake_facts.replies["musicbrainz_artist_search"] = other_name
+
+    assert fake_facts.lookup.artist_facts("MacLeod", "en") == []
+    assert fake_facts.routes() == ["musicbrainz_artist_search"]
+
+
+def test_an_alias_counts_as_the_same_name(fake_facts: FakeFactServices) -> None:
+    other_name = fake_facts.replies["musicbrainz_artist_search_other_name"]
+    fake_facts.replies["musicbrainz_artist_search"] = other_name
+
+    found = fake_facts.lookup.artist_facts(" kevin  mcleod", "en")
+
+    assert found[-1].text == MUSICBRAINZ_FACT
+
+
 def test_a_low_score_gives_no_facts(fake_facts: FakeFactServices) -> None:
-    # The two other Kevin MacLeods of the recorded search score 73.
-    search = fake_facts.replies["musicbrainz_artist_search"]
-    search["artists"] = search["artists"][1:]
+    fake_facts.replies["musicbrainz_artist_search"]["artists"][0]["score"] = 89
 
     assert fake_facts.lookup.artist_facts("Kevin MacLeod", "en") == []
-    assert fake_facts.routes() == ["musicbrainz_artist_search"]
 
 
 def test_no_search_result_gives_no_facts(fake_facts: FakeFactServices) -> None:
@@ -117,11 +134,21 @@ def test_a_disambiguation_page_is_skipped(fake_facts: FakeFactServices) -> None:
     assert [fact.text for fact in found] == [MUSICBRAINZ_FACT]
 
 
-@pytest.mark.parametrize("route", ["musicbrainz_artist", "wikidata_entity", "wikipedia_summary_en"])
-def test_an_http_error_gives_no_facts(fake_facts: FakeFactServices, route: str) -> None:
-    fake_facts.errors[route] = 500
+def test_a_musicbrainz_error_gives_no_facts(fake_facts: FakeFactServices) -> None:
+    fake_facts.errors["musicbrainz_artist"] = 500
 
     assert fake_facts.lookup.artist_facts("Kevin MacLeod", "en") == []
+
+
+@pytest.mark.parametrize("route", ["wikidata_entity", "wikipedia_summary_en"])
+def test_a_wikimedia_error_keeps_the_musicbrainz_fact(
+    fake_facts: FakeFactServices, route: str
+) -> None:
+    fake_facts.errors[route] = 500
+
+    found = fake_facts.lookup.artist_facts("Kevin MacLeod", "en")
+
+    assert [fact.text for fact in found] == [MUSICBRAINZ_FACT]
 
 
 def test_a_busy_musicbrainz_is_tried_twice_then_gives_no_facts(
@@ -134,10 +161,30 @@ def test_a_busy_musicbrainz_is_tried_twice_then_gives_no_facts(
     assert "HTTP 503" in caplog.text
 
 
-def test_a_timeout_gives_no_facts(fake_facts: FakeFactServices) -> None:
-    fake_facts.errors["wikidata_entity"] = httpx.ReadTimeout("too slow")
+def test_a_musicbrainz_timeout_is_tried_twice_then_gives_no_facts(
+    fake_facts: FakeFactServices,
+) -> None:
+    fake_facts.errors["musicbrainz_artist_search"] = httpx.ReadTimeout("too slow")
 
     assert fake_facts.lookup.artist_facts("Kevin MacLeod", "en") == []
+    assert fake_facts.routes() == ["musicbrainz_artist_search"] * 2
+
+
+def test_a_lost_connection_to_musicbrainz_is_tried_again(fake_facts: FakeFactServices) -> None:
+    fake_facts.errors["musicbrainz_artist"] = [httpx.ConnectError("reset")]
+
+    found = fake_facts.lookup.artist_facts("Kevin MacLeod", "en")
+
+    assert len(found) == 3
+    assert fake_facts.routes() == [*CHAIN[:2], *CHAIN[1:], "wikipedia_summary_en"]
+
+
+def test_a_wikimedia_timeout_keeps_the_musicbrainz_fact(fake_facts: FakeFactServices) -> None:
+    fake_facts.errors["wikidata_entity"] = httpx.ReadTimeout("too slow")
+
+    found = fake_facts.lookup.artist_facts("Kevin MacLeod", "en")
+
+    assert [fact.text for fact in found] == [MUSICBRAINZ_FACT]
 
 
 def test_a_reply_that_is_not_json_gives_no_facts(tmp_path: Path) -> None:
@@ -148,25 +195,38 @@ def test_a_reply_that_is_not_json_gives_no_facts(tmp_path: Path) -> None:
 
 
 def test_an_unexpected_shape_gives_no_facts(fake_facts: FakeFactServices) -> None:
-    fake_facts.replies["wikidata_entity"] = {"entities": "none"}
+    fake_facts.replies["musicbrainz_artist_search"] = {"artists": "none"}
 
     assert fake_facts.lookup.artist_facts("Kevin MacLeod", "en") == []
 
 
-def test_a_failed_lookup_is_not_cached(fake_facts: FakeFactServices) -> None:
+def test_a_partial_answer_is_not_cached(fake_facts: FakeFactServices) -> None:
     fake_facts.errors["wikipedia_summary_en"] = 500
-    assert fake_facts.lookup.artist_facts("Kevin MacLeod", "en") == []
+    assert len(fake_facts.lookup.artist_facts("Kevin MacLeod", "en")) == 1
 
     del fake_facts.errors["wikipedia_summary_en"]
 
-    assert len(fake_facts.lookup.artist_facts("Kevin MacLeod", "en")) == 3
+    # A later show reaches Wikipedia.
+    assert len(fake_facts.new_lookup().artist_facts("Kevin MacLeod", "en")) == 3
+
+
+def test_a_failure_is_remembered_for_the_rest_of_the_show(fake_facts: FakeFactServices) -> None:
+    fake_facts.errors["musicbrainz_artist_search"] = 503
+    assert fake_facts.lookup.artist_facts("Kevin MacLeod", "en") == []
+    fake_facts.requests.clear()
+
+    assert fake_facts.lookup.artist_facts("Kevin MacLeod", "en") == []
+    assert fake_facts.requests == []
+    # Not on disk: a later show tries again.
+    fake_facts.new_lookup().artist_facts("Kevin MacLeod", "en")
+    assert fake_facts.requests != []
 
 
 def test_a_cached_result_makes_no_request(fake_facts: FakeFactServices, tmp_path: Path) -> None:
     first = fake_facts.lookup.artist_facts("Kevin MacLeod", "en")
     fake_facts.requests.clear()
 
-    again = fake_facts.lookup.artist_facts("  kevin macleod ", "en")
+    again = fake_facts.new_lookup().artist_facts("  kevin macleod ", "en")
 
     assert again == first
     assert fake_facts.requests == []
@@ -181,7 +241,7 @@ def test_a_cached_miss_makes_no_request(fake_facts: FakeFactServices) -> None:
     assert fake_facts.lookup.artist_facts("Nobody Knows Me", "en") == []
     fake_facts.requests.clear()
 
-    assert fake_facts.lookup.artist_facts("Nobody Knows Me", "en") == []
+    assert fake_facts.new_lookup().artist_facts("Nobody Knows Me", "en") == []
     assert fake_facts.requests == []
 
 
@@ -218,6 +278,11 @@ def test_musicbrainz_requests_are_a_second_apart(
             {"type": "Person", "area": {"name": "United Kingdom"}},
             "X is a solo artist from the United Kingdom.",
         ),
+        (
+            {"type": "Group", "area": {"name": "Faroe Islands"}},
+            "X is a group from the Faroe Islands.",
+        ),
+        ({"type": "Person", "area": {"name": "Gambia"}}, "X is a solo artist from the Gambia."),
     ],
 )
 def test_musicbrainz_artist_sentence(artist: dict, sentence: str) -> None:
@@ -230,3 +295,22 @@ def test_musicbrainz_artist_sentence(artist: dict, sentence: str) -> None:
 
 def test_musicbrainz_artist_with_only_a_type_gives_no_sentence() -> None:
     assert musicbrainz_artist_fact({"id": "abc", "name": "X", "type": "Person"}) is None
+
+
+def test_sentences_do_not_end_after_abbreviations_or_initials() -> None:
+    assert usable_sentences("He was born in St. Louis, Missouri, and raised in Chicago.", 2) == [
+        "He was born in St. Louis, Missouri, and raised in Chicago."
+    ]
+    text = "J. S. Bach toured the U.S. in a dream. He came back. Then he wrote a new suite."
+    assert usable_sentences(text, 2) == [
+        "J. S. Bach toured the U.S. in a dream.",
+        "Then he wrote a new suite.",
+    ]
+
+
+def test_sentences_end_before_a_capital_or_a_quote_only() -> None:
+    text = 'The band formed in 2004. "Rain" was their first single. it sold 10 copies. ok.'
+    assert usable_sentences(text, 3) == [
+        "The band formed in 2004.",
+        '"Rain" was their first single. it sold 10 copies. ok.',
+    ]

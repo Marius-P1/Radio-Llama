@@ -1,0 +1,67 @@
+{
+  "created": "2026-11-11T19:55:18.909Z",
+  "count": 175,
+  "offset": 0,
+  "artists": [
+    {
+      "id": "8292bf44-2dd1-4bad-8019-276ec38f28e7",
+      "type": "Person",
+      "score": 100,
+      "name": "Kevin MacLeod",
+      "sort-name": "MacLeod, Kevin",
+      "country": "US",
+      "life-span": {
+        "begin": "1972-09-28",
+        "ended": null
+      },
+      "disambiguation": "royalty‐free library music composer",
+      "area": {
+        "name": "United States"
+      },
+      "aliases": [
+        {
+          "name": "Kevin McLoud",
+          "sort-name": "Kevin McLoud"
+        },
+        {
+          "name": "Kevin MacLoud",
+          "sort-name": "Kevin MacLoud"
+        },
+        {
+          "name": "Kevin McLeod",
+          "sort-name": "Kevin McLeod"
+        }
+      ]
+    },
+    {
+      "id": "8a53e168-c1f1-4b55-ac96-da3a69d9e240",
+      "type": "Person",
+      "score": 86,
+      "name": "Doug MacLeod",
+      "sort-name": "MacLeod, Doug",
+      "country": "US",
+      "life-span": {
+        "begin": "1946-04-21",
+        "ended": null
+      },
+      "area": {
+        "name": "United States"
+      }
+    },
+    {
+      "id": "c4ef41ee-66a3-40a5-b129-f15848e9acc0",
+      "type": "Person",
+      "score": 86,
+      "name": "MacLeod Andrews",
+      "sort-name": "Andrews, MacLeod",
+      "country": "US",
+      "life-span": {
+        "ended": null
+      },
+      "disambiguation": "US actor/voice actor",
+      "area": {
+        "name": "United States"
+      }
+    }
+  ]
+}

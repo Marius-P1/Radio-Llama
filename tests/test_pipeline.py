@@ -365,6 +365,13 @@ def test_wish_on_the_catalog_fails(
 # artist with the recorded Kevin MacLeod pages.
 
 WIKIPEDIA_FIRST = "Kevin MacLeod is an American composer and music producer."
+JAMENDO_ARTISTS = ("Example Band", "Lea Example", "We Are FM")
+
+
+def _match_every_jamendo_artist(services: FakeFactServices) -> None:
+    """Give the recorded hit the fixture's artist names as aliases, so each one matches."""
+    hit = services.replies["musicbrainz_artist_search"]["artists"][0]
+    hit["aliases"] = [{"name": name} for name in JAMENDO_ARTISTS]
 
 
 def test_jamendo_tracks_get_looked_up_facts_after_their_own(
@@ -374,6 +381,7 @@ def test_jamendo_tracks_get_looked_up_facts_after_their_own(
     fake_facts: FakeFactServices,
     tmp_path: Path,
 ) -> None:
+    _match_every_jamendo_artist(fake_facts)
     llm = FakeLLM([CANNED])
     generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm, fake_facts)
 
@@ -468,6 +476,7 @@ def test_looked_up_facts_open_the_story_break(
 ) -> None:
     # "We Are FM" (jamendo-1004) has no usable description: no facts of its own.
     assert fake_jamendo.source.get_track("jamendo-1004").facts == []
+    _match_every_jamendo_artist(fake_facts)
     llm = FakeLLM([CANNED])
     without = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm)
     with_lookup = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm, fake_facts)
@@ -481,8 +490,8 @@ def test_merge_facts_drops_repeats_and_caps_the_list() -> None:
         return Fact(text=text, source_url="https://example.com")
 
     own = [fact("One."), fact("Two.")]
-    found = [fact("two."), fact("Three."), fact("Four."), fact("Five.")]
+    found = [fact("two."), fact("Three."), fact("Four."), fact("Five."), fact("Six.")]
 
     merged = merge_facts(own, found)
 
-    assert [f.text for f in merged] == ["One.", "Two.", "Three.", "Four."]
+    assert [f.text for f in merged] == ["One.", "Two.", "Three.", "Four.", "Five."]
