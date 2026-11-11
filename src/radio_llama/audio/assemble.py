@@ -7,7 +7,8 @@ one normalised MP3 per segment (`00-intro.mp3`, `01-song.mp3`, ...) and the join
 not this module, writes `show.json`. Three ffmpeg steps do the work (D014): songs are
 faded in and out (and cut to `DEMO_SONG_LENGTH_S` with `-t` in demo mode, D023), every
 piece is loudness-normalised with `loudnorm` and resampled to 44.1 kHz stereo, then the
-pieces are joined with the concat demuxer and encoded to MP3 once. The single-pass
+pieces are joined with the concat demuxer and encoded to constant-bitrate MP3 once, so
+browsers seek `show.mp3` exactly. The single-pass
 `loudnorm` is deliberate: a two-pass run would double the runtime for a gain in
 accuracy this project does not need.
 """
@@ -23,7 +24,10 @@ LOUDNORM = "loudnorm=I=-16:TP=-1.5:LRA=11"  # single-pass EBU R128 to -16 LUFS, 
 FADE_IN_S = 1.0  # song fade-in length in seconds
 FADE_OUT_S = 3.0  # song fade-out length in seconds, ending where the song ends
 DEMO_SONG_LENGTH_S = 30.0  # a demo show cuts each song here; a normal show plays it whole
-MP3_QUALITY = "4"  # libmp3lame VBR quality, about 165 kbps
+MP3_QUALITY = "4"  # libmp3lame VBR quality for the per-segment files, about 140 kbps in practice
+# The joined show.mp3 is constant bitrate. Browsers seek a VBR MP3 through its coarse Xing
+# table and land up to about 2 s from the asked position, while CBR seeks exactly.
+SHOW_BITRATE = "160k"
 
 _ENCODE = ["-ar", str(SAMPLE_RATE), "-ac", str(CHANNELS), "-c:a", "libmp3lame", "-q:a", MP3_QUALITY]
 
@@ -74,8 +78,8 @@ def concat_parts(parts: list[Path], dst: Path) -> None:
                 str(list_file),
                 "-c:a",
                 "libmp3lame",
-                "-q:a",
-                MP3_QUALITY,
+                "-b:a",
+                SHOW_BITRATE,
                 str(dst),
             ]
         )
