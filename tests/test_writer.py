@@ -213,7 +213,8 @@ def test_system_prompt_carries_the_clock_when_given() -> None:
     ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz", now=now).write_intro(TRACKS)
     ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz").write_intro(TRACKS)
 
-    assert "Sunday 8 November 2026, 16:45, in the afternoon" in llm.calls[0][0].content
+    assert "Sunday 8 November 2026, in the afternoon" in llm.calls[0][0].content
+    assert "16:45" not in llm.calls[0][0].content
     assert "Local time" not in llm.calls[1][0].content
 
 

@@ -4,6 +4,10 @@ The model has no clock. Without this line every show was an evening show, becaus
 old prompts said "tonight". The pipeline computes `now` once per show in the configured
 timezone; the names are written out here per language instead of relying on the
 machine's locale.
+
+The line gives the date and the part of the day, not the hour. A show is written once
+and heard later, after the listener has pressed play and the songs before the break
+have run, so any exact time the host says would be wrong by the time it is heard.
 """
 
 from datetime import datetime
@@ -57,10 +61,12 @@ PARTS_OF_DAY = {
     },
 }
 TEMPLATES = {
-    "en": "Local time: {weekday} {day} {month} {year}, {hour:02d}:{minute:02d}, {part}. "
-    "Greet everyone for this time of day.",
-    "fr": "Heure locale : {weekday} {day} {month} {year}, {hour} h {minute:02d}, {part}. "
-    "Salue l'auditeur selon ce moment de la journée.",
+    "en": "Local time: {weekday} {day} {month} {year}, {part}. "
+    "Greet everyone for this time of day, but never say the exact time: "
+    "the show is heard later than it is written.",
+    "fr": "Heure locale : {weekday} {day} {month} {year}, {part}. "
+    "Salue tout le monde selon ce moment de la journée, mais ne donne jamais "
+    "l'heure exacte : l'émission est écoutée plus tard qu'elle n'est écrite.",
 }
 
 
@@ -84,7 +90,5 @@ def time_line(now: datetime | None, language: str) -> str:
         day=now.day,
         month=MONTHS[language][now.month - 1],
         year=now.year,
-        hour=now.hour,
-        minute=now.minute,
         part=PARTS_OF_DAY[language][part_of_day(now.hour)],
     )

@@ -29,18 +29,22 @@ def test_time_line_in_english() -> None:
     now = datetime(2026, 11, 8, 16, 45, tzinfo=PARIS)  # a Sunday
 
     assert time_line(now, "en") == (
-        "Local time: Sunday 8 November 2026, 16:45, in the afternoon. "
-        "Greet everyone for this time of day."
+        "Local time: Sunday 8 November 2026, in the afternoon. "
+        "Greet everyone for this time of day, but never say the exact time: "
+        "the show is heard later than it is written."
     )
+    assert "16:45" not in time_line(now, "en")
 
 
 def test_time_line_in_french() -> None:
     now = datetime(2026, 11, 9, 7, 5, tzinfo=PARIS)
 
     assert time_line(now, "fr") == (
-        "Heure locale : lundi 9 novembre 2026, 7 h 05, le matin. "
-        "Salue l'auditeur selon ce moment de la journée."
+        "Heure locale : lundi 9 novembre 2026, le matin. "
+        "Salue tout le monde selon ce moment de la journée, mais ne donne jamais "
+        "l'heure exacte : l'émission est écoutée plus tard qu'elle n'est écrite."
     )
+    assert "7 h 05" not in time_line(now, "fr")
 
 
 def test_time_line_follows_the_timezone_of_now() -> None:
