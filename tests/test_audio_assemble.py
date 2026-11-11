@@ -165,6 +165,33 @@ def test_concat_parts_joins_files_end_to_end(tmp_path: Path) -> None:
     assert not dst.with_suffix(".txt").exists()
 
 
+def test_concat_parts_writes_a_constant_bitrate_file(tmp_path: Path) -> None:
+    part = tmp_path / "part.mp3"
+    _tone(part, 2.0)
+    dst = tmp_path / "joined.mp3"
+
+    concat_parts([part, part], dst)
+
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "a:0",
+            "-show_entries",
+            "stream=bit_rate",
+            "-of",
+            "default=nw=1:nk=1",
+            str(dst),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert int(result.stdout.strip()) == 160_000
+
+
 def test_concat_parts_handles_a_quote_in_the_path(tmp_path: Path) -> None:
     folder = tmp_path / "it's here"
     folder.mkdir()
