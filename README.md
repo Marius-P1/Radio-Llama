@@ -61,6 +61,18 @@ Without the catalog audio, CI and the tests use the fixture catalog of test tone
 5. Assemble the audio. ffmpeg fades each song in and out (and cuts it to 30 seconds in demo mode), normalises the loudness of every piece, then joins everything into one MP3. The joined file is constant bitrate, so browsers seek it exactly.
 6. Save and serve. `show.json` holds the script, the track list, the timings and the credits, next to `show.mp3`. The API serves both and the web app plays them.
 
+### The trace
+
+Every show keeps a record of what the host was told. It sits in `output/<show_id>/trace/`, one JSON Lines file per remote service, one line per call. `radio-llama script` has no show folder, so it writes its trace to `output/scripts/<show_id>/` and prints the path.
+
+- `llm.jsonl`: each call to the model, with a label (`intro`, `transition before <title> (<shape>)`, `outro`, `wish`), the provider and model, the full messages sent, the answer, the token counts.
+- `tts.jsonl`: each spoken segment, with the text, the voice, whether the cache answered, the file path and its size. Never the audio.
+- `jamendo.jsonl`: each Jamendo request with its parameters and the full JSON reply, and each audio download with its URL, path and size. The client id is left out.
+- `musicbrainz.jsonl`, `wikidata.jsonl`, `wikipedia.jsonl`: each facts request with its URL, parameters, HTTP status and full reply. A MusicBrainz retry is a second line.
+- `facts.jsonl`: facts answers served from the memory or disk cache, with the facts returned.
+
+Every line starts with the UTC time, the latency in seconds and the error text when the call failed. The trace is always on, the API and the player never show it, and the replay export leaves it behind. Reading a strange line in a show starts here: find the segment in `llm.jsonl` and read what the host was given.
+
 ### Layout
 
 - `src/radio_llama/`: the Python package.
@@ -76,6 +88,7 @@ Without the catalog audio, CI and the tests use the fixture catalog of test tone
   - `api/`: the FastAPI app, the `/api/v1` routes, the background jobs.
   - `cli.py`: the `radio-llama` command.
   - `storage.py`: reading and writing `show.json`.
+  - `trace.py`: the per-show record of every API call.
 - `prompts/en/` and `prompts/fr/`: system, intro, transition, outro and wish prompts, plus the personas and the break shapes, one folder per language.
 - `catalog/`: `catalog.json`, the download script and the checksums. See [catalog/README.md](catalog/README.md).
 - `frontend/`: the React web app. See [frontend/README.md](frontend/README.md).
