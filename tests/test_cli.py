@@ -84,7 +84,7 @@ def test_generate_with_too_many_tracks_fails_cleanly(cli_env: Path) -> None:
     assert "Traceback" not in result.output
 
 
-def test_script_prints_the_segments_and_writes_nothing(cli_env: Path) -> None:
+def test_script_prints_the_segments_and_writes_only_a_trace(cli_env: Path) -> None:
     result = runner.invoke(app, ["script", "--fake", "--style", "jazz", "--seed", "1"])
 
     assert result.exit_code == 0, result.output
@@ -94,7 +94,11 @@ def test_script_prints_the_segments_and_writes_nothing(cli_env: Path) -> None:
     assert result.output.count("[transition: ") == 2
     assert "This is a fake radio script." in result.output
     assert "LLM tokens:" in result.output
-    assert not cli_env.exists()
+    # No show folder, no audio: only the trace under output/scripts/<show-id>/ (D037).
+    assert [path.name for path in cli_env.iterdir()] == ["scripts"]
+    (trace_dir,) = (cli_env / "scripts").iterdir()
+    assert [path.name for path in trace_dir.iterdir()] == ["llm.jsonl"]
+    assert f"Trace in {trace_dir}" in result.output
 
 
 def test_script_jamendo_without_a_client_id_explains_the_variable(cli_env: Path) -> None:
