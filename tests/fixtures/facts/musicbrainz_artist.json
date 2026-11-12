@@ -1,0 +1,53 @@
+{
+  "id": "8292bf44-2dd1-4bad-8019-276ec38f28e7",
+  "name": "Kevin MacLeod",
+  "sort-name": "MacLeod, Kevin",
+  "type": "Person",
+  "country": "US",
+  "area": {
+    "name": "United States",
+    "iso-3166-1-codes": [
+      "US"
+    ]
+  },
+  "life-span": {
+    "ended": false,
+    "begin": "1972-09-28",
+    "end": null
+  },
+  "disambiguation": "royalty‐free library music composer",
+  "relations": [
+    {
+      "type": "bandcamp",
+      "target-type": "url",
+      "url": {
+        "resource": "https://kevinmacleod.bandcamp.com/",
+        "id": "98701a13-a15a-48f5-b5cb-5fccd62fcdae"
+      }
+    },
+    {
+      "type": "discogs",
+      "target-type": "url",
+      "url": {
+        "resource": "https://www.discogs.com/artist/4098499",
+        "id": "26c3923b-674b-4649-9420-aab32077d1af"
+      }
+    },
+    {
+      "type": "official homepage",
+      "target-type": "url",
+      "url": {
+        "id": "ab2d3e28-20fc-47cd-8b44-38bc3904e8f6",
+        "resource": "https://incompetech.com/"
+      }
+    },
+    {
+      "type": "wikidata",
+      "target-type": "url",
+      "url": {
+        "resource": "https://www.wikidata.org/wiki/Q16731782",
+        "id": "5e9441b7-5c1a-4ccf-bf91-8d4cfb5faade"
+      }
+    }
+  ]
+}
