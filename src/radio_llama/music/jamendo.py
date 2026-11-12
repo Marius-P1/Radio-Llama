@@ -18,6 +18,8 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, Field
 
+from radio_llama import trace
+from radio_llama.facts import usable_sentences
 from radio_llama.models import Energy, Fact, Track
 from radio_llama.music.base import MusicSourceError, UnknownTrackError
 
@@ -64,13 +66,10 @@ SPEED_ENERGY: dict[str, Energy] = {
 # Languages tried for the artist description, in order. English first, like the catalog facts.
 DESCRIPTION_LANGUAGES = ("en", "fr", "es", "de", "it", "pt")
 MAX_FACTS = 2
-MIN_FACT_WORDS = 4
-MAX_FACT_CHARS = 300
 
 _LICENSE = re.compile(r"creativecommons\.org/licenses/([a-z-]+)/(\d+\.\d+)(?:/([a-z]{2}))?")
 _PUBLIC_DOMAIN = re.compile(r"creativecommons\.org/publicdomain/zero/(\d+\.\d+)")
 _TAGS = re.compile(r"<[^>]+>")
-_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 
 
 class JamendoError(MusicSourceError):
@@ -238,22 +237,36 @@ class JamendoSource:
 
     def _get(self, method: str, params: dict[str, str]) -> list[dict]:
         url = f"{API_URL}/{method}/"
+        # The trace (D037) gets the query without the client id, which is a secret. The
+        # reply echoes it too, in the audio URLs (`from=app-<client_id>`), so the whole
+        # record is redacted.
+        sent = {"method": method, "params": {"format": "json", **params}, "redact": self._client_id}
+        started = time.perf_counter()
         try:
-            response = self._http.get(
-                url, params={"client_id": self._client_id, "format": "json", **params}
-            )
+            response = self._http.get(url, params={"client_id": self._client_id, **sent["params"]})
         except httpx.HTTPError as exc:
+            trace.record("jamendo", started, error=str(exc), **sent, status=None, body=None)
             raise JamendoError(f"Jamendo is unreachable: {exc}") from exc
-        if response.status_code != 200:
-            raise JamendoError(f"Jamendo answered HTTP {response.status_code} for {method}.")
-        body = response.json()
-        headers = body.get("headers", {})
-        code = headers.get("code", 0)
-        if code != 0:
-            raise JamendoError(error_message(code, headers.get("error_message", "")))
-        return body.get("results", [])
+        status = response.status_code
+        body = trace.response_body(response)
+        error = _reply_error(method, status, body)
+        trace.record("jamendo", started, error=error, **sent, status=status, body=body)
+        if error is not None:
+            raise JamendoError(error)
+        return body.get("results", []) if isinstance(body, dict) else []
 
     def _download(self, url: str, path: Path) -> None:
+        sent = {"method": "download", "url": url, "path": str(path), "redact": self._client_id}
+        started = time.perf_counter()
+        try:
+            self._fetch_audio(url, path)
+        except (JamendoError, OSError) as exc:  # OSError: the disk, not Jamendo
+            trace.record("jamendo", started, error=str(exc), **sent, bytes=None)
+            raise
+        trace.record("jamendo", started, **sent, bytes=path.stat().st_size)
+        log.info("Fetched %s from Jamendo", path.name)
+
+    def _fetch_audio(self, url: str, path: Path) -> None:
         self._dir.mkdir(parents=True, exist_ok=True)
         part = path.with_suffix(".part")
         try:
@@ -268,7 +281,6 @@ class JamendoSource:
         except httpx.HTTPError as exc:
             raise JamendoError(f"Jamendo audio download failed: {exc}") from exc
         part.replace(path)
-        log.info("Fetched %s from Jamendo", path.name)
 
 
 def _style_of(raw: dict) -> str:
@@ -278,6 +290,19 @@ def _style_of(raw: dict) -> str:
         if tag in genres:
             return style
     return genres[0] if genres else ""
+
+
+def _reply_error(method: str, status: int, body: object) -> str | None:
+    """Why a `method` reply is unusable, or None: a bad status, no JSON object, an API error."""
+    if status != 200:
+        return f"Jamendo answered HTTP {status} for {method}."
+    if not isinstance(body, dict):
+        return f"Jamendo answered something other than JSON for {method}."
+    headers = body.get("headers", {})
+    code = headers.get("code", 0)
+    if code != 0:
+        return error_message(code, headers.get("error_message", ""))
+    return None
 
 
 def error_message(code: int, message: str) -> str:
@@ -338,7 +363,7 @@ def description_facts(description: dict[str, str], source_url: str) -> list[Fact
     """One Fact per usable sentence of the artist description, at most MAX_FACTS.
 
     The description is HTML written by the artist. The first language with text wins,
-    English first. A sentence is usable when it has a few words, no URL and a sane length.
+    English first. Sentences are picked like Wikipedia's (`facts.usable_sentences`).
     """
     text = ""
     for language in (*DESCRIPTION_LANGUAGES, *sorted(description)):
@@ -346,22 +371,13 @@ def description_facts(description: dict[str, str], source_url: str) -> list[Fact
             text = description[language]
             break
     plain = html.unescape(_TAGS.sub(" ", text))
-    plain = " ".join(plain.split())
-    facts = []
-    for sentence in _SENTENCE_END.split(plain):
-        sentence = sentence.strip()
-        words = sentence.split()
-        if len(words) < MIN_FACT_WORDS or len(sentence) > MAX_FACT_CHARS or "http" in sentence:
-            continue
-        facts.append(
-            Fact(
-                text=sentence,
-                about="artist",
-                source_url=source_url,
-                quote=sentence,
-                source_type="jamendo_artist_page",
-            )
+    return [
+        Fact(
+            text=sentence,
+            about="artist",
+            source_url=source_url,
+            quote=sentence,
+            source_type="jamendo_artist_page",
         )
-        if len(facts) == MAX_FACTS:
-            break
-    return facts
+        for sentence in usable_sentences(plain, MAX_FACTS)
+    ]

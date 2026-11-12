@@ -36,3 +36,6 @@ frontend/dist/
 # Python build artifacts
 dist/
 *.egg-info/
+
+# Screenshots and traces left by the Playwright MCP server
+.playwright-mcp/

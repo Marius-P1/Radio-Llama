@@ -1,0 +1,29 @@
+{
+  "entities": {
+    "Q16731782": {
+      "id": "Q16731782",
+      "type": "item",
+      "title": "Q16731782",
+      "sitelinks": {
+        "dewiki": {
+          "site": "dewiki",
+          "title": "Kevin MacLeod",
+          "badges": [],
+          "url": "https://de.wikipedia.org/wiki/Kevin_MacLeod"
+        },
+        "enwiki": {
+          "site": "enwiki",
+          "title": "Kevin MacLeod",
+          "badges": [],
+          "url": "https://en.wikipedia.org/wiki/Kevin_MacLeod"
+        },
+        "frwiki": {
+          "site": "frwiki",
+          "title": "Kevin MacLeod (musicien)",
+          "badges": [],
+          "url": "https://fr.wikipedia.org/wiki/Kevin_MacLeod_(musicien)"
+        }
+      }
+    }
+  }
+}

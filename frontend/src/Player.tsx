@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { audioUrl, getShow, type Segment, type ShowResponse, type Track } from './api'
-import { languageLabel, personaLabel, sourceTag, styleLabel } from './labels'
+import { factSourceLabel, languageLabel, personaLabel, sourceTag, styleLabel } from './labels'
 import { formatTime } from './time'
 
 type Props = {
@@ -138,8 +138,21 @@ function displayTitle(track: Track): string {
   return track.spoken_title ?? track.title
 }
 
+/** The distinct pages the track's facts come from, in order, each with a short label. */
+function factSources(track: Track): { url: string; label: string }[] {
+  const sources: { url: string; label: string }[] = []
+  for (const fact of track.facts ?? []) {
+    if (fact.source_url === '' || sources.some((source) => source.url === fact.source_url)) {
+      continue
+    }
+    sources.push({ url: fact.source_url, label: factSourceLabel(fact.source_type, fact.source_url) })
+  }
+  return sources
+}
+
 function Credit({ track }: { track: Track }) {
   const release = [track.album, track.year].filter((part) => part).join(', ')
+  const sources = factSources(track)
   return (
     <>
       <strong>{displayTitle(track)}</strong> by{' '}
@@ -155,6 +168,19 @@ function Credit({ track }: { track: Track }) {
         source
       </a>
       )
+      {sources.length > 0 && (
+        <span className="credit-facts">
+          Facts:{' '}
+          {sources.map((source, i) => (
+            <span key={source.url}>
+              {i > 0 && ', '}
+              <a href={source.url} target="_blank" rel="noreferrer">
+                {source.label}
+              </a>
+            </span>
+          ))}
+        </span>
+      )}
     </>
   )
 }

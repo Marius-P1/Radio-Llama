@@ -442,6 +442,13 @@ audio {
   overflow-wrap: anywhere;
 }
 
+/* Where the host's facts about the track come from, on a line of its own. */
+.credit-facts {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 /* Footer */
 
 footer {
