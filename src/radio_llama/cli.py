@@ -160,7 +160,8 @@ def script(
         show = generator.write_script(show)
     except EXPECTED_ERRORS as exc:
         typer.echo(f"Script failed: {exc}", err=True)
-        typer.echo(f"Trace in {trace_dir}", err=True)
+        if trace_dir.is_dir():  # nothing is written when the run fails before any call
+            typer.echo(f"Trace in {trace_dir}", err=True)
         raise typer.Exit(code=1) from None
 
     tracks_by_id = {track.id: track for track in show.tracks}

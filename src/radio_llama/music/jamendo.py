@@ -237,8 +237,10 @@ class JamendoSource:
 
     def _get(self, method: str, params: dict[str, str]) -> list[dict]:
         url = f"{API_URL}/{method}/"
-        # The trace (D037) gets the query without the client id, which is a secret.
-        sent = {"method": method, "params": {"format": "json", **params}}
+        # The trace (D037) gets the query without the client id, which is a secret. The
+        # reply echoes it too, in the audio URLs (`from=app-<client_id>`), so the whole
+        # record is redacted.
+        sent = {"method": method, "params": {"format": "json", **params}, "redact": self._client_id}
         started = time.perf_counter()
         try:
             response = self._http.get(url, params={"client_id": self._client_id, **sent["params"]})
@@ -247,27 +249,18 @@ class JamendoSource:
             raise JamendoError(f"Jamendo is unreachable: {exc}") from exc
         status = response.status_code
         body = trace.response_body(response)
-        error = None
-        if status != 200:
-            error = f"Jamendo answered HTTP {status} for {method}."
-        elif isinstance(body, dict):
-            headers = body.get("headers", {})
-            code = headers.get("code", 0)
-            if code != 0:
-                error = error_message(code, headers.get("error_message", ""))
+        error = _reply_error(method, status, body)
         trace.record("jamendo", started, error=error, **sent, status=status, body=body)
         if error is not None:
             raise JamendoError(error)
-        if not isinstance(body, dict):
-            raise JamendoError(f"Jamendo answered something other than JSON for {method}.")
-        return body.get("results", [])
+        return body.get("results", []) if isinstance(body, dict) else []
 
     def _download(self, url: str, path: Path) -> None:
-        sent = {"method": "download", "url": url, "path": str(path)}
+        sent = {"method": "download", "url": url, "path": str(path), "redact": self._client_id}
         started = time.perf_counter()
         try:
             self._fetch_audio(url, path)
-        except JamendoError as exc:
+        except (JamendoError, OSError) as exc:  # OSError: the disk, not Jamendo
             trace.record("jamendo", started, error=str(exc), **sent, bytes=None)
             raise
         trace.record("jamendo", started, **sent, bytes=path.stat().st_size)
@@ -297,6 +290,19 @@ def _style_of(raw: dict) -> str:
         if tag in genres:
             return style
     return genres[0] if genres else ""
+
+
+def _reply_error(method: str, status: int, body: object) -> str | None:
+    """Why a `method` reply is unusable, or None: a bad status, no JSON object, an API error."""
+    if status != 200:
+        return f"Jamendo answered HTTP {status} for {method}."
+    if not isinstance(body, dict):
+        return f"Jamendo answered something other than JSON for {method}."
+    headers = body.get("headers", {})
+    code = headers.get("code", 0)
+    if code != 0:
+        return error_message(code, headers.get("error_message", ""))
+    return None
 
 
 def error_message(code: int, message: str) -> str:

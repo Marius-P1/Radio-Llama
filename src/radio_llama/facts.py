@@ -214,7 +214,7 @@ class FactLookup:
         item = wikidata_id(artist)
         if item is None:
             return []
-        body = self._get(f"{WIKIDATA_URL}/{item}.json")
+        body = self._get("wikidata", f"{WIKIDATA_URL}/{item}.json")
         # A merged item redirects to another id, so take the one entity whatever its key.
         entity = next(iter(body["entities"].values()))
         sitelinks = entity.get("sitelinks") or {}
@@ -226,7 +226,9 @@ class FactLookup:
 
     def _summary_facts(self, language: str, title: str) -> list[Fact]:
         page = quote(title.replace(" ", "_"), safe="")
-        summary = self._get(f"https://{language}.wikipedia.org/api/rest_v1/page/summary/{page}")
+        summary = self._get(
+            "wikipedia", f"https://{language}.wikipedia.org/api/rest_v1/page/summary/{page}"
+        )
         if summary.get("type") != "standard":  # a disambiguation page, or no article
             return []
         url = summary["content_urls"]["desktop"]["page"]
@@ -252,8 +254,11 @@ class FactLookup:
                 if wait > 0:
                     time.sleep(wait)
             try:
-                response = self._send(
-                    f"{MUSICBRAINZ_URL}/{path}", {**params, "fmt": "json"}, attempt=attempt + 1
+                status, body = self._send(
+                    "musicbrainz",
+                    f"{MUSICBRAINZ_URL}/{path}",
+                    {**params, "fmt": "json"},
+                    attempt=attempt + 1,
                 )
             except httpx.TransportError:  # a timeout or a lost connection
                 if attempt == MUSICBRAINZ_RETRIES:
@@ -261,18 +266,20 @@ class FactLookup:
                 continue
             finally:
                 self._last_musicbrainz = time.monotonic()
-            if response.status_code != 503:
+            if status != 503:
                 break
-        return _json(response)
+        return _object("musicbrainz", status, body)
 
-    def _get(self, url: str) -> dict:
-        return _json(self._send(url))
+    def _get(self, service: str, url: str) -> dict:
+        return _object(service, *self._send(service, url))
 
     def _send(
-        self, url: str, params: dict[str, str] | None = None, attempt: int = 1
-    ) -> httpx.Response:
-        """One GET, recorded in the trace file of the service the URL names (D037)."""
-        service = httpx.URL(url).host.split(".")[-2]  # musicbrainz, wikidata or wikipedia
+        self, service: str, url: str, params: dict[str, str] | None = None, *, attempt: int = 1
+    ) -> tuple[int, object]:
+        """One GET: the HTTP status and the body, parsed once (text when it is not JSON).
+
+        The call is recorded in `<service>.jsonl` (D037), each attempt on its own line.
+        """
         sent = {"url": url, "params": params, "attempt": attempt}
         started = time.perf_counter()
         try:
@@ -281,11 +288,10 @@ class FactLookup:
             trace.record(service, started, error=str(exc), **sent, status=None, body=None)
             raise
         status = response.status_code
+        body = trace.response_body(response)
         error = None if status == 200 else f"HTTP {status}"
-        trace.record(
-            service, started, error=error, **sent, status=status, body=trace.response_body(response)
-        )
-        return response
+        trace.record(service, started, error=error, **sent, status=status, body=body)
+        return status, body
 
 
 def _record_cached(
@@ -302,13 +308,12 @@ def _record_cached(
     )
 
 
-def _json(response: httpx.Response) -> dict:
+def _object(service: str, status: int, body: object) -> dict:
     """The JSON object of a successful reply. Anything else raises FactLookupError."""
-    if response.status_code != 200:
-        raise FactLookupError(f"HTTP {response.status_code} from {response.url.host}")
-    body = response.json()
+    if status != 200:
+        raise FactLookupError(f"HTTP {status} from {service}")
     if not isinstance(body, dict):
-        raise FactLookupError(f"unexpected reply from {response.url.host}")
+        raise FactLookupError(f"unexpected reply from {service}")
     return body
 
 

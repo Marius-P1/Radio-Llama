@@ -101,6 +101,15 @@ def test_script_prints_the_segments_and_writes_only_a_trace(cli_env: Path) -> No
     assert f"Trace in {trace_dir}" in result.output
 
 
+def test_script_that_fails_before_any_call_names_no_trace(cli_env: Path) -> None:
+    result = runner.invoke(app, ["script", "--fake", "--style", "jazz", "--tracks", "99"])
+
+    assert result.exit_code == 1
+    assert "needed" in result.output
+    assert "Trace in" not in result.output
+    assert not cli_env.exists()
+
+
 def test_script_jamendo_without_a_client_id_explains_the_variable(cli_env: Path) -> None:
     result = runner.invoke(app, ["script", "--fake", "--style", "jazz", "--source", "jamendo"])
 

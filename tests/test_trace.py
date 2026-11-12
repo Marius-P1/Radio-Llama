@@ -5,6 +5,7 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
 import pytest
 
 from radio_llama import trace
@@ -12,7 +13,7 @@ from radio_llama.config import Settings
 from radio_llama.generator import PipelineGenerator, run_generation
 from radio_llama.llm import FakeLLM, LLMError, LLMResponse, Message
 from radio_llama.models import Show, ShowConfig
-from radio_llama.music import LocalCatalog
+from radio_llama.music import JamendoError, JamendoSource, LocalCatalog
 from radio_llama.trace import traced_generate, tracing
 from radio_llama.voice import CachedTextToSpeech, FakeTTS, Voice
 from tests.conftest import FakeFactServices, FakeJamendo
@@ -25,6 +26,8 @@ VOICE = Voice(voice_id="v1", model_id="m1", settings={"stability": 0.5})
 
 
 class FailingLLM:
+    provider = "failing"
+
     def generate(
         self, messages: list[Message], *, max_tokens: int, temperature: float
     ) -> LLMResponse:
@@ -90,6 +93,33 @@ def test_a_record_has_the_common_fields_then_the_call(tmp_path: Path) -> None:
     assert "Bonjour à tous" in (tmp_path / "tts.jsonl").read_text(encoding="utf-8")
 
 
+def test_a_secret_is_redacted_from_the_whole_line(tmp_path: Path) -> None:
+    with tracing(tmp_path):
+        trace.record("jamendo", 0.0, redact="s3cret", url="https://x/?from=app-s3cret")
+
+    (record,) = _records(tmp_path, "jamendo")
+    assert record["url"] == "https://x/?from=app-<redacted>"
+    assert "s3cret" not in (tmp_path / "jamendo.jsonl").read_text(encoding="utf-8")
+
+
+def test_a_record_that_cannot_be_written_is_logged_and_dropped(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    blocked = tmp_path / "file"
+    blocked.write_text("not a folder", encoding="utf-8")
+    with tracing(blocked / "trace"):
+        trace.record("llm", 0.0, label="x")  # the folder cannot be created
+    with tracing(tmp_path / "trace"):
+        trace.record("tts", 0.0, odd={1, 2})  # a set is not JSON
+
+    assert not (blocked / "trace").exists()
+    assert not (tmp_path / "trace").exists()
+    warnings = [r.message for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 2
+    assert warnings[0].startswith("Trace record for llm not written")
+    assert warnings[1].startswith("Trace record for tts not written")
+
+
 # LLM
 
 
@@ -121,7 +151,7 @@ def test_a_failed_llm_call_leaves_an_error_record(tmp_path: Path) -> None:
     (record,) = _records(tmp_path, "llm")
     assert record["error"] == "Fake provider: the model is out today"
     assert record["label"] == "outro"
-    assert record["provider"] == "FailingLLM"  # no provider name: the class name
+    assert record["provider"] == "failing"
     assert record["messages"][1]["content"] == "Hello"
     assert record["text"] is None
     assert record["model"] is None
@@ -158,6 +188,9 @@ def test_jamendo_records_carry_no_client_id(fake_jamendo: FakeJamendo, tmp_path:
         tracks = fake_jamendo.source.list_tracks("jazz")
         fake_jamendo.source.audio_path(tracks[0])
 
+    # The real API echoes the client id in every audio URL (`from=app-<client_id>`), and
+    # the fixture does the same.
+    assert "from=app-test-client-id" in fake_jamendo.source._stream_urls["jamendo-1001"]
     text = (tmp_path / "jamendo.jsonl").read_text(encoding="utf-8")
     assert "test-client-id" not in text
     assert "client_id" not in text
@@ -167,9 +200,11 @@ def test_jamendo_records_carry_no_client_id(fake_jamendo: FakeJamendo, tmp_path:
     assert search["params"]["format"] == "json"
     assert search["status"] == 200
     assert search["body"]["results"][0]["name"] == "Blue Window"
+    assert search["body"]["results"][0]["audio"].endswith("from=app-<redacted>")
     assert artists["method"] == "artists/musicinfo"
     assert download["method"] == "download"
     assert download["url"].startswith("https://prod-1.storage.jamendo.com/")
+    assert download["url"].endswith("from=app-<redacted>")
     assert download["path"].endswith("jamendo-1001.mp3")
     assert download["bytes"] == Path(download["path"]).stat().st_size > 0
     assert "body" not in download  # never the audio
@@ -183,6 +218,34 @@ def test_a_jamendo_api_error_is_recorded(fake_jamendo: FakeJamendo, tmp_path: Pa
     (record,) = _records(tmp_path, "jamendo")
     assert "rate limit" in record["error"]
     assert record["body"]["headers"]["code"] == 6
+
+
+def test_a_jamendo_reply_that_is_not_an_object_is_recorded_as_an_error(tmp_path: Path) -> None:
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json=["odd"]))
+    source = JamendoSource(
+        "test-client-id", tmp_path / "cache", http=httpx.Client(transport=transport)
+    )
+    with tracing(tmp_path), pytest.raises(JamendoError, match="other than JSON"):
+        source.list_tracks("jazz")
+
+    (record,) = _records(tmp_path, "jamendo")
+    assert "other than JSON" in record["error"]
+    assert record["status"] == 200
+    assert record["body"] == ["odd"]
+
+
+def test_a_failed_audio_write_is_recorded(fake_jamendo: FakeJamendo, tmp_path: Path) -> None:
+    tracks = fake_jamendo.source.list_tracks("jazz")
+    # The audio folder cannot be created: a file sits where it should go.
+    (fake_jamendo.source._dir.parent).mkdir(parents=True, exist_ok=True)
+    fake_jamendo.source._dir.write_text("in the way", encoding="utf-8")
+    with tracing(tmp_path), pytest.raises(OSError):
+        fake_jamendo.source.audio_path(tracks[0])
+
+    download = _records(tmp_path, "jamendo")[-1]
+    assert download["method"] == "download"
+    assert download["error"]
+    assert download["bytes"] is None
 
 
 # Facts

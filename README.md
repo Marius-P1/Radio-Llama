@@ -67,11 +67,11 @@ Every show keeps a record of what the host was told. It sits in `output/<show_id
 
 - `llm.jsonl`: each call to the model, with a label (`intro`, `transition before <title> (<shape>)`, `outro`, `wish`), the provider and model, the full messages sent, the answer, the token counts.
 - `tts.jsonl`: each spoken segment, with the text, the voice, whether the cache answered, the file path and its size. Never the audio.
-- `jamendo.jsonl`: each Jamendo request with its parameters and the full JSON reply, and each audio download with its URL, path and size. The client id is left out.
+- `jamendo.jsonl`: each Jamendo request with its parameters and the full JSON reply, and each audio download with its URL, path and size. The client id is redacted, in the query and in the audio URLs the reply echoes.
 - `musicbrainz.jsonl`, `wikidata.jsonl`, `wikipedia.jsonl`: each facts request with its URL, parameters, HTTP status and full reply. A MusicBrainz retry is a second line.
 - `facts.jsonl`: facts answers served from the memory or disk cache, with the facts returned.
 
-Every line starts with the UTC time, the latency in seconds and the error text when the call failed. The trace is always on, the API and the player never show it, and the replay export leaves it behind. Reading a strange line in a show starts here: find the segment in `llm.jsonl` and read what the host was given.
+Every line starts with the UTC time, the latency in seconds and the error text when the call failed. A line that cannot be written is logged and dropped; the trace never fails a show. The trace is always on, the API and the player never show it, and the replay export leaves it behind. Reading a strange line in a show starts here: find the segment in `llm.jsonl` and read what the host was given.
 
 ### Layout
 

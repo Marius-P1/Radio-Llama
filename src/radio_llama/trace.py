@@ -13,10 +13,12 @@ silent. Writes are synchronous: appending one record of a few kilobytes costs ab
 a millisecond on a laptop (measured for the MAR-15 PR), against calls that take seconds.
 
 Secrets never reach a trace: no API keys, no request headers, and the Jamendo client id is
-stripped by its caller.
+redacted from the written line. A record that cannot be written is logged and dropped: the
+trace never fails a show.
 """
 
 import json
+import logging
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -27,6 +29,8 @@ from pathlib import Path
 import httpx
 
 from radio_llama.llm.base import LLMClient, LLMError, LLMResponse, Message
+
+log = logging.getLogger(__name__)
 
 TRACE_DIR = "trace"  # under a show folder
 SCRIPTS_DIR = "scripts"  # under the output folder, for `radio-llama script`
@@ -54,11 +58,21 @@ def script_trace_dir(output_dir: Path, show_id: str) -> Path:
     return output_dir / SCRIPTS_DIR / show_id
 
 
-def record(service: str, started: float, *, error: str | None = None, **fields: object) -> None:
+def record(
+    service: str,
+    started: float,
+    *,
+    error: str | None = None,
+    redact: str | None = None,
+    **fields: object,
+) -> None:
     """Append one record to `<trace>/<service>.jsonl`. Nothing when no trace is current.
 
     `started` is the `time.perf_counter()` taken before the call; the latency is measured
-    here so every service records it the same way.
+    here so every service records it the same way. `redact` is a secret that the reply may
+    echo (the Jamendo client id sits in its audio URLs): every occurrence in the written
+    line becomes "<redacted>". A record that cannot be serialised or written is logged and
+    dropped, never raised.
     """
     folder = _current.get()
     if folder is None:
@@ -69,9 +83,15 @@ def record(service: str, started: float, *, error: str | None = None, **fields: 
         "error": error,
         **fields,
     }
-    folder.mkdir(parents=True, exist_ok=True)
-    with (folder / f"{service}.jsonl").open("a", encoding="utf-8") as file:
-        file.write(json.dumps(line, ensure_ascii=False) + "\n")
+    try:
+        text = json.dumps(line, ensure_ascii=False)
+        if redact:
+            text = text.replace(redact, "<redacted>")
+        folder.mkdir(parents=True, exist_ok=True)
+        with (folder / f"{service}.jsonl").open("a", encoding="utf-8") as file:
+            file.write(text + "\n")
+    except (OSError, TypeError, ValueError) as exc:
+        log.warning("Trace record for %s not written: %s", service, exc)
 
 
 def response_body(response: httpx.Response) -> object:
@@ -96,7 +116,7 @@ def traced_generate(
     """
     sent = {
         "label": label,
-        "provider": getattr(llm, "provider", type(llm).__name__),
+        "provider": llm.provider,
         "max_tokens": max_tokens,
         "temperature": temperature,
         "messages": [message.model_dump() for message in messages],
