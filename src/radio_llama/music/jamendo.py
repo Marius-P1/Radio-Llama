@@ -18,6 +18,7 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, Field
 
+from radio_llama import trace
 from radio_llama.facts import usable_sentences
 from radio_llama.models import Energy, Fact, Track
 from radio_llama.music.base import MusicSourceError, UnknownTrackError
@@ -236,22 +237,43 @@ class JamendoSource:
 
     def _get(self, method: str, params: dict[str, str]) -> list[dict]:
         url = f"{API_URL}/{method}/"
+        # The trace (D037) gets the query without the client id, which is a secret.
+        sent = {"method": method, "params": {"format": "json", **params}}
+        started = time.perf_counter()
         try:
-            response = self._http.get(
-                url, params={"client_id": self._client_id, "format": "json", **params}
-            )
+            response = self._http.get(url, params={"client_id": self._client_id, **sent["params"]})
         except httpx.HTTPError as exc:
+            trace.record("jamendo", started, error=str(exc), **sent, status=None, body=None)
             raise JamendoError(f"Jamendo is unreachable: {exc}") from exc
-        if response.status_code != 200:
-            raise JamendoError(f"Jamendo answered HTTP {response.status_code} for {method}.")
-        body = response.json()
-        headers = body.get("headers", {})
-        code = headers.get("code", 0)
-        if code != 0:
-            raise JamendoError(error_message(code, headers.get("error_message", "")))
+        status = response.status_code
+        body = trace.response_body(response)
+        error = None
+        if status != 200:
+            error = f"Jamendo answered HTTP {status} for {method}."
+        elif isinstance(body, dict):
+            headers = body.get("headers", {})
+            code = headers.get("code", 0)
+            if code != 0:
+                error = error_message(code, headers.get("error_message", ""))
+        trace.record("jamendo", started, error=error, **sent, status=status, body=body)
+        if error is not None:
+            raise JamendoError(error)
+        if not isinstance(body, dict):
+            raise JamendoError(f"Jamendo answered something other than JSON for {method}.")
         return body.get("results", [])
 
     def _download(self, url: str, path: Path) -> None:
+        sent = {"method": "download", "url": url, "path": str(path)}
+        started = time.perf_counter()
+        try:
+            self._fetch_audio(url, path)
+        except JamendoError as exc:
+            trace.record("jamendo", started, error=str(exc), **sent, bytes=None)
+            raise
+        trace.record("jamendo", started, **sent, bytes=path.stat().st_size)
+        log.info("Fetched %s from Jamendo", path.name)
+
+    def _fetch_audio(self, url: str, path: Path) -> None:
         self._dir.mkdir(parents=True, exist_ok=True)
         part = path.with_suffix(".part")
         try:
@@ -266,7 +288,6 @@ class JamendoSource:
         except httpx.HTTPError as exc:
             raise JamendoError(f"Jamendo audio download failed: {exc}") from exc
         part.replace(path)
-        log.info("Fetched %s from Jamendo", path.name)
 
 
 def _style_of(raw: dict) -> str:

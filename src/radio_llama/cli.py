@@ -17,6 +17,7 @@ from radio_llama.generator.lifecycle import EXPECTED_ERRORS
 from radio_llama.models import Show, ShowConfig
 from radio_llama.replay import export_replay, zip_replay
 from radio_llama.storage import new_show_id
+from radio_llama.trace import script_trace_dir
 
 app = typer.Typer(
     help="Radio Llama: an LLM radio host between Creative Commons songs.",
@@ -154,10 +155,12 @@ def script(
 
     now = datetime.now(UTC)
     show = Show(id=new_show_id(now), created_at=now, config=config)
+    trace_dir = script_trace_dir(settings.output_dir, show.id)
     try:
         show = generator.write_script(show)
     except EXPECTED_ERRORS as exc:
         typer.echo(f"Script failed: {exc}", err=True)
+        typer.echo(f"Trace in {trace_dir}", err=True)
         raise typer.Exit(code=1) from None
 
     tracks_by_id = {track.id: track for track in show.tracks}
@@ -174,6 +177,7 @@ def script(
     tokens_in = sum(response.input_tokens for response in generator.last_responses)
     tokens_out = sum(response.output_tokens for response in generator.last_responses)
     typer.echo(f"LLM tokens: {tokens_in} in, {tokens_out} out")
+    typer.echo(f"Trace in {trace_dir}")
 
 
 @app.command()

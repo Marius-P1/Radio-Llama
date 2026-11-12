@@ -31,6 +31,7 @@ from urllib.parse import quote
 import httpx
 from pydantic import TypeAdapter, ValidationError
 
+from radio_llama import trace
 from radio_llama.models import Fact
 
 log = logging.getLogger(__name__)
@@ -154,17 +155,24 @@ class FactLookup:
     def artist_facts(self, artist: str, language: str) -> list[Fact]:
         """Sourced facts about the artist, or [] when nothing is found."""
         key = cache_key(artist, language)
-        if key not in self._answers:
+        started = time.perf_counter()
+        if key in self._answers:
+            _record_cached(started, artist, language, "memory", self._answers[key])
+        else:
             self._answers[key] = self._find(artist, language, self._dir / f"{key}.json")
         return self._answers[key]
 
     def _find(self, artist: str, language: str, path: Path) -> list[Fact]:
         """From the disk cache, else from the services. Only a complete answer is cached."""
         if path.exists():
+            started = time.perf_counter()
             try:
-                return _FACT_LIST.validate_json(path.read_text(encoding="utf-8"))
+                found = _FACT_LIST.validate_json(path.read_text(encoding="utf-8"))
             except ValidationError:
                 log.warning("Ignoring a broken facts cache file: %s", path)
+            else:
+                _record_cached(started, artist, language, "disk", found)
+                return found
         try:
             data = self._musicbrainz_artist(artist)
             artist_fact = musicbrainz_artist_fact(data) if data is not None else None
@@ -244,7 +252,9 @@ class FactLookup:
                 if wait > 0:
                     time.sleep(wait)
             try:
-                response = self._send(f"{MUSICBRAINZ_URL}/{path}", {**params, "fmt": "json"})
+                response = self._send(
+                    f"{MUSICBRAINZ_URL}/{path}", {**params, "fmt": "json"}, attempt=attempt + 1
+                )
             except httpx.TransportError:  # a timeout or a lost connection
                 if attempt == MUSICBRAINZ_RETRIES:
                     raise
@@ -258,8 +268,38 @@ class FactLookup:
     def _get(self, url: str) -> dict:
         return _json(self._send(url))
 
-    def _send(self, url: str, params: dict[str, str] | None = None) -> httpx.Response:
-        return self._http.get(url, params=params, headers={"User-Agent": USER_AGENT})
+    def _send(
+        self, url: str, params: dict[str, str] | None = None, attempt: int = 1
+    ) -> httpx.Response:
+        """One GET, recorded in the trace file of the service the URL names (D037)."""
+        service = httpx.URL(url).host.split(".")[-2]  # musicbrainz, wikidata or wikipedia
+        sent = {"url": url, "params": params, "attempt": attempt}
+        started = time.perf_counter()
+        try:
+            response = self._http.get(url, params=params, headers={"User-Agent": USER_AGENT})
+        except httpx.HTTPError as exc:
+            trace.record(service, started, error=str(exc), **sent, status=None, body=None)
+            raise
+        status = response.status_code
+        error = None if status == 200 else f"HTTP {status}"
+        trace.record(
+            service, started, error=error, **sent, status=status, body=trace.response_body(response)
+        )
+        return response
+
+
+def _record_cached(
+    started: float, artist: str, language: str, where: str, facts: list[Fact]
+) -> None:
+    """One `facts.jsonl` line for an answer served from the memory or disk cache (D037)."""
+    trace.record(
+        "facts",
+        started,
+        artist=artist,
+        language=language,
+        cached=where,
+        facts=[fact.model_dump() for fact in facts],
+    )
 
 
 def _json(response: httpx.Response) -> dict:

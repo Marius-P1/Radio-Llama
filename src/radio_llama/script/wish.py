@@ -14,6 +14,7 @@ from radio_llama.models import Energy
 from radio_llama.music.jamendo import WishFilters
 from radio_llama.script.prompts import load_template, render
 from radio_llama.script.writer import UI_STRINGS, clean_script
+from radio_llama.trace import traced_generate
 
 # Enough for the model's thinking plus a few lines of JSON (D021).
 MAX_TOKENS = 2000
@@ -35,8 +36,12 @@ def map_wish(
         load_template(prompts_dir, language, "wish"),
         {"wish": wish, "style": style, "energy": energy or strings["any_energy"]},
     )
-    response = llm.generate(
-        [Message(role="user", content=user)], max_tokens=MAX_TOKENS, temperature=TEMPERATURE
+    response = traced_generate(
+        llm,
+        [Message(role="user", content=user)],
+        label="wish",
+        max_tokens=MAX_TOKENS,
+        temperature=TEMPERATURE,
     )
     text = clean_script(response.text)
     try:

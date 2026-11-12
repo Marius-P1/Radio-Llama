@@ -11,6 +11,7 @@ from radio_llama.script.clock import time_line
 from radio_llama.script.prompts import load_template, render
 from radio_llama.script.shapes import Shape
 from radio_llama.script.timing import SPEECH_SECONDS, word_budget
+from radio_llama.trace import traced_generate
 
 # Language-dependent strings that are not prompts: labels and short sentences the writer
 # puts into placeholder values.
@@ -173,7 +174,8 @@ class ScriptWriter:
             "host_notes": next_track.host_notes or UI_STRINGS[self._language]["no_notes"],
             "transcript": self.transcript_text(),
         }
-        return self._write("transition", values, shape.seconds)
+        label = f"transition before {next_track.display_title} ({shape.id})"
+        return self._write("transition", values, shape.seconds, label=label)
 
     def write_outro(self, tracks: list[Track]) -> str:
         values = {
@@ -189,7 +191,10 @@ class ScriptWriter:
             return strings["nothing_yet"]
         return "\n".join(f"- {strings['kinds'][kind]}: {text}" for kind, text in self.transcript)
 
-    def _write(self, kind: str, values: dict[str, str], seconds: float) -> str:
+    def _write(
+        self, kind: str, values: dict[str, str], seconds: float, label: str | None = None
+    ) -> str:
+        """One LLM call for `kind`. `label` names the call in the trace, `kind` by default."""
         system = render(
             load_template(self._prompts_dir, self._language, "system"),
             {
@@ -205,8 +210,10 @@ class ScriptWriter:
             load_template(self._prompts_dir, self._language, kind),
             {**values, "word_budget": str(budget)},
         )
-        response = self._llm.generate(
+        response = traced_generate(
+            self._llm,
             [Message(role="system", content=system), Message(role="user", content=user)],
+            label=label or kind,
             max_tokens=self._max_tokens,
             temperature=self._temperature,
         )

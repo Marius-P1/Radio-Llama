@@ -4,6 +4,8 @@ from radio_llama.llm.base import LLMResponse, Message
 
 
 class FakeLLM:
+    provider = "fake"
+
     def __init__(self, responses: list[str] | None = None) -> None:
         self._responses = responses or ["This is a fake radio script."]
         self._next = 0
