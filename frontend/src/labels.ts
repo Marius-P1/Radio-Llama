@@ -32,10 +32,11 @@ export function personaLabel(persona: string): string {
 
 /**
  * A voice name for a title or a sentence: the part before " - ". ElevenLabs names read
- * "Mark - Casual, Relaxed and Light"; the voice list shows them in full.
+ * "Mark - Casual, Relaxed and Light"; the voice list shows them in full. A name with
+ * nothing before the " - " is kept whole.
  */
 export function shortVoiceName(name: string): string {
-  return name.split(' - ')[0]
+  return name.split(' - ')[0].trim() || name
 }
 
 /** "Calm host", or "Calm host, voice Gabriel" when the listener picked a voice (D040). */

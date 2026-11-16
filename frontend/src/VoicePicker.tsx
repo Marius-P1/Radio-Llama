@@ -37,7 +37,7 @@ function words(label: string): string {
 function plain(text: string): string {
   return text
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
 }
 
@@ -73,7 +73,9 @@ export function VoicePicker({ voices, language, selectedId, onSelect, searchRef 
   const [sampleError, setSampleError] = useState<string | null>(null)
   // One audio element for every sample, so two samples never play together.
   const audioRef = useRef<HTMLAudioElement>(null)
+  // The scrolling list and, inside it, the button of the highlighted voice.
   const listRef = useRef<HTMLUListElement>(null)
+  const selectedRef = useRef<HTMLButtonElement>(null)
 
   // The sample stops when the picker leaves the page.
   useEffect(() => {
@@ -88,13 +90,21 @@ export function VoicePicker({ voices, language, selectedId, onSelect, searchRef 
   // scrolls.
   useEffect(() => {
     const list = listRef.current
-    const row = list?.querySelector('.voice-select[aria-pressed="true"]')
+    // null when the highlighted voice is not listed, or is hidden by the search.
+    const row = selectedRef.current
     if (!list || !row) return
     const rowBox = row.getBoundingClientRect()
     const listBox = list.getBoundingClientRect()
     if (rowBox.top < listBox.top) list.scrollTop -= listBox.top - rowBox.top
     else if (rowBox.bottom > listBox.bottom) list.scrollTop += rowBox.bottom - listBox.bottom
   }, [selectedId, language])
+
+  // A sample that cannot start and one that breaks while it plays end the same way: the
+  // button goes back to play and a line under the list names the voice.
+  const sampleFailed = (voice: VoiceOption) => {
+    setPlayingId((current) => (current === voice.id ? null : current))
+    setSampleError(`Could not play the sample of ${voice.name}.`)
+  }
 
   const toggleSample = (voice: VoiceOption) => {
     const audio = audioRef.current
@@ -113,8 +123,7 @@ export function VoicePicker({ voices, language, selectedId, onSelect, searchRef 
       // Stopping a sample or starting another one before this one began aborts it:
       // that is not a failure.
       if (err.name === 'AbortError') return
-      setPlayingId((current) => (current === voice.id ? null : current))
-      setSampleError(`Could not play the sample of ${voice.name}.`)
+      sampleFailed(voice)
     })
   }
 
@@ -123,20 +132,31 @@ export function VoicePicker({ voices, language, selectedId, onSelect, searchRef 
     ...new Set(voices.map((voice) => voice.gender).filter((g): g is string => !!g)),
   ]
 
-  // The search looks in the name, the accent, the tone and the native language.
-  const needle = plain(search.trim())
+  // The search finds the typed text anywhere in the name, the accent or the tone, read
+  // the way the row shows them (underscores as spaces). A native language is found from
+  // the start of its name only ("fr", "fra", "ang"): matched anywhere, "ch" would find
+  // every French voice through "French".
+  const needle = plain(words(search.trim()))
+  const matchesSearch = (voice: VoiceOption) => {
+    const shownTexts = [voice.name, voice.accent, voice.descriptive]
+    return (
+      shownTexts.some((text) => text && plain(words(text)).includes(needle)) ||
+      languageWords(voice.language).some((word) => plain(word).startsWith(needle))
+    )
+  }
   const shown = voices.filter(
     (voice) =>
-      (gender === null || voice.gender === gender) &&
-      (needle === '' ||
-        [voice.name, voice.accent, voice.descriptive, ...languageWords(voice.language)].some(
-          (text) => text && plain(text).includes(needle),
-        )),
+      (gender === null || voice.gender === gender) && (needle === '' || matchesSearch(voice)),
   )
-  // Voices made for the show's language first (ElevenLabs calls them verified). The
-  // others stay in the list: the multilingual model speaks both languages with any voice.
-  const verified = (voice: VoiceOption) => (voice.languages ?? []).includes(language)
-  const ordered = [...shown.filter(verified), ...shown.filter((voice) => !verified(voice))]
+  // Voices made for the show's language first: those ElevenLabs lists as verified for
+  // it, and those whose native language it is. The others stay in the list: the
+  // multilingual model speaks both languages with any voice.
+  const madeForShow = (voice: VoiceOption) =>
+    (voice.languages ?? []).includes(language) || voice.language === language
+  const ordered = [
+    ...shown.filter(madeForShow),
+    ...shown.filter((voice) => !madeForShow(voice)),
+  ]
 
   return (
     <div className="voice-picker">
@@ -171,7 +191,9 @@ export function VoicePicker({ voices, language, selectedId, onSelect, searchRef 
       </p>
 
       {ordered.length === 0 ? (
-        <p className="muted">No voice matches.</p>
+        <p className="muted" role="status">
+          No voice matches.
+        </p>
       ) : (
         <ul className="voice-list" ref={listRef}>
           {ordered.map((voice) => {
@@ -204,6 +226,7 @@ export function VoicePicker({ voices, language, selectedId, onSelect, searchRef 
                 <button
                   type="button"
                   className="voice-select"
+                  ref={voice.id === selectedId ? selectedRef : undefined}
                   aria-pressed={voice.id === selectedId}
                   onClick={() => onSelect(voice.id)}
                 >
@@ -217,13 +240,21 @@ export function VoicePicker({ voices, language, selectedId, onSelect, searchRef 
         </ul>
       )}
 
-      {sampleError !== null && <p className="error">{sampleError}</p>}
+      {sampleError !== null && (
+        <p className="error" role="alert">
+          {sampleError}
+        </p>
+      )}
 
       {/* No controls, so nothing is drawn: the row buttons drive it. */}
       <audio
         ref={audioRef}
         onEnded={() => setPlayingId(null)}
-        onError={() => setPlayingId(null)}
+        onError={() => {
+          // The sample broke while loading or playing, for example a link that expired.
+          const voice = voices.find((v) => v.id === playingId)
+          if (voice) sampleFailed(voice)
+        }}
       />
     </div>
   )
