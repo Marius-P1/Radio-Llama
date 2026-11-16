@@ -24,7 +24,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import AwareDatetime, BaseModel, Field, ValidationError
 
 from radio_llama import trace
 from radio_llama.models import Track
@@ -90,7 +90,7 @@ class CacheEntry(BaseModel):
 
     artist: str
     title: str
-    fetched_at: datetime
+    fetched_at: AwareDatetime  # a naive time cannot be aged, so it fails validation
     video: Video | None  # None: YouTube has no playable video for this song
 
 

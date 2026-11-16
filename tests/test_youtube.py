@@ -295,6 +295,23 @@ def test_an_expired_cache_entry_is_deleted(tmp_path: Path) -> None:
     assert fresh.exists()
 
 
+def test_a_naive_fetched_at_is_a_broken_entry(fake_youtube: FakeYouTube, tmp_path: Path) -> None:
+    """A timestamp without a zone cannot be aged against the clock: the entry is refreshed."""
+    folder = tmp_path / "cache" / "youtube"
+    folder.mkdir(parents=True)
+    path = folder / f"{cache_key(BLUE_WINDOW)}.json"
+    naive = {"artist": "Example Artist", "title": "Blue Window", "video": None}
+    naive["fetched_at"] = "2026-11-01T12:00:00"
+    path.write_text(json.dumps(naive), encoding="utf-8")
+
+    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+
+    assert track.video_id == "okTopic0001"
+    assert len(fake_youtube.searches()) == 1
+    refreshed = CacheEntry.model_validate_json(path.read_text(encoding="utf-8"))
+    assert refreshed.fetched_at.tzinfo is not None
+
+
 def test_a_broken_cache_file_is_replaced(fake_youtube: FakeYouTube, tmp_path: Path) -> None:
     folder = tmp_path / "cache" / "youtube"
     folder.mkdir(parents=True)
