@@ -154,6 +154,11 @@ export interface components {
             source: "catalog" | "jamendo" | "youtube";
             /** Style */
             style?: string | null;
+            /**
+             * Track Count
+             * @default 3
+             */
+            track_count: number;
             /** Voice Id */
             voice_id?: string | null;
             /** Wish */

@@ -7,7 +7,7 @@ import {
   type Options,
   type VoiceOption,
 } from './api'
-import { energyLabel, languageLabel, shortVoiceName, styleLabel } from './labels'
+import { energyLabel, languageLabel, shortVoiceName, songsLabel, styleLabel } from './labels'
 import { VoicePicker } from './VoicePicker'
 
 type Language = 'en' | 'fr'
@@ -16,6 +16,14 @@ type Source = CreateShowRequest['source']
 
 // The API caps the wish at this length (WISH_MAX_CHARS).
 const WISH_MAX_CHARS = 200
+
+// The show lengths offered, in songs (D041). The first one is preselected. The API
+// accepts 1 to 10.
+const SONG_COUNTS = [3, 5, 8, 10]
+// What one song adds to the estimated length, the host's break included: a full song,
+// or its 30 second excerpt in demo mode.
+const MINUTES_PER_SONG = 4
+const MINUTES_PER_SONG_DEMO = 1
 
 type Props = {
   onCreated: (id: string) => void
@@ -44,6 +52,8 @@ export function CreateShow({ onCreated }: Props) {
   // Free text that refines the song choice (D030). Optional on Jamendo and sent as null when
   // blank; the one required input on YouTube, which has no style (D039).
   const [wish, setWish] = useState('')
+  // How many songs the show has (D041).
+  const [trackCount, setTrackCount] = useState(SONG_COUNTS[0])
   // Off by default: the full songs play. A demo cuts each song to 30 seconds (D023).
   const [demo, setDemo] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -98,6 +108,8 @@ export function CreateShow({ onCreated }: Props) {
   // A source without styles (YouTube) needs the wish: it is the only thing to say (D039).
   const wishRequired = selectedSource !== undefined && styles.length === 0
   const canCreate = persona !== '' && (wishRequired ? wish.trim() !== '' : style !== '')
+  // The length estimates on the buttons follow the Demo checkbox.
+  const minutesPerSong = demo ? MINUTES_PER_SONG_DEMO : MINUTES_PER_SONG
 
   const chooseSource = (next: Source) => {
     setSource(next)
@@ -133,6 +145,7 @@ export function CreateShow({ onCreated }: Props) {
         energy,
         source,
         wish: selectedSource?.wish && wish.trim() !== '' ? wish.trim() : null,
+        track_count: trackCount,
         demo,
       }
       // The style goes only when one is chosen: a source without styles refuses one (D039).
@@ -323,7 +336,26 @@ export function CreateShow({ onCreated }: Props) {
       )}
 
       <fieldset disabled={busy}>
-        <legend>Song length</legend>
+        <legend>Show length</legend>
+        <div className="choices">
+          {SONG_COUNTS.map((count) => (
+            <button
+              key={count}
+              type="button"
+              className="choice length"
+              aria-pressed={count === trackCount}
+              onClick={() => setTrackCount(count)}
+            >
+              {/* The space is not drawn between the two lines. It keeps the two
+                  parts apart in the name a screen reader says. */}
+              <span>{songsLabel(count)}</span>{' '}
+              <span className="muted">about {count * minutesPerSong} min</span>
+            </button>
+          ))}
+        </div>
+        <p className="muted length-hint">
+          The whole show is made before it plays. More songs, a longer wait.
+        </p>
         <label className="checkbox">
           <input
             type="checkbox"
@@ -331,7 +363,7 @@ export function CreateShow({ onCreated }: Props) {
             onChange={(event) => setDemo(event.target.checked)}
           />
           Demo
-          <span className="muted">30 second excerpts, a faster show</span>
+          <span className="muted">30 seconds of each song instead of the full songs</span>
         </label>
       </fieldset>
 

@@ -21,6 +21,12 @@ WISH_MAX_CHARS = 200
 # lookup and out of the "Unknown voice" message. FastAPI's own 422 reply still repeats
 # the rejected value once, as it does for every field.
 VOICE_ID_MAX_CHARS = 100
+# How many songs a show made through the API may have (D041). The smallest style of the
+# real catalog has 11 tracks, so a catalog show of ten songs can always be filled. The
+# bound also keeps the wait reasonable, and a YouTube show's searches: one per song,
+# 100 a day. The CLI's --tracks has no such bound.
+TRACK_COUNT_MIN = 1
+TRACK_COUNT_MAX = 10
 
 
 class PersonaOption(BaseModel):
@@ -55,6 +61,8 @@ class CreateShowRequest(BaseModel):
     energy: Energy | None = None  # None: any energy (D020)
     source: MusicSourceName = "catalog"  # D029
     wish: str | None = Field(default=None, max_length=WISH_MAX_CHARS)  # Jamendo, YouTube (D030)
+    # The number of songs (D041). A count the source cannot fill gives a failed show.
+    track_count: int = Field(default=3, ge=TRACK_COUNT_MIN, le=TRACK_COUNT_MAX)
     demo: bool = False  # True: 30 s excerpts instead of full songs (D023)
 
 

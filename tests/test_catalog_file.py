@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from radio_llama.api.schemas import TRACK_COUNT_MAX
 from radio_llama.music.local_catalog import Catalog
 
 CATALOG_PATH = Path(__file__).resolve().parent.parent / "catalog" / "catalog.json"
@@ -28,7 +29,6 @@ ALLOWED_LICENSES = {
     "CC BY-NC-SA 4.0": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
 }
 EXPECTED_STYLES = {"electronic", "jazz", "lofi", "rock"}
-MIN_TRACKS_PER_STYLE = 3
 # Artist-Title.mp3 or Artist-Title-Qualifier.mp3, ASCII letters and digits only (D020).
 AUDIO_FILE = re.compile(r"^[A-Za-z0-9]+-[A-Za-z0-9]+(-[A-Za-z0-9]+)?\.mp3$")
 
@@ -70,5 +70,13 @@ def test_audio_files_are_unique(catalog: Catalog) -> None:
 def test_styles_match_the_decision(catalog: Catalog) -> None:
     per_style = Counter(track.style for track in catalog.tracks)
     assert set(per_style) == EXPECTED_STYLES
+
+
+def test_every_style_can_fill_the_longest_show(catalog: Catalog) -> None:
+    """The API accepts shows of up to TRACK_COUNT_MAX songs and promises that a catalog
+    show of that length can always be filled (D041)."""
+    per_style = Counter(track.style for track in catalog.tracks)
     for style, count in per_style.items():
-        assert count >= MIN_TRACKS_PER_STYLE, f"{style} has only {count} tracks"
+        assert count >= TRACK_COUNT_MAX, (
+            f"{style} has {count} tracks, the longest show needs {TRACK_COUNT_MAX}"
+        )

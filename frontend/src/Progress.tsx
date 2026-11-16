@@ -21,7 +21,7 @@ export function Progress({ id, onReady, onBack }: Props) {
         const current = await getShow(id)
         if (cancelled) return
         setShow(current)
-        // `status` is the end signal, not done == total: progress reaches 7/7 before assembly finishes.
+        // `status` is the end signal, not done == total: progress reaches its total before assembly finishes.
         if (current.status === 'ready') {
           onReady(id)
           return

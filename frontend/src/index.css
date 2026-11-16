@@ -204,6 +204,35 @@ button:focus-visible {
   border-color: var(--text);
 }
 
+/* A show length button has two lines: the number of songs, then the estimated
+   length in smaller muted text. Four of them fit one row on a wide screen;
+   a phone gets two rows of two (see Phones below). */
+.choice.length {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 20px;
+  line-height: 1.35;
+}
+
+/* The estimate stays on one line, so a button never grows to three lines. */
+.choice.length .muted {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* On the pressed button's lighter background the muted colour is too faint
+   for small text: the estimate takes the normal text colour there. */
+.choice.length[aria-pressed='true'] .muted {
+  color: var(--text);
+}
+
+/* The line between the show length buttons and the Demo checkbox. */
+.length-hint {
+  margin: 10px 0 14px;
+  font-size: 0.9rem;
+}
+
 /* The Demo checkbox: a native box in the accent colour, its hint in muted text. */
 .checkbox {
   display: flex;
@@ -605,6 +634,13 @@ footer {
 
   .actions .primary {
     width: 100%;
+  }
+
+  /* Two show length buttons per row, each half of the row. The side padding
+     is small so that two still fit on a 320 px screen. */
+  .choice.length {
+    flex: 1 1 40%;
+    padding: 8px;
   }
 
   /* The time range becomes a column as tall as the text: the start sits
