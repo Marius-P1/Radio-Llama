@@ -5,8 +5,8 @@ see `script/playlist.py`), and this source checks each proposal against YouTube:
 `search.list` for the proposal, then one `videos.list` on the ids it returned, keeping a
 video only when the embedded player can play it in full (public, processed, embeddable,
 not live, not age restricted, not blocked in the region, between one and twelve minutes).
-Among the kept videos the artist's own channel wins ("<Artist> - Topic", "VEVO" or
-"Official" in the channel name), else the first result.
+Among the kept videos the artist's own channel wins ("<Artist> - Topic", "VEVO" or the
+word "Official" in the channel name), else the first result.
 
 Nothing is downloaded: a YouTube track has no audio file, only a `video_id` that the
 player streams through the official embedded player. The search quota is small (100
@@ -48,9 +48,10 @@ LICENSE_URL = "https://www.youtube.com/t/terms"
 WATCH_URL = "https://www.youtube.com/watch?v="
 CHANNEL_URL = "https://www.youtube.com/channel/"
 # Channel names that mark an artist's own upload: auto-generated topic channels, VEVO,
-# and the usual "Official" suffix.
+# and the usual "Official" suffix. "Official" counts as a whole word: "Unofficial" does not.
 TOPIC_SUFFIX = " - Topic"
-OFFICIAL_WORDS = ("vevo", "official")
+VEVO = "vevo"
+_OFFICIAL = re.compile(r"\bofficial\b")
 
 # ISO 8601 duration as YouTube writes it: PT1H2M3S, PT3M33S, PT45S, or P0D for a live stream.
 _DURATION = re.compile(r"^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$")
@@ -288,8 +289,10 @@ def reject_reason(raw: dict, region: str) -> str | None:
 
 def is_official(channel_title: str) -> bool:
     """Whether a channel name looks like the artist's own: a topic channel, VEVO, Official."""
+    if channel_title.endswith(TOPIC_SUFFIX):
+        return True
     lowered = channel_title.casefold()
-    return channel_title.endswith(TOPIC_SUFFIX) or any(word in lowered for word in OFFICIAL_WORDS)
+    return VEVO in lowered or _OFFICIAL.search(lowered) is not None
 
 
 def parse_duration(text: str) -> float | None:
