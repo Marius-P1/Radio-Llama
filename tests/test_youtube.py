@@ -400,6 +400,16 @@ def test_get_track_knows_found_tracks_only(fake_youtube: FakeYouTube) -> None:
         fake_youtube.source.get_track("jazz-01")
 
 
+def test_get_track_forgets_the_previous_result(fake_youtube: FakeYouTube) -> None:
+    """The source keeps the last result only, so a long-lived server does not pile tracks up."""
+    fake_youtube.source.find_tracks([MONTREAL], style="jazz", minimum=1)
+    (track,) = fake_youtube.source.find_tracks([RED_LIGHTS], style="jazz", minimum=1)
+
+    assert fake_youtube.source.get_track("youtube-redLight001") is track
+    with pytest.raises(UnknownTrackError):
+        fake_youtube.source.get_track("youtube-montreal001")
+
+
 def test_audio_path_is_an_error(fake_youtube: FakeYouTube) -> None:
     (track,) = fake_youtube.source.find_tracks([MONTREAL], style="jazz", minimum=1)
 

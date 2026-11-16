@@ -105,7 +105,7 @@ class YouTubeSource:
         self._dir = cache_dir / "youtube"
         self._region = region
         self._http = http if http is not None else httpx.Client(timeout=TIMEOUT_S)
-        self._tracks: dict[str, Track] = {}  # every track built so far, for get_track
+        self._tracks: dict[str, Track] = {}  # the last find_tracks result, for get_track
 
     def list_styles(self) -> list[str]:
         return list(STYLES)
@@ -122,7 +122,8 @@ class YouTubeSource:
 
         Proposals are looked up until `minimum` tracks are found, so the spare proposals
         the writer adds cost no search unless an earlier one has no video. A video found
-        for two proposals is kept once.
+        for two proposals is kept once. `get_track` then knows this result only: the
+        pipeline uses the tracks of its own run and the dict must not grow with the server.
         """
         found: list[Track] = []
         seen: set[str] = set()
@@ -133,13 +134,12 @@ class YouTubeSource:
             if video is None or video.id in seen:
                 continue
             seen.add(video.id)
-            track = to_track(proposal, video, style)
-            self._tracks[track.id] = track
-            found.append(track)
+            found.append(to_track(proposal, video, style))
+        self._tracks = {track.id: track for track in found}
         return found
 
     def get_track(self, track_id: str) -> Track:
-        """A track built by this source. YouTube cannot tell the song from the video alone."""
+        """A track of the last `find_tracks` call. YouTube cannot tell the song from the video."""
         try:
             return self._tracks[track_id]
         except KeyError:
