@@ -25,9 +25,12 @@ export function energyLabel(energy: string | null | undefined): string {
   return capitalize(energy)
 }
 
-/** The length of a show in songs (D041): "1 song", "10 songs". */
+/**
+ * The length of a show in songs (D041): "1 song", "10 songs". \u00a0 is a non-breaking
+ * space, so a narrow screen never puts the number and the word on two lines.
+ */
 export function songsLabel(count: number): string {
-  return count === 1 ? '1 song' : `${count} songs`
+  return count === 1 ? '1\u00a0song' : `${count}\u00a0songs`
 }
 
 /** The persona id ("witty"), capitalised. The display name would need the options call. */

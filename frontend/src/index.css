@@ -221,6 +221,12 @@ button:focus-visible {
   white-space: nowrap;
 }
 
+/* On the pressed button's lighter background the muted colour is too faint
+   for small text: the estimate takes the normal text colour there. */
+.choice.length[aria-pressed='true'] .muted {
+  color: var(--text);
+}
+
 /* The line between the show length buttons and the Demo checkbox. */
 .length-hint {
   margin: 10px 0 14px;

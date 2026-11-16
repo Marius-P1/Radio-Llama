@@ -58,8 +58,11 @@ function ShowRow({ show, onOpen }: { show: ShowSummary; onOpen: (id: string) => 
       <span className="show-meta">
         {/* The style, or the wish for a show without one (YouTube, D039). */}
         {themeLabel(show.config) && <>{themeLabel(show.config)}, </>}
-        {songsLabel(show.config.track_count)}, {hostLabel(show.config)},{' '}
-        {languageLabel(show.config.language)}
+        {/* A show file written by hand may have no count: the songs part is then left out. */}
+        {typeof show.config.track_count === 'number' && (
+          <>{songsLabel(show.config.track_count)}, </>
+        )}
+        {hostLabel(show.config)}, {languageLabel(show.config.language)}
       </span>
       {sourceTag(show.config.source) && (
         <span className="tag">{sourceTag(show.config.source)}</span>

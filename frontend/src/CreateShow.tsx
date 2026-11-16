@@ -346,7 +346,9 @@ export function CreateShow({ onCreated }: Props) {
               aria-pressed={count === trackCount}
               onClick={() => setTrackCount(count)}
             >
-              <span>{songsLabel(count)}</span>
+              {/* The space is not drawn between the two lines. It keeps the two
+                  parts apart in the name a screen reader says. */}
+              <span>{songsLabel(count)}</span>{' '}
               <span className="muted">about {count * minutesPerSong} min</span>
             </button>
           ))}

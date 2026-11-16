@@ -63,8 +63,11 @@ export function Player({ id, onBack }: Props) {
       <h2>
         {/* A YouTube show has no style (D039): its wish is shown on the line below. */}
         {show.config.style && <>{styleLabel(show.config.style)} show, </>}
-        {songsLabel(show.config.track_count)}, {hostLabel(show.config)},{' '}
-        {languageLabel(show.config.language)}
+        {/* A show file written by hand may have no count: the songs part is then left out. */}
+        {typeof show.config.track_count === 'number' && (
+          <>{songsLabel(show.config.track_count)}, </>
+        )}
+        {hostLabel(show.config)}, {languageLabel(show.config.language)}
         {sourceTag(show.config.source) && (
           <>
             {' '}
