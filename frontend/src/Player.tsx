@@ -3,8 +3,8 @@ import { audioUrl, getShow, type ShowResponse, type Track } from './api'
 import {
   displayTitle,
   factSourceLabel,
+  hostLabel,
   languageLabel,
-  personaLabel,
   sourceTag,
   styleLabel,
 } from './labels'
@@ -62,7 +62,7 @@ export function Player({ id, onBack }: Props) {
       <h2>
         {/* A YouTube show has no style (D039): its wish is shown on the line below. */}
         {show.config.style && <>{styleLabel(show.config.style)} show, </>}
-        {personaLabel(show.config.persona)} host, {languageLabel(show.config.language)}
+        {hostLabel(show.config)}, {languageLabel(show.config.language)}
         {sourceTag(show.config.source) && (
           <>
             {' '}

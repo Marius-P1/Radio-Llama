@@ -30,6 +30,20 @@ export function personaLabel(persona: string): string {
   return capitalize(persona)
 }
 
+/**
+ * A voice name for a title or a sentence: the part before " - ". ElevenLabs names read
+ * "Mark - Casual, Relaxed and Light"; the voice list shows them in full.
+ */
+export function shortVoiceName(name: string): string {
+  return name.split(' - ')[0]
+}
+
+/** "Calm host", or "Calm host, voice Gabriel" when the listener picked a voice (D040). */
+export function hostLabel(config: ShowSummary['config']): string {
+  const host = `${personaLabel(config.persona)} host`
+  return config.voice_name ? `${host}, voice ${shortVoiceName(config.voice_name)}` : host
+}
+
 /** The music source as a short tag. The catalog is the default and gets no tag. */
 export function sourceTag(source: ShowSummary['config']['source']): string | null {
   if (source === 'jamendo') return 'Jamendo'
