@@ -60,8 +60,9 @@ export function Player({ id, onBack }: Props) {
       </button>
 
       <h2>
-        {styleLabel(show.config.style)} show, {personaLabel(show.config.persona)} host,{' '}
-        {languageLabel(show.config.language)}
+        {/* A YouTube show has no style (D039): its wish is shown on the line below. */}
+        {show.config.style && <>{styleLabel(show.config.style)} show, </>}
+        {personaLabel(show.config.persona)} host, {languageLabel(show.config.language)}
         {sourceTag(show.config.source) && (
           <>
             {' '}

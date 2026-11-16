@@ -15,14 +15,17 @@ type Props = {
 
 export function CreateShow({ onCreated }: Props) {
   const [options, setOptions] = useState<Options | null>(null)
-  // The music source: the local catalog, or Jamendo when the backend has a client id (D029).
+  // The music source: the local catalog, Jamendo or YouTube when the backend has their key
+  // (D029, D038).
   const [source, setSource] = useState<Source>('catalog')
+  // The style, or '' on a source that offers none: YouTube takes the wish instead (D039).
   const [style, setStyle] = useState('')
   const [persona, setPersona] = useState('')
   const [language, setLanguage] = useState<Language>('en')
   // null is "any energy": the backend then samples every track of the style.
   const [energy, setEnergy] = useState<Energy | null>(null)
-  // Free text that refines the Jamendo search; sent as null when blank (D030).
+  // Free text that refines the song choice (D030). Optional on Jamendo and sent as null when
+  // blank; the one required input on YouTube, which has no style (D039).
   const [wish, setWish] = useState('')
   // Off by default: the full songs play. A demo cuts each song to 30 seconds (D023).
   const [demo, setDemo] = useState(false)
@@ -51,10 +54,14 @@ export function CreateShow({ onCreated }: Props) {
   const personas = options?.personas[language] ?? []
   const selectedSource = options?.sources.find((s) => s.id === source)
   const styles = selectedSource?.styles ?? []
+  // A source without styles (YouTube) needs the wish: it is the only thing to say (D039).
+  const wishRequired = selectedSource !== undefined && styles.length === 0
+  const canCreate = persona !== '' && (wishRequired ? wish.trim() !== '' : style !== '')
 
   const chooseSource = (next: Source) => {
     setSource(next)
-    // Each source has its own styles: keep the style when both offer it, else take the first.
+    // Each source has its own styles: keep the style when both offer it, else take the
+    // first. A source without styles gets none.
     const available = options?.sources.find((s) => s.id === next)?.styles ?? []
     if (!available.includes(style)) setStyle(available[0] ?? '')
   }
@@ -70,8 +77,7 @@ export function CreateShow({ onCreated }: Props) {
     setBusy(true)
     setError(null)
     try {
-      const show = await createShow({
-        style,
+      const body: CreateShowRequest = {
         persona,
         language,
         generator: 'pipeline',
@@ -79,7 +85,10 @@ export function CreateShow({ onCreated }: Props) {
         source,
         wish: selectedSource?.wish && wish.trim() !== '' ? wish.trim() : null,
         demo,
-      })
+      }
+      // The style goes only when one is chosen: a source without styles refuses one (D039).
+      if (style !== '') body.style = style
+      const show = await createShow(body)
       onCreated(show.id)
     } catch (err) {
       setError((err as Error).message)
@@ -123,22 +132,39 @@ export function CreateShow({ onCreated }: Props) {
         </fieldset>
       )}
 
-      <fieldset disabled={busy}>
-        <legend>Music style</legend>
-        <div className="choices">
-          {styles.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className="choice"
-              aria-pressed={s === style}
-              onClick={() => setStyle(s)}
-            >
-              {styleLabel(s)}
-            </button>
-          ))}
-        </div>
-      </fieldset>
+      {/* With no style to pick (YouTube), the wish comes first and is required (D039). */}
+      {wishRequired ? (
+        <fieldset disabled={busy}>
+          <legend>What do you want to hear tonight?</legend>
+          <label className="wish">
+            <input
+              type="text"
+              value={wish}
+              required
+              maxLength={WISH_MAX_CHARS}
+              placeholder="90s French rap, upbeat / slow songs for a long drive / 80s Italian disco"
+              onChange={(event) => setWish(event.target.value)}
+            />
+          </label>
+        </fieldset>
+      ) : (
+        <fieldset disabled={busy}>
+          <legend>Music style</legend>
+          <div className="choices">
+            {styles.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className="choice"
+                aria-pressed={s === style}
+                onClick={() => setStyle(s)}
+              >
+                {styleLabel(s)}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <fieldset disabled={busy}>
         <legend>Language</legend>
@@ -174,7 +200,7 @@ export function CreateShow({ onCreated }: Props) {
         </div>
       </fieldset>
 
-      {selectedSource?.wish && (
+      {selectedSource?.wish && !wishRequired && (
         <fieldset disabled={busy}>
           <legend>Anything else?</legend>
           <label className="wish">
@@ -228,7 +254,7 @@ export function CreateShow({ onCreated }: Props) {
         <button
           type="button"
           className="primary"
-          disabled={busy || style === '' || persona === ''}
+          disabled={busy || !canCreate}
           onClick={submit}
         >
           {busy ? 'Starting...' : 'Create my show'}

@@ -10,6 +10,16 @@ export function styleLabel(style: string): string {
   return capitalize(style)
 }
 
+/**
+ * What the show is about: its style, or its wish in quotes when it has no style (a YouTube
+ * show, D039), or null when it has neither.
+ */
+export function themeLabel(config: ShowSummary['config']): string | null {
+  if (config.style) return styleLabel(config.style)
+  if (config.wish) return `"${config.wish}"`
+  return null
+}
+
 export function energyLabel(energy: string | null | undefined): string {
   if (energy === null || energy === undefined) return 'Any'
   return capitalize(energy)
