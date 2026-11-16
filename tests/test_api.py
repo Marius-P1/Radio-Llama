@@ -760,9 +760,20 @@ def test_song_count_out_of_range_is_a_422(client: TestClient) -> None:
         assert response.status_code == 422
         assert response.json()["detail"][0]["loc"] == ["body", "track_count"]
     assert client.get("/api/v1/shows").json() == []
-    # Both ends of the range are accepted.
-    for count in (1, 10):
-        assert _create(client, track_count=count)["config"]["track_count"] == count
+
+
+def test_both_ends_of_the_song_count_range_are_accepted(client: TestClient) -> None:
+    # One song: the shortest plan, with no break between songs.
+    created = _create(client, track_count=1)
+    show = client.get(f"/api/v1/shows/{created['id']}").json()
+
+    assert created["config"]["track_count"] == 1
+    assert show["status"] == "ready", show["error"]
+    assert [segment["kind"] for segment in show["segments"]] == ["intro", "song", "outro"]
+    assert len(show["tracks"]) == 1
+    # Ten songs pass validation. The tiny catalog has three per style, so that show fails
+    # later, like any count a source cannot fill.
+    assert _create(client, track_count=10)["config"]["track_count"] == 10
 
 
 def test_a_song_count_the_style_cannot_fill_gives_a_failed_show(client: TestClient) -> None:
