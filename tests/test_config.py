@@ -89,3 +89,18 @@ def test_env_example_lists_every_setting() -> None:
     names = set(re.findall(r"^([A-Z_]+)=$", ENV_EXAMPLE.read_text(encoding="utf-8"), re.MULTILINE))
     expected = {name.upper() for name in Settings.model_fields}
     assert names == expected
+
+
+def test_youtube_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = load_settings()
+    assert settings.youtube_api_key is None
+    assert settings.youtube_region == "FR"
+    with pytest.raises(ConfigError, match="YOUTUBE_API_KEY"):
+        settings.require_api_key("youtube")
+
+    monkeypatch.setenv("YOUTUBE_API_KEY", "yt-secret")
+    monkeypatch.setenv("YOUTUBE_REGION", "BE")
+    settings = load_settings()
+    assert settings.require_api_key("youtube") == "yt-secret"
+    assert "yt-secret" not in repr(settings)
+    assert settings.youtube_region == "BE"

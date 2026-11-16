@@ -4,16 +4,23 @@ from radio_llama.music.base import MusicSource, MusicSourceError, UnknownTrackEr
 from radio_llama.music.factory import SOURCE_NAMES, make_music_sources, missing_source_message
 from radio_llama.music.jamendo import JamendoError, JamendoSource, WishFilters
 from radio_llama.music.local_catalog import LocalCatalog
+from radio_llama.music.styles import STYLES
+from radio_llama.music.youtube import SongProposal, YouTubeError, YouTubeQuotaError, YouTubeSource
 
 __all__ = [
     "SOURCE_NAMES",
+    "STYLES",
     "JamendoError",
     "JamendoSource",
     "LocalCatalog",
     "MusicSource",
     "MusicSourceError",
+    "SongProposal",
     "UnknownTrackError",
     "WishFilters",
+    "YouTubeError",
+    "YouTubeQuotaError",
+    "YouTubeSource",
     "make_music_sources",
     "missing_source_message",
 ]

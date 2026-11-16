@@ -1,0 +1,151 @@
+{
+  "kind": "youtube#searchListResponse",
+  "etag": "fake-etag",
+  "regionCode": "FR",
+  "pageInfo": {"totalResults": 11, "resultsPerPage": 11},
+  "items": [
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e1",
+      "id": {"kind": "youtube#video", "videoId": "okPlain0001"},
+      "snippet": {
+        "publishedAt": "2019-05-02T10:00:00Z",
+        "channelId": "UCuploader001",
+        "title": "Example Artist - Blue Window (live in Lyon)",
+        "description": "Filmed at the club.",
+        "channelTitle": "Some Uploader",
+        "liveBroadcastContent": "none"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e2",
+      "id": {"kind": "youtube#video", "videoId": "noEmbed0001"},
+      "snippet": {
+        "publishedAt": "2016-01-10T10:00:00Z",
+        "channelId": "UCnoembed001",
+        "title": "Blue Window - Example Artist (album version)",
+        "description": "",
+        "channelTitle": "No Embeds Here",
+        "liveBroadcastContent": "none"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e3",
+      "id": {"kind": "youtube#video", "videoId": "liveNow0001"},
+      "snippet": {
+        "publishedAt": "2026-11-01T10:00:00Z",
+        "channelId": "UClive0000001",
+        "title": "Blue Window radio 24/7",
+        "description": "",
+        "channelTitle": "Live Jazz Stream",
+        "liveBroadcastContent": "live"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e4",
+      "id": {"kind": "youtube#video", "videoId": "tooLong0001"},
+      "snippet": {
+        "publishedAt": "2021-03-03T10:00:00Z",
+        "channelId": "UCmixes000001",
+        "title": "Blue Window extended mix",
+        "description": "",
+        "channelTitle": "Long Mixes",
+        "liveBroadcastContent": "none"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e5",
+      "id": {"kind": "youtube#video", "videoId": "ageRestr001"},
+      "snippet": {
+        "publishedAt": "2018-07-07T10:00:00Z",
+        "channelId": "UCrestrict001",
+        "title": "Blue Window (uncensored video)",
+        "description": "",
+        "channelTitle": "Restricted Uploads",
+        "liveBroadcastContent": "none"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e6",
+      "id": {"kind": "youtube#video", "videoId": "blockedFR01"},
+      "snippet": {
+        "publishedAt": "2017-09-09T10:00:00Z",
+        "channelId": "UCblocked0001",
+        "title": "Blue Window (not in France)",
+        "description": "",
+        "channelTitle": "Elsewhere Records",
+        "liveBroadcastContent": "none"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e7",
+      "id": {"kind": "youtube#video", "videoId": "okTopic0001"},
+      "snippet": {
+        "publishedAt": "2015-03-21T10:00:00Z",
+        "channelId": "UCtopic000001",
+        "title": "Blue Window",
+        "description": "Provided to YouTube by Example Records",
+        "channelTitle": "Example Artist - Topic",
+        "liveBroadcastContent": "none"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e8",
+      "id": {"kind": "youtube#video", "videoId": "montreal001"},
+      "snippet": {
+        "publishedAt": "2013-11-11T10:00:00Z",
+        "channelId": "UClea00000001",
+        "title": "Montreal Streets",
+        "description": "",
+        "channelTitle": "Lea Example",
+        "liveBroadcastContent": "none"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e9",
+      "id": {"kind": "youtube#video", "videoId": "nightTrn001"},
+      "snippet": {
+        "publishedAt": "2020-02-02T10:00:00Z",
+        "channelId": "UCvevo0000001",
+        "title": "We Are FM - Night Train (Official Video)",
+        "description": "",
+        "channelTitle": "WeAreFMVEVO",
+        "liveBroadcastContent": "none"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e10",
+      "id": {"kind": "youtube#video", "videoId": "redLight001"},
+      "snippet": {
+        "publishedAt": "2022-06-06T10:00:00Z",
+        "channelId": "UCrecords0001",
+        "title": "Red Lights",
+        "description": "",
+        "channelTitle": "Example Records Official",
+        "liveBroadcastContent": "none"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "etag": "e11",
+      "id": {"kind": "youtube#video", "videoId": "slowRivr001"},
+      "snippet": {
+        "publishedAt": "2014-04-04T10:00:00Z",
+        "channelId": "UCriver000001",
+        "title": "Slow River (lyrics)",
+        "description": "",
+        "channelTitle": "River Uploads",
+        "liveBroadcastContent": "none"
+      }
+    }
+  ]
+}
