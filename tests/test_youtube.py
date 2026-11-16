@@ -23,6 +23,7 @@ from radio_llama.music.youtube import (
     cache_key,
     is_official,
     parse_duration,
+    read_cache,
     reject_reason,
 )
 from radio_llama.trace import tracing
@@ -277,6 +278,21 @@ def test_a_cache_entry_older_than_30_days_is_refreshed(
     assert len(fake_youtube.searches()) == 1
     refreshed = CacheEntry.model_validate_json(path.read_text(encoding="utf-8"))
     assert refreshed.fetched_at > old.fetched_at
+
+
+def test_an_expired_cache_entry_is_deleted(tmp_path: Path) -> None:
+    """API data never stays on disk past the 30 days, even when no refresh follows."""
+    expired = tmp_path / "expired.json"
+    fresh = tmp_path / "fresh.json"
+    video = Video(id="v", title="t", channel_id="c", channel_title="c", duration_s=200.0)
+    for path, age in ((expired, timedelta(days=31)), (fresh, timedelta(days=29))):
+        entry = CacheEntry(artist="a", title="t", fetched_at=datetime.now(UTC) - age, video=video)
+        path.write_text(entry.model_dump_json(), encoding="utf-8")
+
+    assert read_cache(expired) is None
+    assert not expired.exists()
+    assert read_cache(fresh) is not None
+    assert fresh.exists()
 
 
 def test_a_broken_cache_file_is_replaced(fake_youtube: FakeYouTube, tmp_path: Path) -> None:

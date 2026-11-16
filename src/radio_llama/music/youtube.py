@@ -343,7 +343,10 @@ def cache_key(proposal: SongProposal) -> str:
 
 
 def read_cache(path: Path) -> CacheEntry | None:
-    """The cache entry at `path` when it exists, reads, and is under CACHE_DAYS old."""
+    """The cache entry at `path` when it exists, reads, and is under CACHE_DAYS old.
+
+    An expired entry is deleted, so API data never stays on disk past the 30 days.
+    """
     if not path.exists():
         return None
     try:
@@ -352,6 +355,7 @@ def read_cache(path: Path) -> CacheEntry | None:
         log.warning("Ignoring a broken YouTube cache file: %s", path)
         return None
     if datetime.now(UTC) - entry.fetched_at > timedelta(days=CACHE_DAYS):
+        path.unlink(missing_ok=True)
         return None
     return entry
 
