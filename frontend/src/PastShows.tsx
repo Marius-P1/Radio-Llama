@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { listShows, type ShowSummary } from './api'
-import { dateLabel, hostLabel, languageLabel, sourceTag, statusLabel, themeLabel } from './labels'
+import {
+  dateLabel,
+  hostLabel,
+  languageLabel,
+  songsLabel,
+  sourceTag,
+  statusLabel,
+  themeLabel,
+} from './labels'
 
 type Props = {
   onOpen: (id: string) => void
@@ -50,7 +58,8 @@ function ShowRow({ show, onOpen }: { show: ShowSummary; onOpen: (id: string) => 
       <span className="show-meta">
         {/* The style, or the wish for a show without one (YouTube, D039). */}
         {themeLabel(show.config) && <>{themeLabel(show.config)}, </>}
-        {hostLabel(show.config)}, {languageLabel(show.config.language)}
+        {songsLabel(show.config.track_count)}, {hostLabel(show.config)},{' '}
+        {languageLabel(show.config.language)}
       </span>
       {sourceTag(show.config.source) && (
         <span className="tag">{sourceTag(show.config.source)}</span>

@@ -5,6 +5,7 @@ import {
   factSourceLabel,
   hostLabel,
   languageLabel,
+  songsLabel,
   sourceTag,
   styleLabel,
 } from './labels'
@@ -62,7 +63,8 @@ export function Player({ id, onBack }: Props) {
       <h2>
         {/* A YouTube show has no style (D039): its wish is shown on the line below. */}
         {show.config.style && <>{styleLabel(show.config.style)} show, </>}
-        {hostLabel(show.config)}, {languageLabel(show.config.language)}
+        {songsLabel(show.config.track_count)}, {hostLabel(show.config)},{' '}
+        {languageLabel(show.config.language)}
         {sourceTag(show.config.source) && (
           <>
             {' '}

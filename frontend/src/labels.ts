@@ -25,6 +25,11 @@ export function energyLabel(energy: string | null | undefined): string {
   return capitalize(energy)
 }
 
+/** The length of a show in songs (D041): "1 song", "10 songs". */
+export function songsLabel(count: number): string {
+  return count === 1 ? '1 song' : `${count} songs`
+}
+
 /** The persona id ("witty"), capitalised. The display name would need the options call. */
 export function personaLabel(persona: string): string {
   return capitalize(persona)
