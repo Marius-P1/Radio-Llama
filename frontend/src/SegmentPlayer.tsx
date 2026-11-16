@@ -64,8 +64,21 @@ export function SegmentPlayer({ show }: Props) {
   // True once the YouTube player is usable, or once it is known not to load: then the
   // songs are skipped and only the host plays.
   const [playerReady, setPlayerReady] = useState(false)
-  const [phase, setPhase] = useState<Phase>('idle')
-  const [index, setIndex] = useState(0)
+  const [phase, setPhaseState] = useState<Phase>('idle')
+  const [index, setIndexState] = useState(0)
+  // The media events fire between renders: cueing the next song inside startSegment
+  // raises a state change at once, before React has rendered the new index and phase.
+  // The handlers read these refs, which change together with the state.
+  const phaseRef = useRef<Phase>('idle')
+  const indexRef = useRef(0)
+  const setPhase = (next: Phase) => {
+    phaseRef.current = next
+    setPhaseState(next)
+  }
+  const setIndex = (next: number) => {
+    indexRef.current = next
+    setIndexState(next)
+  }
   // Indexes of the songs that could not play on YouTube.
   const [failed, setFailed] = useState<ReadonlySet<number>>(new Set())
 
@@ -148,24 +161,30 @@ export function SegmentPlayer({ show }: Props) {
   const next = () => startSegment(index + 1)
 
   // The media events are bound once, when the elements are created, so they go through
-  // this ref to reach the handlers of the latest render.
+  // this ref to reach the handlers of the latest render. The index and the phase come
+  // from the refs: a state change raised while a segment starts must see that segment.
   const handlers = {
     startSegment,
     onAudioEnded: () => {
-      if (phase === 'playing' && segments[index]?.kind !== 'song') startSegment(index + 1)
+      const i = indexRef.current
+      if (phaseRef.current === 'playing' && segments[i]?.kind !== 'song') startSegment(i + 1)
     },
     onStateChange: (state: number) => {
-      if (segments[index]?.kind !== 'song') return
-      if (state === YT.PlayerState.ENDED && phase === 'playing') startSegment(index + 1)
+      const i = indexRef.current
+      const now = phaseRef.current
+      // Cueing the next song while the host speaks raises states too: not this segment's.
+      if (segments[i]?.kind !== 'song') return
+      if (state === YT.PlayerState.ENDED && now === 'playing') startSegment(i + 1)
       // The listener may also use the player's own controls.
-      else if (state === YT.PlayerState.PLAYING && (phase === 'paused' || phase === 'blocked')) {
+      else if (state === YT.PlayerState.PLAYING && (now === 'paused' || now === 'blocked')) {
         setPhase('playing')
-      } else if (state === YT.PlayerState.PAUSED && phase === 'playing') setPhase('paused')
+      } else if (state === YT.PlayerState.PAUSED && now === 'playing') setPhase('paused')
     },
     onError: () => {
+      const i = indexRef.current
       // The player can report the same video twice: one skip per song.
-      if (failed.has(index) || segments[index]?.kind !== 'song') return
-      if (phase === 'playing' || phase === 'blocked') skip(index)
+      if (failed.has(i) || segments[i]?.kind !== 'song') return
+      if (phaseRef.current === 'playing' || phaseRef.current === 'blocked') skip(i)
     },
     onBlocked: () => setPhase('blocked'),
   }
