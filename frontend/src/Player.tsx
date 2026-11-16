@@ -1,7 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
-import { audioUrl, getShow, type Segment, type ShowResponse, type Track } from './api'
-import { factSourceLabel, languageLabel, personaLabel, sourceTag, styleLabel } from './labels'
-import { formatTime } from './time'
+import { useEffect, useState } from 'react'
+import { audioUrl, getShow, type ShowResponse, type Track } from './api'
+import {
+  displayTitle,
+  factSourceLabel,
+  languageLabel,
+  personaLabel,
+  sourceTag,
+  styleLabel,
+} from './labels'
+import { Script } from './Script'
+import { SegmentPlayer } from './SegmentPlayer'
 
 type Props = {
   id: string
@@ -11,7 +19,6 @@ type Props = {
 export function Player({ id, onBack }: Props) {
   const [show, setShow] = useState<ShowResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [currentTime, setCurrentTime] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -26,23 +33,6 @@ export function Player({ id, onBack }: Props) {
       cancelled = true
     }
   }, [id])
-
-  // Each segment starts where the previous one ends.
-  const starts = useMemo(() => {
-    const result: number[] = []
-    let offset = 0
-    for (const segment of show?.segments ?? []) {
-      result.push(offset)
-      offset += segment.duration_s ?? 0
-    }
-    return result
-  }, [show])
-
-  const currentIndex = (show?.segments ?? []).findIndex((segment, i) => {
-    const start = starts[i]
-    const end = start + (segment.duration_s ?? 0)
-    return currentTime >= start && currentTime < end
-  })
 
   if (error !== null) {
     return (
@@ -62,8 +52,6 @@ export function Player({ id, onBack }: Props) {
       </section>
     )
   }
-
-  const tracksById = new Map(show.tracks.map((track) => [track.id, track]))
 
   return (
     <section className="card">
@@ -89,37 +77,12 @@ export function Player({ id, onBack }: Props) {
       </h2>
       {show.config.wish && <p className="muted">You asked for: {show.config.wish}</p>}
 
-      {show.status === 'ready' ? (
-        <audio
-          controls
-          src={audioUrl(show.id)}
-          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-        />
+      {/* A ready show plays as one MP3, or segment by segment with YouTube (D038). */}
+      {show.status === 'ready' && show.playback === 'segments' ? (
+        <SegmentPlayer key={show.id} show={show} />
       ) : (
-        <p className="muted">This show has no audio to play.</p>
+        <FilePlayer show={show} />
       )}
-
-      <h3>Script</h3>
-      <ol className="script">
-        {show.segments.map((segment, i) => (
-          <li key={i} className={i === currentIndex ? 'segment current' : 'segment'}>
-            {/* A failed show has no durations: then there is no range to show. */}
-            {typeof segment.duration_s === 'number' && (
-              <span className="segment-time">
-                <span>{formatTime(starts[i])}</span>
-                <span className="segment-time-dash"> - </span>
-                <span>{formatTime(starts[i] + segment.duration_s)}</span>
-              </span>
-            )}
-            <div className="segment-text">
-              <SegmentText
-                segment={segment}
-                track={segment.track_id ? tracksById.get(segment.track_id) : undefined}
-              />
-            </div>
-          </li>
-        ))}
-      </ol>
 
       <h3>Tracks and credits</h3>
       <ul className="credits">
@@ -133,9 +96,37 @@ export function Player({ id, onBack }: Props) {
   )
 }
 
-/** The title to show and speak: the spoken title when the catalog sets one. */
-function displayTitle(track: Track): string {
-  return track.spoken_title ?? track.title
+/** The single MP3 of a file show, with the script highlighted as it plays. */
+function FilePlayer({ show }: { show: ShowResponse }) {
+  const [currentTime, setCurrentTime] = useState(0)
+  const tracksById = new Map(show.tracks.map((track) => [track.id, track]))
+
+  // The segment under the play head: each one starts where the previous one ends.
+  let currentIndex = -1
+  let start = 0
+  for (const [i, segment] of show.segments.entries()) {
+    const end = start + (segment.duration_s ?? 0)
+    if (currentTime >= start && currentTime < end) {
+      currentIndex = i
+      break
+    }
+    start = end
+  }
+
+  return (
+    <>
+      {show.status === 'ready' ? (
+        <audio
+          controls
+          src={audioUrl(show.id)}
+          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+        />
+      ) : (
+        <p className="muted">This show has no audio to play.</p>
+      )}
+      <Script segments={show.segments} tracks={tracksById} currentIndex={currentIndex} />
+    </>
+  )
 }
 
 /** The distinct pages the track's facts come from, in order, each with a short label. */
@@ -156,18 +147,27 @@ function Credit({ track }: { track: Track }) {
   return (
     <>
       <strong>{displayTitle(track)}</strong> by{' '}
+      {/* The artist link is the channel for a YouTube track, the artist page elsewhere. */}
       <a href={track.artist_url} target="_blank" rel="noreferrer">
         {track.artist}
       </a>
       {release !== '' && <> ({release})</>},{' '}
-      <a href={track.license_url} target="_blank" rel="noreferrer">
-        {track.license}
-      </a>{' '}
-      (
-      <a href={track.track_url} target="_blank" rel="noreferrer">
-        source
-      </a>
-      )
+      {track.video_id ? (
+        <a href={track.track_url} target="_blank" rel="noreferrer">
+          Watch on YouTube
+        </a>
+      ) : (
+        <>
+          <a href={track.license_url} target="_blank" rel="noreferrer">
+            {track.license}
+          </a>{' '}
+          (
+          <a href={track.track_url} target="_blank" rel="noreferrer">
+            source
+          </a>
+          )
+        </>
+      )}
       {sources.length > 0 && (
         <span className="credit-facts">
           Facts:{' '}
@@ -183,17 +183,4 @@ function Credit({ track }: { track: Track }) {
       )}
     </>
   )
-}
-
-function SegmentText({ segment, track }: { segment: Segment; track: Track | undefined }) {
-  if (segment.kind === 'song') {
-    const title = track ? displayTitle(track) : 'a song'
-    const artist = track?.artist ?? 'an unknown artist'
-    return (
-      <em>
-        Now playing: {title} by {artist}
-      </em>
-    )
-  }
-  return <p>{segment.text}</p>
 }

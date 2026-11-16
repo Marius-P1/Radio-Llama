@@ -1,4 +1,4 @@
-import type { ShowSummary } from './api'
+import type { ShowSummary, Track } from './api'
 
 /** Plain-English labels for values the API returns as identifiers. */
 
@@ -23,7 +23,13 @@ export function personaLabel(persona: string): string {
 /** The music source as a short tag. The catalog is the default and gets no tag. */
 export function sourceTag(source: ShowSummary['config']['source']): string | null {
   if (source === 'jamendo') return 'Jamendo'
+  if (source === 'youtube') return 'YouTube'
   return null
+}
+
+/** The title to show and speak: the spoken title when the catalog sets one. */
+export function displayTitle(track: Track): string {
+  return track.spoken_title ?? track.title
 }
 
 export function languageLabel(language: string): string {
