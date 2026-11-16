@@ -41,7 +41,7 @@ The build goes to `frontend/dist/`, which the backend serves in production.
 
 ## Replay mode
 
-The replay page is the same app built read-only. It plays shows exported as static files, so it needs no backend and runs on GitHub Pages. The create screen is hidden and the shows are listed from `public/shows/index.json`. Each show credits its tracks with their own license, and the footer credits ElevenLabs for the voice.
+The replay page is the same app built read-only. It plays shows exported as static files, so it needs no backend and runs on GitHub Pages. The create screen is hidden and the shows are listed from `public/shows/index.json`. A catalog or Jamendo show plays as one MP3. A YouTube show plays segment by segment: the host's speech files are static files too, and the songs play in the YouTube player, so the visitor's browser talks to YouTube. Each show credits its tracks with their own license, and the footer credits ElevenLabs for the voice.
 
 ```sh
 npm run build:replay
@@ -55,6 +55,6 @@ The shows come from the backend's output folder. From the repository root:
 uv run radio-llama export-replay <show_id>... --zip replay-shows.zip
 ```
 
-This copies each ready show's `show.json` and `show.mp3` into `frontend/public/shows/<id>/`, rewrites `index.json`, and packs the folder into `replay-shows.zip`. That folder and the zip are git-ignored: audio is never committed.
+This copies each ready show's `show.json` and its audio into `frontend/public/shows/<id>/`, rewrites `index.json`, and packs the folder into `replay-shows.zip`. The audio is `show.mp3` for a catalog or Jamendo show and one speech file per host segment (`00-intro.mp3`, `02-transition.mp3`, ...) for a YouTube show, which has no MP3. That folder and the zip are git-ignored: audio is never committed.
 
-`.github/workflows/pages.yml` deploys the replay build when a `v*` tag is pushed. It downloads `replay-shows.zip` from the release of that tag, unpacks it into `public/shows/`, runs `npm run build:replay` and publishes `dist/` to Pages. The release must carry the zip, and Pages must be enabled with GitHub Actions as the source.
+`.github/workflows/pages.yml` deploys the replay build when a `v*` tag is pushed. It downloads `replay-shows.zip` from the release of that tag, unpacks it into `public/shows/`, runs `npm run build:replay` and publishes `dist/` to Pages. The release must carry the zip, and Pages must be enabled with GitHub Actions as the source. A new set of shows, YouTube shows included, needs a new `v*` release with its own `replay-shows.zip`.

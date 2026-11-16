@@ -45,8 +45,8 @@ function App() {
       {view.name === 'player' && <Player id={view.id} onBack={goCreate} />}
       <footer>
         <p>
-          Music under Creative Commons licenses, credited per track. Voice by ElevenLabs.
-          Non-commercial demo.
+          Music credited per track: Creative Commons tracks from the catalog and Jamendo,
+          videos from YouTube. Voice by ElevenLabs. Non-commercial demo.
         </p>
         <p>
           Videos play in the YouTube player.{' '}

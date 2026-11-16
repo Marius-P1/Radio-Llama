@@ -16,6 +16,7 @@ from radio_llama.music import LocalCatalog
 from radio_llama.replay import export_replay, write_index, zip_replay
 from radio_llama.storage import load_show, save_show
 from radio_llama.voice import CachedTextToSpeech, FakeTTS
+from tests.conftest import FakeYouTube
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -23,12 +24,23 @@ runner = CliRunner()
 
 READY_ID = "20261030-120000-abc123"
 FAILED_ID = "20261030-130000-def456"
+YOUTUBE_ID = "20261030-140000-abc789"
 CONFIG = ShowConfig(style="jazz", persona="calm", seed=1)
+YOUTUBE_CONFIG = ShowConfig(style=None, persona="calm", seed=1, source="youtube", wish="trains")
+# The fake YouTube answers these three songs with playable videos (tests/conftest.py).
+PLAYLIST_JSON = (
+    '{"songs": [{"artist": "Example Artist", "title": "Blue Window"}, '
+    '{"artist": "Lea Example", "title": "Montreal Streets"}, '
+    '{"artist": "We Are FM", "title": "Night Train"}]}'
+)
+SPEECH_FILES = ["00-intro.mp3", "02-transition.mp3", "04-transition.mp3", "06-outro.mp3"]
 
 
 @pytest.fixture
-def output_dir(fake_settings: Settings, tiny_catalog: LocalCatalog) -> Path:
-    """One ready show made with the fakes and one failed show written by hand."""
+def output_dir(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube
+) -> Path:
+    """A ready catalog show and a ready YouTube show made with the fakes, plus a failed show."""
     tts = CachedTextToSpeech(FakeTTS(fake_settings.cache_dir / "tts-raw"), fake_settings.cache_dir)
     generator = PipelineGenerator(
         FakeLLM(["A fake script."]), tts, {"catalog": tiny_catalog}, fake_settings
@@ -36,6 +48,20 @@ def output_dir(fake_settings: Settings, tiny_catalog: LocalCatalog) -> Path:
     ready = Show(id=READY_ID, created_at=datetime(2026, 10, 30, 12, 0, tzinfo=UTC), config=CONFIG)
     show = run_generation(generator, ready, fake_settings.output_dir / READY_ID)
     assert show.status == "ready"
+
+    # An embed show: speech files next to show.json, no show.mp3 (D038).
+    youtube_generator = PipelineGenerator(
+        FakeLLM([PLAYLIST_JSON, "A fake script."]),
+        tts,
+        {"catalog": tiny_catalog, "youtube": fake_youtube.source},
+        fake_settings,
+    )
+    youtube = Show(
+        id=YOUTUBE_ID, created_at=datetime(2026, 10, 30, 14, 0, tzinfo=UTC), config=YOUTUBE_CONFIG
+    )
+    show = run_generation(youtube_generator, youtube, fake_settings.output_dir / YOUTUBE_ID)
+    assert show.status == "ready", show.error
+    assert show.audio_file is None
 
     failed = Show(
         id=FAILED_ID,
@@ -87,22 +113,51 @@ def test_export_refuses_a_show_that_is_not_ready(output_dir: Path, tmp_path: Pat
     assert not (dest / FAILED_ID).exists()
 
 
-def test_export_refuses_a_youtube_show_until_mar_13(output_dir: Path, tmp_path: Path) -> None:
-    """A ready YouTube show has no show.mp3: the replay page cannot play it yet."""
-    youtube_id = "20261030-140000-abc789"
-    show = Show(
-        id=youtube_id,
-        created_at=datetime(2026, 10, 30, 14, 0, tzinfo=UTC),
-        config=ShowConfig(style="jazz", persona="calm", seed=1, source="youtube"),
-        status="ready",
-    )
-    save_show(show, output_dir / youtube_id)
+def test_export_copies_the_speech_files_of_a_youtube_show(output_dir: Path, tmp_path: Path) -> None:
+    """An embed show has no show.mp3: its host segments travel as one file each (D043)."""
     dest = tmp_path / "shows"
 
-    with pytest.raises(ValueError, match="YouTube shows cannot be exported .*MAR-13"):
-        export_replay([youtube_id], output_dir, dest)
+    summaries = export_replay([YOUTUBE_ID], output_dir, dest)
 
-    assert not (dest / youtube_id).exists()
+    assert sorted(path.name for path in (dest / YOUTUBE_ID).iterdir()) == [
+        *SPEECH_FILES,
+        "show.json",
+    ]
+    for name in SPEECH_FILES:
+        assert (dest / YOUTUBE_ID / name).read_bytes() == (
+            output_dir / YOUTUBE_ID / name
+        ).read_bytes()
+    assert summaries[0]["id"] == YOUTUBE_ID
+    index = json.loads((dest / "index.json").read_text(encoding="utf-8"))
+    assert [entry["id"] for entry in index] == [YOUTUBE_ID]
+    assert index[0]["config"]["source"] == "youtube"
+
+
+def test_export_refuses_a_youtube_show_with_a_missing_speech_file(
+    output_dir: Path, tmp_path: Path
+) -> None:
+    (output_dir / YOUTUBE_ID / "02-transition.mp3").unlink()
+    dest = tmp_path / "shows"
+
+    with pytest.raises(
+        FileNotFoundError, match=f"{YOUTUBE_ID} has no audio file 02-transition.mp3"
+    ):
+        export_replay([YOUTUBE_ID], output_dir, dest)
+
+    assert not (dest / YOUTUBE_ID).exists()
+
+
+def test_export_refuses_a_file_show_without_its_mp3(output_dir: Path, tmp_path: Path) -> None:
+    """A ready catalog show is one MP3: without it there is nothing to play."""
+    broken_id = "20261030-150000-abc000"
+    show = load_show(output_dir / READY_ID).model_copy(update={"id": broken_id, "audio_file": None})
+    save_show(show, output_dir / broken_id)
+    dest = tmp_path / "shows"
+
+    with pytest.raises(ValueError, match=f"{broken_id} is ready but has no show.mp3"):
+        export_replay([broken_id], output_dir, dest)
+
+    assert not (dest / broken_id).exists()
 
 
 def test_export_refuses_an_unknown_id(output_dir: Path, tmp_path: Path) -> None:
@@ -149,6 +204,20 @@ def test_zip_holds_the_index_and_the_audio(output_dir: Path, tmp_path: Path) -> 
     assert f"{READY_ID}/show.json" in names
 
 
+def test_zip_holds_the_speech_files_of_a_youtube_show(output_dir: Path, tmp_path: Path) -> None:
+    dest = tmp_path / "shows"
+    export_replay([READY_ID, YOUTUBE_ID], output_dir, dest)
+
+    zip_path = zip_replay(dest, tmp_path / "replay-shows.zip")
+
+    with zipfile.ZipFile(zip_path) as archive:
+        names = set(archive.namelist())
+    assert f"{YOUTUBE_ID}/show.json" in names
+    assert {f"{YOUTUBE_ID}/{name}" for name in SPEECH_FILES} <= names
+    assert f"{YOUTUBE_ID}/show.mp3" not in names
+    assert f"{READY_ID}/show.mp3" in names
+
+
 @pytest.fixture
 def cli_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, output_dir: Path) -> Path:
     """Point OUTPUT_DIR at the generated shows; no keys, no .env. Returns the destination."""
@@ -173,6 +242,17 @@ def test_cli_exports_and_zips(cli_env: Path, tmp_path: Path) -> None:
     assert (cli_env / READY_ID / "show.mp3").exists()
     assert (cli_env / "index.json").exists()
     assert zip_path.exists()
+
+
+def test_cli_exports_a_youtube_show(cli_env: Path) -> None:
+    result = runner.invoke(app, ["export-replay", YOUTUBE_ID, "--dest", str(cli_env)])
+
+    assert result.exit_code == 0, result.output
+    assert YOUTUBE_ID in result.output
+    assert (cli_env / YOUTUBE_ID / "show.json").exists()
+    for name in SPEECH_FILES:
+        assert (cli_env / YOUTUBE_ID / name).exists()
+    assert not (cli_env / YOUTUBE_ID / "show.mp3").exists()
 
 
 def test_cli_unknown_id_fails_cleanly(cli_env: Path) -> None:
