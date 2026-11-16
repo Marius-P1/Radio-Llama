@@ -22,6 +22,7 @@ from radio_llama import trace
 from radio_llama.facts import usable_sentences
 from radio_llama.models import Energy, Fact, Track
 from radio_llama.music.base import MusicSourceError, UnknownTrackError
+from radio_llama.music.styles import STYLES
 
 log = logging.getLogger(__name__)
 
@@ -36,22 +37,8 @@ DURATION_RANGE = "60_600"
 EMPTY_RETRIES = 2
 RETRY_PAUSE_S = 0.5
 
-# Jamendo's featured genres (from its API docs) plus lofi, each with the tag searched for it.
-STYLE_TAGS = {
-    "classical": "classical",
-    "electronic": "electronic",
-    "hiphop": "hiphop",
-    "jazz": "jazz",
-    "lofi": "lofi",
-    "lounge": "lounge",
-    "metal": "metal",
-    "pop": "pop",
-    "relaxation": "relaxation",
-    "rock": "rock",
-    "songwriter": "songwriter",
-    "soundtrack": "soundtrack",
-    "world": "world",
-}
+# Each style word is searched as the Jamendo tag of the same name.
+STYLE_TAGS = {style: style for style in STYLES}
 
 Speed = Literal["verylow", "low", "medium", "high", "veryhigh"]
 ENERGY_SPEEDS: dict[Energy, list[Speed]] = {
@@ -115,6 +102,10 @@ class ArtistInfo:
 
 
 class JamendoSource:
+    delivery = "file"
+    accepts_wish = True
+    needs_facts_lookup = True
+
     def __init__(self, client_id: str, cache_dir: Path, http: httpx.Client | None = None) -> None:
         self._client_id = client_id
         self._dir = cache_dir / "jamendo"
@@ -201,7 +192,7 @@ class JamendoSource:
 
     def audio_path(self, track: Track) -> Path:
         """The cached MP3, fetched through the stream URL on first use."""
-        path = self._dir / track.audio_file
+        path = self._dir / f"{track.id}.mp3"  # what to_track sets as audio_file
         if path.exists():
             return path
         if track.id not in self._stream_urls:
