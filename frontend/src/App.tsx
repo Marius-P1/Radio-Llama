@@ -49,6 +49,17 @@ function App() {
           Non-commercial demo.
         </p>
         <p>
+          Videos play in the YouTube player.{' '}
+          <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer">
+            YouTube Terms of Service
+          </a>
+          ,{' '}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">
+            Google Privacy Policy
+          </a>
+          .
+        </p>
+        <p>
           <a href={REPO_URL} target="_blank" rel="noreferrer">
             Source code
           </a>
