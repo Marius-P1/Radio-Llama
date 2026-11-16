@@ -51,6 +51,26 @@ function loadYouTubeApi(): Promise<typeof YT> {
   return apiLoading
 }
 
+// Whether an unexpected play() failure was already logged: once per page is enough.
+let playFailureLogged = false
+
+/**
+ * Start `audio`, `onBlocked` when the browser wants a gesture first. A pending play()
+ * that pause() or a new src interrupts rejects with AbortError: that is not a refusal.
+ */
+function playAudio(audio: HTMLAudioElement, onBlocked: () => void) {
+  audio.play().catch((error: unknown) => {
+    const name = error instanceof DOMException ? error.name : ''
+    if (name === 'AbortError') return
+    if (name === 'NotAllowedError') {
+      onBlocked()
+    } else if (!playFailureLogged) {
+      playFailureLogged = true
+      console.warn('The host segment did not start.', error)
+    }
+  })
+}
+
 /** The YouTube video of segment `i`, null unless it is a song with a video. */
 function videoIdOf(show: ShowResponse, i: number): string | null {
   const segment = show.segments[i]
@@ -90,8 +110,15 @@ export function SegmentPlayer({ show }: Props) {
     indexRef.current = next
     setIndexState(next)
   }
-  // Indexes of the songs that could not play on YouTube.
-  const [failed, setFailed] = useState<ReadonlySet<number>>(new Set())
+  // Indexes of the songs that could not play on YouTube. The ref is read by the error
+  // handler: two error events in one frame must see the first one's mark.
+  const [failed, setFailedState] = useState<ReadonlySet<number>>(new Set())
+  const failedRef = useRef<ReadonlySet<number>>(new Set())
+  const setFailed = (next: ReadonlySet<number>) => {
+    failedRef.current = next
+    setFailedState(next)
+  }
+  const markFailed = (i: number) => setFailed(new Set(failedRef.current).add(i))
 
   const segments = show.segments
   const tracksById = new Map(show.tracks.map((track) => [track.id, track]))
@@ -103,7 +130,8 @@ export function SegmentPlayer({ show }: Props) {
 
   /** Mark segment `i` as unplayable and go on with the next one after a short pause. */
   const skip = (i: number) => {
-    setFailed((previous) => new Set(previous).add(i))
+    clearTimer()
+    markFailed(i)
     timerRef.current = window.setTimeout(() => actions.current.startSegment(i + 1), SKIP_PAUSE_MS)
   }
 
@@ -142,7 +170,7 @@ export function SegmentPlayer({ show }: Props) {
     if (upcoming !== null) player?.cueVideoById(upcoming)
     else player?.pauseVideo()
     audio.src = segment.audio_url
-    audio.play().catch(() => setPhase('blocked'))
+    playAudio(audio, () => setPhase('blocked'))
   }
 
   const pause = () => {
@@ -153,13 +181,15 @@ export function SegmentPlayer({ show }: Props) {
   }
 
   const resume = () => {
-    if (failed.has(index)) {
+    // A song that failed while paused is not replayed: the show goes on.
+    if (failedRef.current.has(index)) {
       startSegment(index + 1)
       return
     }
     setPhase('playing')
+    const audio = audioRef.current
     if (segments[index]?.kind === 'song') playerRef.current?.playVideo()
-    else audioRef.current?.play().catch(() => setPhase('blocked'))
+    else if (audio !== null) playAudio(audio, () => setPhase('blocked'))
   }
 
   const togglePlay = () => {
@@ -195,9 +225,11 @@ export function SegmentPlayer({ show }: Props) {
     },
     onError: () => {
       const i = indexRef.current
-      // The player can report the same video twice: one skip per song.
-      if (failed.has(i) || segments[i]?.kind !== 'song') return
-      if (phaseRef.current === 'playing' || phaseRef.current === 'blocked') skip(i)
+      // The player can report the same video twice: one mark per song.
+      if (failedRef.current.has(i) || segments[i]?.kind !== 'song') return
+      // While paused the mark is enough: resume() then goes to the next segment.
+      if (phaseRef.current === 'paused') markFailed(i)
+      else skip(i)
     },
     onBlocked: () => setPhase('blocked'),
   }
