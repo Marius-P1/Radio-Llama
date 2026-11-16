@@ -65,6 +65,13 @@
             ],
             "title": "Style"
           },
+          "track_count": {
+            "default": 3,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Track Count",
+            "type": "integer"
+          },
           "voice_id": {
             "anyOf": [
               {

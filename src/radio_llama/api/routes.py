@@ -195,6 +195,7 @@ def create_show(
             energy=body.energy,
             source=body.source,
             wish=wish,
+            track_count=body.track_count,
             demo=body.demo,
         ),
     )

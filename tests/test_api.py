@@ -695,3 +695,98 @@ def test_a_picked_voice_needs_the_list_and_no_voice_does_not(
     assert client_without_voices.get("/api/v1/shows").json() == []
     # With no voice asked for, the list is not read: the show is created.
     assert _create(client_without_voices)["config"]["voice_id"] is None
+
+
+# The show length (D041): the listener picks a number of songs, 1 to 10, 3 by default.
+
+
+def _saved_show(settings: Settings, show_id: str) -> dict:
+    return json.loads((settings.output_dir / show_id / "show.json").read_text(encoding="utf-8"))
+
+
+def test_a_show_has_three_songs_by_default(client: TestClient, fake_settings: Settings) -> None:
+    created = _create(client)
+
+    assert created["config"]["track_count"] == 3
+    saved = _saved_show(fake_settings, created["id"])
+    assert saved["config"]["track_count"] == 3
+    assert [segment["kind"] for segment in saved["segments"]].count("song") == 3
+
+
+def test_a_chosen_song_count_reaches_the_show(client: TestClient, fake_settings: Settings) -> None:
+    created = _create(client, track_count=2)
+
+    assert created["config"]["track_count"] == 2
+    saved = _saved_show(fake_settings, created["id"])
+    assert saved["status"] == "ready", saved["error"]
+    assert saved["config"]["track_count"] == 2
+    assert [segment["kind"] for segment in saved["segments"]] == [
+        "intro",
+        "song",
+        "transition",
+        "song",
+        "outro",
+    ]
+    assert len(saved["tracks"]) == 2
+    show = client.get(f"/api/v1/shows/{created['id']}").json()
+    assert show["config"]["track_count"] == 2
+    assert len(show["segments"]) == 5
+
+
+def test_a_youtube_show_can_have_more_songs_than_the_default(
+    client_with_youtube: TestClient,
+) -> None:
+    # The playlist, then an intro, three breaks and an outro for four songs.
+    client_with_youtube.app.state.jobs._generator._llm = FakeLLM(
+        [PLAYLIST_JSON, *(["Script."] * 5)]
+    )
+
+    created = _create(
+        client_with_youtube, style=None, source="youtube", wish="trains", track_count=4, demo=True
+    )
+    show = client_with_youtube.get(f"/api/v1/shows/{created['id']}").json()
+
+    assert show["status"] == "ready", show["error"]
+    assert show["config"]["track_count"] == 4
+    assert len(show["tracks"]) == 4
+    assert len(show["segments"]) == 9
+    assert [segment["kind"] for segment in show["segments"]].count("song") == 4
+
+
+def test_song_count_out_of_range_is_a_422(client: TestClient) -> None:
+    for count in (0, 11, -1):
+        response = client.post("/api/v1/shows", json={"style": "jazz", "track_count": count})
+
+        assert response.status_code == 422
+        assert response.json()["detail"][0]["loc"] == ["body", "track_count"]
+    assert client.get("/api/v1/shows").json() == []
+    # Both ends of the range are accepted.
+    for count in (1, 10):
+        assert _create(client, track_count=count)["config"]["track_count"] == count
+
+
+def test_a_song_count_the_style_cannot_fill_gives_a_failed_show(client: TestClient) -> None:
+    """The tiny catalog has three jazz tracks. No check at creation (D041): the show is
+    accepted, then fails with a sentence the progress screen shows."""
+    created = _create(client, track_count=5)
+    show = client.get(f"/api/v1/shows/{created['id']}").json()
+
+    assert created["status"] == "pending"
+    assert show["status"] == "failed"
+    assert show["error"] == "Style 'jazz' has 3 tracks, 5 needed."
+    assert show["config"]["track_count"] == 5
+    assert show["segments"] == []
+    assert client.get("/api/v1/options").status_code == 200
+
+
+def test_a_song_count_youtube_cannot_fill_names_the_source(
+    client_with_youtube: TestClient,
+) -> None:
+    """A YouTube show has no style (D039). The playlist of the fake LLM holds five songs."""
+    created = _create(
+        client_with_youtube, style=None, source="youtube", wish="trains", track_count=10
+    )
+    show = client_with_youtube.get(f"/api/v1/shows/{created['id']}").json()
+
+    assert show["status"] == "failed"
+    assert show["error"] == "Source 'youtube' has 5 tracks, 10 needed."
