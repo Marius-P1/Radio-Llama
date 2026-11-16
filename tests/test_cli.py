@@ -141,11 +141,47 @@ def test_generate_with_unknown_source_fails_cleanly(cli_env: Path) -> None:
 
 def test_youtube_without_a_key_explains_the_variable(cli_env: Path) -> None:
     for command in ("generate", "script"):
-        result = runner.invoke(app, [command, "--fake", "--style", "jazz", "--source", "youtube"])
+        result = runner.invoke(
+            app, [command, "--fake", "--source", "youtube", "--wish", "songs about trains"]
+        )
 
         assert result.exit_code == 1
         assert "YOUTUBE_API_KEY" in result.output
         assert "Traceback" not in result.output
+
+
+# No style on YouTube (D039): --wish is the one required option there.
+
+
+def test_youtube_refuses_a_style(cli_env: Path) -> None:
+    for command in ("generate", "script"):
+        result = runner.invoke(
+            app, [command, "--fake", "--source", "youtube", "--style", "jazz", "--wish", "trains"]
+        )
+
+        assert result.exit_code == 1
+        assert "--style is not used with --source youtube" in result.output
+        assert "--wish" in result.output
+        assert "Traceback" not in result.output
+    assert not cli_env.exists()
+
+
+def test_youtube_needs_a_wish(cli_env: Path) -> None:
+    for args in (["--source", "youtube"], ["--source", "youtube", "--wish", "  "]):
+        result = runner.invoke(app, ["generate", "--fake", *args])
+
+        assert result.exit_code == 1
+        assert "--source youtube needs --wish" in result.output
+    assert not cli_env.exists()
+
+
+def test_other_sources_need_a_style(cli_env: Path) -> None:
+    for command, source in (("generate", "catalog"), ("script", "jamendo")):
+        result = runner.invoke(app, [command, "--fake", "--source", source])
+
+        assert result.exit_code == 1
+        assert f"--style is required with --source {source}" in result.output
+    assert not cli_env.exists()
 
 
 def test_generate_youtube_prints_the_folder(
@@ -166,7 +202,9 @@ def test_generate_youtube_prints_the_folder(
 
     monkeypatch.setattr(cli, "make_generator", fake_generator)
 
-    result = runner.invoke(app, ["generate", "--fake", "--style", "jazz", "--source", "youtube"])
+    result = runner.invoke(
+        app, ["generate", "--fake", "--source", "youtube", "--wish", "90s French rap, upbeat"]
+    )
 
     assert result.exit_code == 0, result.output
     (show_dir,) = cli_env.iterdir()
@@ -177,3 +215,5 @@ def test_generate_youtube_prints_the_folder(
     show = json.loads((show_dir / "show.json").read_text(encoding="utf-8"))
     assert show["audio_file"] is None
     assert show["tracks"][0]["video_id"]
+    assert show["config"]["style"] is None  # no style on YouTube (D039)
+    assert show["config"]["wish"] == "90s French rap, upbeat"
