@@ -17,12 +17,15 @@ from radio_llama.models import (
 from radio_llama.music.factory import delivery_of
 
 WISH_MAX_CHARS = 200
+# Voice ids are about twenty characters. The cap keeps a huge value out of the error text.
+VOICE_ID_MAX_CHARS = 100
 
 
 class PersonaOption(BaseModel):
     id: str
     name: str
     description: str
+    voice_id: str  # the persona's own voice, used when the listener picks none (D040)
 
 
 class SourceOption(BaseModel):
@@ -43,6 +46,8 @@ class CreateShowRequest(BaseModel):
     # Required on a source that offers styles, absent or null on one that does not (D039).
     style: str | None = None
     persona: str = "calm"
+    # A voice id from GET /voices. None or blank: the persona's own voice (D040).
+    voice_id: str | None = Field(default=None, max_length=VOICE_ID_MAX_CHARS)
     language: Literal["en", "fr"] = "en"
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1
     energy: Energy | None = None  # None: any energy (D020)

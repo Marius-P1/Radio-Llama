@@ -65,7 +65,11 @@ class ShowConfig(BaseModel):
     # A style of the chosen source. None on YouTube, which offers no styles: the wish is
     # the theme there (D039).
     style: str | None = None
-    persona: str  # Persona.id
+    persona: str  # Persona.id: how the host talks
+    # Who the host sounds like (D040). None: the persona's own voice. The name is stored
+    # with the id so the player can show it without asking the TTS backend.
+    voice_id: str | None = None
+    voice_name: str | None = None
     language: Literal["en", "fr"] = "en"
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1
     energy: Energy | None = None  # the listener's choice; None means any (D020)

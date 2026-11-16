@@ -93,6 +93,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/voices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Voices
+         * @description The voices the host can speak with (D040).
+         *
+         *     Its own route and not a part of `/options`: with ElevenLabs it is a remote call, and
+         *     a slow or failing one must not hold back the rest of the create screen.
+         */
+        get: operations["list_voices_api_v1_voices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -131,6 +154,8 @@ export interface components {
             source: "catalog" | "jamendo" | "youtube";
             /** Style */
             style?: string | null;
+            /** Voice Id */
+            voice_id?: string | null;
             /** Wish */
             wish?: string | null;
         };
@@ -177,6 +202,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Voice Id */
+            voice_id: string;
         };
         /** Progress */
         Progress: {
@@ -243,6 +270,10 @@ export interface components {
              * @default 3
              */
             track_count: number;
+            /** Voice Id */
+            voice_id?: string | null;
+            /** Voice Name */
+            voice_name?: string | null;
             /** Wish */
             wish?: string | null;
         };
@@ -359,6 +390,34 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * VoiceOption
+         * @description One voice the listener can give the host (D040). Sent to the web app as is.
+         */
+        VoiceOption: {
+            /** Accent */
+            accent?: string | null;
+            /** Age */
+            age?: string | null;
+            /** Descriptive */
+            descriptive?: string | null;
+            /** Gender */
+            gender?: string | null;
+            /** Id */
+            id: string;
+            /** Language */
+            language?: string | null;
+            /** Languages */
+            languages?: string[];
+            /** Name */
+            name: string;
+            /** Preview Url */
+            preview_url?: string | null;
+            /** Previews */
+            previews?: {
+                [key: string]: string;
+            };
         };
     };
     responses: never;
@@ -532,6 +591,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_voices_api_v1_voices_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceOption"][];
                 };
             };
         };

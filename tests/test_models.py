@@ -51,6 +51,16 @@ def test_show_round_trips_through_json() -> None:
     assert restored == show
 
 
+def test_a_show_file_written_before_the_voice_picker_still_loads() -> None:
+    """Old show.json files have no voice fields: None means the persona's own voice (D040)."""
+    config = ShowConfig.model_validate_json('{"style": "jazz", "persona": "calm"}')
+
+    assert config.voice_id is None
+    assert config.voice_name is None
+    picked = ShowConfig(style="jazz", persona="calm", voice_id="abc", voice_name="Gabriel")
+    assert ShowConfig.model_validate_json(picked.model_dump_json()) == picked
+
+
 def test_track_notes_never_leave_the_model() -> None:
     track = Track(
         id="t1",

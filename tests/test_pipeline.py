@@ -11,6 +11,7 @@ from radio_llama.generator.pipeline import MAX_TRACK_FACTS, merge_facts, pick_tr
 from radio_llama.llm import FakeLLM
 from radio_llama.models import Fact, Show, ShowConfig, Track
 from radio_llama.music import LocalCatalog
+from radio_llama.personas import get_persona
 from radio_llama.storage import load_show
 from radio_llama.voice import CachedTextToSpeech, FakeTTS, TextToSpeech, TTSError, Voice
 from tests.conftest import FakeFactServices, FakeJamendo, FakeYouTube
@@ -149,6 +150,45 @@ def test_tts_error_marks_the_show_failed(
     assert show.status == "failed"
     assert show.error is not None
     assert "voice is out" in show.error
+
+
+class RecordingTTS:
+    """A fake TTS that remembers the voice of every call."""
+
+    def __init__(self, work_dir: Path) -> None:
+        self._inner = FakeTTS(work_dir)
+        self.voices: list[Voice] = []
+
+    def synthesize(self, text: str, voice: Voice) -> Path:
+        self.voices.append(voice)
+        return self._inner.synthesize(text, voice)
+
+
+def test_the_picked_voice_reaches_the_tts(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, tmp_path: Path
+) -> None:
+    tts = RecordingTTS(tmp_path / "raw")
+    generator = _generator(fake_settings, tiny_catalog, tts=tts)
+
+    show = run_generation(generator, _show(voice_id="picked-voice"), tmp_path / "out")
+
+    assert show.status == "ready", show.error
+    assert len(tts.voices) == 4
+    assert {voice.voice_id for voice in tts.voices} == {"picked-voice"}
+    assert {voice.model_id for voice in tts.voices} == {fake_settings.elevenlabs_model_id}
+
+
+def test_without_a_picked_voice_the_persona_speaks_with_its_own(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, tmp_path: Path
+) -> None:
+    tts = RecordingTTS(tmp_path / "raw")
+    generator = _generator(fake_settings, tiny_catalog, tts=tts)
+
+    show = run_generation(generator, _show(persona="witty"), tmp_path / "out")
+
+    assert show.status == "ready", show.error
+    witty = get_persona(fake_settings.prompts_dir, "en", "witty")
+    assert {voice.voice_id for voice in tts.voices} == {witty.voice_id}
 
 
 def _track(track_id: str, energy: str | None) -> Track:

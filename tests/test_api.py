@@ -21,8 +21,10 @@ from radio_llama.config import Settings
 from radio_llama.llm import FakeLLM
 from radio_llama.models import Show, ShowConfig
 from radio_llama.music import LocalCatalog
+from radio_llama.personas import get_persona, load_personas
 from radio_llama.storage import save_show
-from radio_llama.voice import TTSError
+from radio_llama.voice import TTSError, VoiceOption
+from tests.conftest import PROMPTS_DIR
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -265,6 +267,7 @@ def test_export_openapi_writes_the_schema(
     schema = json.loads(target.read_text(encoding="utf-8"))
     assert "/api/v1/shows" in schema["paths"]
     assert "/api/v1/options" in schema["paths"]
+    assert "/api/v1/voices" in schema["paths"]
     assert "/api/v1/shows/{show_id}/audio" in schema["paths"]
     assert "/api/v1/shows/{show_id}/segments/{index}/audio" in schema["paths"]
     assert schema["components"]["schemas"]["ShowResponse"]["properties"]["playback"] == {
@@ -548,3 +551,144 @@ def test_catalog_show_still_needs_a_style(client_with_youtube: TestClient) -> No
 
         assert response.status_code == 400
         assert "Known styles" in response.json()["detail"]
+
+
+# The host's voice (D040): a list to pick from, checked when a show is created.
+
+
+class FailingVoices:
+    def list_voices(self) -> list[VoiceOption]:
+        raise TTSError("Could not list the ElevenLabs voices: HTTP 401")
+
+
+@pytest.fixture
+def client_without_voices(fake_settings: Settings) -> TestClient:
+    with TestClient(create_app(fake_settings, voices=FailingVoices())) as client:
+        yield client
+
+
+def test_options_give_each_persona_its_own_voice(client: TestClient) -> None:
+    body = client.get("/api/v1/options").json()
+
+    for language in ("en", "fr"):
+        expected = [persona.voice_id for persona in load_personas(PROMPTS_DIR, language)]
+        assert [persona["voice_id"] for persona in body["personas"][language]] == expected
+        assert all(expected)
+
+
+def test_voices_lists_the_voices_of_the_backend(client: TestClient) -> None:
+    response = client.get("/api/v1/voices")
+
+    assert response.status_code == 200
+    voices = response.json()
+    assert [voice["id"] for voice in voices] == [f"fake-voice-{n}" for n in range(1, 6)]
+    assert voices[0] == {
+        "id": "fake-voice-1",
+        "name": "Ada",
+        "gender": "female",
+        "accent": "british",
+        "age": "middle_aged",
+        "descriptive": "warm",
+        "language": "en",
+        "languages": ["en", "fr"],
+        "preview_url": None,
+        "previews": {},
+    }
+
+
+def test_voices_failure_is_a_502_and_the_options_still_load(
+    client_without_voices: TestClient,
+) -> None:
+    response = client_without_voices.get("/api/v1/voices")
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "Could not list the ElevenLabs voices: HTTP 401"
+    assert client_without_voices.get("/api/v1/options").status_code == 200
+
+
+def test_create_show_with_a_voice_saves_its_id_and_name(
+    client: TestClient, fake_settings: Settings
+) -> None:
+    created = _create(client, voice_id="fake-voice-2")
+
+    assert created["config"]["voice_id"] == "fake-voice-2"
+    assert created["config"]["voice_name"] == "Basile"
+    show_dir = fake_settings.output_dir / created["id"]
+    saved = json.loads((show_dir / "show.json").read_text(encoding="utf-8"))
+    assert saved["status"] == "ready", saved["error"]
+    assert saved["config"]["voice_id"] == "fake-voice-2"
+    assert saved["config"]["voice_name"] == "Basile"
+    # The host spoke with that voice: every TTS call of the run names it (D037).
+    lines = (show_dir / "trace" / "tts.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 4
+    assert all(json.loads(line)["voice_id"] == "fake-voice-2" for line in lines)
+    listed = client.get("/api/v1/shows").json()
+    assert listed[0]["config"]["voice_name"] == "Basile"
+
+
+def test_create_show_without_a_voice_keeps_the_personas(
+    client: TestClient, fake_settings: Settings
+) -> None:
+    for body in ({}, {"voice_id": None}):
+        created = _create(client, **body)
+
+        assert created["config"]["voice_id"] is None
+        assert created["config"]["voice_name"] is None
+        show_dir = fake_settings.output_dir / created["id"]
+        lines = (show_dir / "trace" / "tts.jsonl").read_text(encoding="utf-8").splitlines()
+        calm = get_persona(PROMPTS_DIR, "en", "calm")
+        assert all(json.loads(line)["voice_id"] == calm.voice_id for line in lines)
+
+
+def test_unknown_voice_is_a_400(client: TestClient) -> None:
+    response = client.post("/api/v1/shows", json={"style": "jazz", "voice_id": "nobody"})
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Unknown voice 'nobody'. Pick one of the listed voices, or leave the voice out "
+        "to use the style's own voice."
+    )
+    assert client.get("/api/v1/shows").json() == []
+
+
+def test_blank_voice_is_no_voice(client_without_voices: TestClient) -> None:
+    """Like a blank wish. The list is not read, so it may even be failing."""
+    for blank in ("", "   "):
+        created = _create(client_without_voices, voice_id=blank)
+
+        assert created["config"]["voice_id"] is None
+        assert created["config"]["voice_name"] is None
+
+
+def test_voice_id_with_spaces_around_is_found(client: TestClient) -> None:
+    created = _create(client, voice_id="  fake-voice-2 ")
+
+    assert created["config"]["voice_id"] == "fake-voice-2"
+    assert created["config"]["voice_name"] == "Basile"
+
+
+def test_too_long_voice_id_is_a_422(client: TestClient) -> None:
+    """Refused by validation, before the voice list is read or an error text is built."""
+    response = client.post("/api/v1/shows", json={"style": "jazz", "voice_id": "x" * 101})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "voice_id"]
+    assert "at most 100 characters" in response.json()["detail"][0]["msg"]
+    assert client.get("/api/v1/shows").json() == []
+    # A hundred characters pass validation and reach the voice check.
+    response = client.post("/api/v1/shows", json={"style": "jazz", "voice_id": "x" * 100})
+    assert response.status_code == 400
+
+
+def test_a_picked_voice_needs_the_list_and_no_voice_does_not(
+    client_without_voices: TestClient,
+) -> None:
+    response = client_without_voices.post(
+        "/api/v1/shows", json={"style": "jazz", "voice_id": "fake-voice-1"}
+    )
+
+    assert response.status_code == 502
+    assert "Could not list the ElevenLabs voices" in response.json()["detail"]
+    assert client_without_voices.get("/api/v1/shows").json() == []
+    # With no voice asked for, the list is not read: the show is created.
+    assert _create(client_without_voices)["config"]["voice_id"] is None
