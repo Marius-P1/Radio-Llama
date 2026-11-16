@@ -189,7 +189,7 @@ class PipelineGenerator:
             )
             self.last_responses.append(response)
             try:
-                return music.find_tracks(proposals, style=config.style, minimum=config.track_count)
+                return music.find_tracks(proposals, minimum=config.track_count)
             except YouTubeQuotaError as exc:
                 raise GenerationError(str(exc)) from exc
         # The catalog and Jamendo search by style; the API and the CLI check it is given.

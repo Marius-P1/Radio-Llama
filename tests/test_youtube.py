@@ -50,26 +50,19 @@ def test_youtube_offers_no_styles(fake_youtube: FakeYouTube) -> None:
     assert fake_youtube.requests == []
 
 
-def test_find_tracks_without_a_style_leaves_it_blank(fake_youtube: FakeYouTube) -> None:
-    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], style=None, minimum=1)
-
-    assert track.style == ""  # Track needs a str; "" like album (D039)
-    assert track.title == "Blue Window"
-
-
 def test_list_tracks_is_empty_without_a_call(fake_youtube: FakeYouTube) -> None:
     assert fake_youtube.source.list_tracks("jazz") == []
     assert fake_youtube.requests == []
 
 
 def test_find_tracks_maps_a_proposal_to_its_video(fake_youtube: FakeYouTube) -> None:
-    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
 
     assert track.id == "youtube-okTopic0001"
     assert track.video_id == "okTopic0001"
     assert track.title == "Blue Window"  # the proposal's, not YouTube's
     assert track.artist == "Example Artist"
-    assert track.style == "jazz"
+    assert track.style == ""  # no style on YouTube (D039); Track needs a str, like album
     assert track.energy is None
     assert track.album == ""
     assert track.year is None
@@ -84,7 +77,7 @@ def test_find_tracks_maps_a_proposal_to_its_video(fake_youtube: FakeYouTube) -> 
 
 
 def test_find_tracks_sends_one_search_then_one_videos_call(fake_youtube: FakeYouTube) -> None:
-    fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+    fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
 
     search, videos = fake_youtube.requests
     assert search.url.host == "www.googleapis.com"
@@ -154,16 +147,14 @@ def test_reject_reason_on_edited_videos() -> None:
 def test_the_region_setting_is_the_one_checked(tmp_path: Path) -> None:
     fake = FakeYouTube(tmp_path / "cache", region="US")
 
-    (track,) = fake.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+    (track,) = fake.source.find_tracks([BLUE_WINDOW], minimum=1)
 
     assert _params(fake.searches()[0])["regionCode"] == "US"
     assert track.video_id == "okTopic0001"  # still the artist's channel first
 
 
 def test_the_artist_channel_wins_over_an_earlier_upload(fake_youtube: FakeYouTube) -> None:
-    tracks = fake_youtube.source.find_tracks(
-        [BLUE_WINDOW, NIGHT_TRAIN, MONTREAL], style="rock", minimum=3
-    )
+    tracks = fake_youtube.source.find_tracks([BLUE_WINDOW, NIGHT_TRAIN, MONTREAL], minimum=3)
 
     # Blue Window: a plain upload comes first, the "- Topic" channel is preferred.
     # Night Train: a plain upload first, the VEVO channel is preferred.
@@ -193,7 +184,7 @@ def test_a_proposal_without_a_playable_video_is_dropped(fake_youtube: FakeYouTub
     broken = SongProposal(artist="Nobody", title="Broken Song")
     unknown = SongProposal(artist="Nobody", title="Never Recorded")
 
-    tracks = fake_youtube.source.find_tracks([broken, unknown, MONTREAL], style="jazz", minimum=3)
+    tracks = fake_youtube.source.find_tracks([broken, unknown, MONTREAL], minimum=3)
 
     assert [track.video_id for track in tracks] == ["montreal001"]
     # The unknown song's search returned nothing, so no videos call for it.
@@ -207,7 +198,7 @@ def test_a_proposal_without_a_playable_video_is_dropped(fake_youtube: FakeYouTub
 
 
 def test_find_tracks_stops_once_minimum_is_reached(fake_youtube: FakeYouTube) -> None:
-    tracks = fake_youtube.source.find_tracks(PROPOSALS, style="pop", minimum=3)
+    tracks = fake_youtube.source.find_tracks(PROPOSALS, minimum=3)
 
     assert len(tracks) == 3
     assert len(fake_youtube.searches()) == 3  # the two spare proposals cost nothing
@@ -216,18 +207,18 @@ def test_find_tracks_stops_once_minimum_is_reached(fake_youtube: FakeYouTube) ->
 def test_the_same_video_for_two_proposals_is_kept_once(fake_youtube: FakeYouTube) -> None:
     river_again = SongProposal(artist="Someone Else", title="Slow River")
 
-    tracks = fake_youtube.source.find_tracks([SLOW_RIVER, river_again], style="pop", minimum=2)
+    tracks = fake_youtube.source.find_tracks([SLOW_RIVER, river_again], minimum=2)
 
     assert [track.video_id for track in tracks] == ["slowRivr001"]
 
 
 def test_cache_hit_avoids_a_second_search(fake_youtube: FakeYouTube, tmp_path: Path) -> None:
-    first = fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
-    again = fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+    first = fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
+    again = fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
     # A fresh process on the same cache folder reads the file too.
     fresh = FakeYouTube(tmp_path / "cache")
     later = fresh.source.find_tracks(
-        [SongProposal(artist="example  artist", title="BLUE WINDOW")], style="jazz", minimum=1
+        [SongProposal(artist="example  artist", title="BLUE WINDOW")], minimum=1
     )
 
     assert len(fake_youtube.searches()) == 1
@@ -252,8 +243,8 @@ def test_cache_hit_avoids_a_second_search(fake_youtube: FakeYouTube, tmp_path: P
 def test_a_miss_is_cached_too(fake_youtube: FakeYouTube, tmp_path: Path) -> None:
     unknown = SongProposal(artist="Nobody", title="Never Recorded")
 
-    assert fake_youtube.source.find_tracks([unknown], style="jazz", minimum=1) == []
-    assert fake_youtube.source.find_tracks([unknown], style="jazz", minimum=1) == []
+    assert fake_youtube.source.find_tracks([unknown], minimum=1) == []
+    assert fake_youtube.source.find_tracks([unknown], minimum=1) == []
 
     assert len(fake_youtube.searches()) == 1
     (cache_file,) = (tmp_path / "cache" / "youtube").iterdir()
@@ -276,7 +267,7 @@ def test_a_cache_entry_older_than_30_days_is_refreshed(
     path = folder / f"{cache_key(BLUE_WINDOW)}.json"
     path.write_text(old.model_dump_json(), encoding="utf-8")
 
-    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
 
     assert track.video_id == "okTopic0001"
     assert len(fake_youtube.searches()) == 1
@@ -308,7 +299,7 @@ def test_a_naive_fetched_at_is_a_broken_entry(fake_youtube: FakeYouTube, tmp_pat
     naive["fetched_at"] = "2026-11-01T12:00:00"
     path.write_text(json.dumps(naive), encoding="utf-8")
 
-    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
 
     assert track.video_id == "okTopic0001"
     assert len(fake_youtube.searches()) == 1
@@ -322,7 +313,7 @@ def test_a_broken_cache_file_is_replaced(fake_youtube: FakeYouTube, tmp_path: Pa
     path = folder / f"{cache_key(BLUE_WINDOW)}.json"
     path.write_text("not json", encoding="utf-8")
 
-    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
 
     assert track.video_id == "okTopic0001"
     assert CacheEntry.model_validate_json(path.read_text(encoding="utf-8")).video is not None
@@ -332,7 +323,7 @@ def test_quota_exceeded_is_a_clear_error(fake_youtube: FakeYouTube, tmp_path: Pa
     fake_youtube.quota_exceeded = True
 
     with pytest.raises(YouTubeQuotaError, match="100 searches a day"):
-        fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+        fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
     assert not (tmp_path / "cache" / "youtube").exists()  # a failure is not cached
 
 
@@ -354,7 +345,7 @@ def test_a_bad_key_names_the_variable(tmp_path: Path) -> None:
     )
 
     with pytest.raises(YouTubeError, match="YOUTUBE_API_KEY"):
-        source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+        source.find_tracks([BLUE_WINDOW], minimum=1)
 
 
 def test_network_and_http_errors_become_youtube_errors(tmp_path: Path) -> None:
@@ -372,9 +363,9 @@ def test_network_and_http_errors_become_youtube_errors(tmp_path: Path) -> None:
     )
 
     with pytest.raises(YouTubeError, match="unreachable"):
-        down.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+        down.find_tracks([BLUE_WINDOW], minimum=1)
     with pytest.raises(YouTubeError, match="HTTP 503.*Backend Error"):
-        busy.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+        busy.find_tracks([BLUE_WINDOW], minimum=1)
 
 
 @pytest.mark.parametrize(
@@ -399,13 +390,13 @@ def test_parse_duration(text: str, seconds: float | None) -> None:
 
 def test_the_key_never_reaches_the_trace(fake_youtube: FakeYouTube, tmp_path: Path) -> None:
     with tracing(tmp_path / "trace"):
-        fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
-        fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+        fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
+        fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
 
     text = (tmp_path / "trace" / "youtube.jsonl").read_text(encoding="utf-8")
     assert "test-api-key" not in text
     assert '"key"' not in text
-    search, videos, cached = [json.loads(line) for line in text.splitlines()]
+    search, videos, picked, cached = [json.loads(line) for line in text.splitlines()]
     assert search["method"] == "search"
     assert search["params"]["q"] == "Example Artist Blue Window"
     assert search["status"] == 200
@@ -431,7 +422,7 @@ def test_quota_error_is_traced(fake_youtube: FakeYouTube, tmp_path: Path) -> Non
 
 
 def test_get_track_knows_found_tracks_only(fake_youtube: FakeYouTube) -> None:
-    (track,) = fake_youtube.source.find_tracks([MONTREAL], style="jazz", minimum=1)
+    (track,) = fake_youtube.source.find_tracks([MONTREAL], minimum=1)
 
     assert fake_youtube.source.get_track("youtube-montreal001") is track
     with pytest.raises(UnknownTrackError):
@@ -442,8 +433,8 @@ def test_get_track_knows_found_tracks_only(fake_youtube: FakeYouTube) -> None:
 
 def test_get_track_forgets_the_previous_result(fake_youtube: FakeYouTube) -> None:
     """The source keeps the last result only, so a long-lived server does not pile tracks up."""
-    fake_youtube.source.find_tracks([MONTREAL], style="jazz", minimum=1)
-    (track,) = fake_youtube.source.find_tracks([RED_LIGHTS], style="jazz", minimum=1)
+    fake_youtube.source.find_tracks([MONTREAL], minimum=1)
+    (track,) = fake_youtube.source.find_tracks([RED_LIGHTS], minimum=1)
 
     assert fake_youtube.source.get_track("youtube-redLight001") is track
     with pytest.raises(UnknownTrackError):
@@ -451,7 +442,7 @@ def test_get_track_forgets_the_previous_result(fake_youtube: FakeYouTube) -> Non
 
 
 def test_audio_path_is_an_error(fake_youtube: FakeYouTube) -> None:
-    (track,) = fake_youtube.source.find_tracks([MONTREAL], style="jazz", minimum=1)
+    (track,) = fake_youtube.source.find_tracks([MONTREAL], minimum=1)
 
     with pytest.raises(MusicSourceError, match="no audio file"):
         fake_youtube.source.audio_path(track)

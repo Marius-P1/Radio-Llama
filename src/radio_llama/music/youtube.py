@@ -116,9 +116,7 @@ class YouTubeSource:
         come from the LLM's proposals through `find_tracks` (D038)."""
         return []
 
-    def find_tracks(
-        self, proposals: list[SongProposal], *, style: str | None, minimum: int
-    ) -> list[Track]:
+    def find_tracks(self, proposals: list[SongProposal], *, minimum: int) -> list[Track]:
         """One track per proposal that has a playable video, in the proposals' order.
 
         Proposals are looked up until `minimum` tracks are found, so the spare proposals
@@ -135,7 +133,7 @@ class YouTubeSource:
             if video is None or video.id in seen:
                 continue
             seen.add(video.id)
-            found.append(to_track(proposal, video, style))
+            found.append(to_track(proposal, video))
         self._tracks = {track.id: track for track in found}
         return found
 
@@ -319,16 +317,13 @@ def to_video(raw: dict) -> Video:
     )
 
 
-def to_track(proposal: SongProposal, video: Video, style: str | None) -> Track:
-    """The Track the show plays: the proposal's names, the video's length and links (D038).
-
-    `style` is "" for a show without one (D039), like `album` is (Track needs a str).
-    """
+def to_track(proposal: SongProposal, video: Video) -> Track:
+    """The Track the show plays: the proposal's names, the video's length and links (D038)."""
     return Track(
         id=f"{ID_PREFIX}{video.id}",
         title=proposal.title,
         artist=proposal.artist,
-        style=style or "",
+        style="",  # a YouTube show has no style (D039); Track needs a str, like album
         album="",
         duration_s=video.duration_s,
         license=LICENSE,
