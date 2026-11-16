@@ -16,8 +16,6 @@ type Props = {
 // gesture; Continue resumes it from a click. ended: the last segment finished.
 type Phase = 'idle' | 'playing' | 'paused' | 'blocked' | 'ended'
 
-// A demo show plays 30 seconds of each song, like the backend's cut (D023).
-const DEMO_SONG_LENGTH_S = 30
 // A song that cannot play is marked in the script, then the show goes on after this pause.
 const SKIP_PAUSE_MS = 1500
 
@@ -115,8 +113,10 @@ export function SegmentPlayer({ show }: Props) {
         skip(i)
         return
       }
-      if (show.config.demo) player.loadVideoById({ videoId, endSeconds: DEMO_SONG_LENGTH_S })
-      else player.loadVideoById(videoId)
+      // A demo show plays each song for the cut the backend wrote into the segment (D023).
+      if (show.config.demo && segment.duration_s) {
+        player.loadVideoById({ videoId, endSeconds: segment.duration_s })
+      } else player.loadVideoById(videoId)
       return
     }
     if (audio === null || !segment.audio_url) {
