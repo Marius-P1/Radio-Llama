@@ -13,4 +13,4 @@ Règles :
 - Exactement $count chansons, assez connues pour être sur YouTube, avec le nom habituel de l'artiste et le titre exact.
 - Uniquement des chansons réelles. N'invente jamais un artiste ni un titre.
 - Jamais deux fois la même chanson, et une seule chanson par artiste.
-- Chaque chanson correspond au style, à l'énergie et à la demande s'il y en a une. Les chansons dans toutes les langues sont les bienvenues.
+- Chaque chanson correspond au style, à l'énergie et à la demande. Sans style, la demande seule fixe le thème. Les chansons dans toutes les langues sont les bienvenues.

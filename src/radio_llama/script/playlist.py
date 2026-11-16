@@ -35,17 +35,20 @@ def propose_playlist(
     prompts_dir: Path,
     language: Literal["en", "fr"],
     *,
-    style: str,
+    style: str | None,
     energy: Energy | None,
     wish: str | None,
     count: int,
 ) -> tuple[list[SongProposal], LLMResponse]:
-    """Ask the model for `count` songs. Returns them with the raw response."""
+    """Ask the model for `count` songs. Returns them with the raw response.
+
+    With no style (D039) the prompt says so and the wish alone sets the theme.
+    """
     strings = UI_STRINGS[language]
     user = render(
         load_template(prompts_dir, language, "playlist"),
         {
-            "style": style,
+            "style": style or strings["no_style"],
             "energy": energy or strings["any_energy"],
             "wish": wish or strings["no_wish"],
             "language": strings["language_name"],

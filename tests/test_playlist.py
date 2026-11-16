@@ -60,6 +60,25 @@ def test_propose_playlist_names_any_energy_and_no_wish() -> None:
     assert "Nombre de chansons : 3" in french
 
 
+def test_propose_playlist_without_a_style_makes_the_wish_the_theme() -> None:
+    """No style on YouTube (D039): the prompt says so instead of showing a Python None."""
+    llm = FakeLLM([PLAYLIST_JSON, PLAYLIST_JSON])
+    wish = "90s French rap, upbeat"
+
+    propose_playlist(llm, PROMPTS_DIR, "en", style=None, energy=None, wish=wish, count=5)
+    propose_playlist(llm, PROMPTS_DIR, "fr", style=None, energy="calm", wish=wish, count=5)
+
+    english = llm.calls[0][0].content
+    assert "Style chosen by the listener: (none: the request is the theme)" in english
+    assert "The listener's request: 90s French rap, upbeat" in english
+    assert "With no style, the request alone sets the theme." in english
+    french = llm.calls[1][0].content
+    assert "Style choisi par l'auditeur : (aucun : la demande est le thème)" in french
+    assert "Énergie choisie par l'auditeur : calm" in french
+    for call in llm.calls:
+        assert "None" not in call[0].content
+
+
 def test_propose_playlist_accepts_a_fenced_reply() -> None:
     llm = FakeLLM([f"```json\n{PLAYLIST_JSON}\n```"])
 

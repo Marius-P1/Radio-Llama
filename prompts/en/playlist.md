@@ -13,4 +13,4 @@ Rules:
 - Exactly $count songs, famous enough to be on YouTube, with the artist's usual name and the exact title.
 - Only real songs. Never invent an artist or a title.
 - No song twice, and one song per artist.
-- Every song fits the style, the energy and the request when there is one. Songs in any language are welcome.
+- Every song fits the style, the energy and the request. With no style, the request alone sets the theme. Songs in any language are welcome.
