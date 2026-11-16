@@ -21,7 +21,8 @@ def export_replay(show_ids: list[str], output_dir: Path, dest: Path) -> list[dic
     """Copy each ready show's `show.json` and MP3 into `dest / id /`, then rewrite the index.
 
     Returns one summary dict per exported show. Raises FileNotFoundError for an unknown id
-    and ValueError for a show that is not ready; nothing is copied for that id.
+    and ValueError for a show that is not ready or has no MP3 (a YouTube show plays segment
+    by segment, which the replay page cannot do yet, MAR-13); nothing is copied for that id.
     """
     summaries = []
     for show_id in show_ids:
@@ -29,9 +30,14 @@ def export_replay(show_ids: list[str], output_dir: Path, dest: Path) -> list[dic
         if not (source / SHOW_FILE).exists():
             raise FileNotFoundError(f"No show {show_id} in {output_dir} (no {SHOW_FILE}).")
         show = load_show(source)
-        if show.status != "ready" or show.audio_file is None:
+        if show.status != "ready":
             raise ValueError(
                 f"Show {show_id} is {show.status}, not ready. Only ready shows can be exported."
+            )
+        if show.audio_file is None:
+            raise ValueError(
+                f"Show {show_id} has no show.mp3: it plays segment by segment. YouTube shows "
+                "cannot be exported to the replay page yet (MAR-13)."
             )
         if not (source / show.audio_file).exists():
             raise FileNotFoundError(f"Show {show_id} has no audio file {show.audio_file}.")

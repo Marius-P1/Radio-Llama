@@ -87,6 +87,24 @@ def test_export_refuses_a_show_that_is_not_ready(output_dir: Path, tmp_path: Pat
     assert not (dest / FAILED_ID).exists()
 
 
+def test_export_refuses_a_youtube_show_until_mar_13(output_dir: Path, tmp_path: Path) -> None:
+    """A ready YouTube show has no show.mp3: the replay page cannot play it yet."""
+    youtube_id = "20261030-140000-abc789"
+    show = Show(
+        id=youtube_id,
+        created_at=datetime(2026, 10, 30, 14, 0, tzinfo=UTC),
+        config=ShowConfig(style="jazz", persona="calm", seed=1, source="youtube"),
+        status="ready",
+    )
+    save_show(show, output_dir / youtube_id)
+    dest = tmp_path / "shows"
+
+    with pytest.raises(ValueError, match="YouTube shows cannot be exported .*MAR-13"):
+        export_replay([youtube_id], output_dir, dest)
+
+    assert not (dest / youtube_id).exists()
+
+
 def test_export_refuses_an_unknown_id(output_dir: Path, tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="20200101-000000-000000"):
         export_replay(["20200101-000000-000000"], output_dir, tmp_path / "shows")
