@@ -6,6 +6,7 @@ POST /shows here completes the whole generation before `client.post` returns. Th
 """
 
 import json
+import logging
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,8 +24,8 @@ from radio_llama.models import Show, ShowConfig
 from radio_llama.music import LocalCatalog
 from radio_llama.personas import get_persona, load_personas
 from radio_llama.storage import save_show
-from radio_llama.voice import TTSError, VoiceOption
-from tests.conftest import PROMPTS_DIR
+from radio_llama.voice import TTSError
+from tests.conftest import PROMPTS_DIR, refused_voices
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -556,14 +557,13 @@ def test_catalog_show_still_needs_a_style(client_with_youtube: TestClient) -> No
 # The host's voice (D040): a list to pick from, checked when a show is created.
 
 
-class FailingVoices:
-    def list_voices(self) -> list[VoiceOption]:
-        raise TTSError("Could not list the ElevenLabs voices: HTTP 401")
+VOICES_REFUSED = "Could not list the ElevenLabs voices (HTTP 401)."
 
 
 @pytest.fixture
 def client_without_voices(fake_settings: Settings) -> TestClient:
-    with TestClient(create_app(fake_settings, voices=FailingVoices())) as client:
+    """The real ElevenLabs voice list on a client that answers 401 to every search."""
+    with TestClient(create_app(fake_settings, voices=refused_voices())) as client:
         yield client
 
 
@@ -597,12 +597,15 @@ def test_voices_lists_the_voices_of_the_backend(client: TestClient) -> None:
 
 
 def test_voices_failure_is_a_502_and_the_options_still_load(
-    client_without_voices: TestClient,
+    client_without_voices: TestClient, caplog: pytest.LogCaptureFixture
 ) -> None:
-    response = client_without_voices.get("/api/v1/voices")
+    with caplog.at_level(logging.WARNING, logger="radio_llama.voice.elevenlabs"):
+        response = client_without_voices.get("/api/v1/voices")
 
+    # The page gets a short sentence. What ElevenLabs answered is in the server log only.
     assert response.status_code == 502
-    assert response.json()["detail"] == "Could not list the ElevenLabs voices: HTTP 401"
+    assert response.json() == {"detail": VOICES_REFUSED}
+    assert "Invalid API key" in caplog.text
     assert client_without_voices.get("/api/v1/options").status_code == 200
 
 
@@ -688,7 +691,7 @@ def test_a_picked_voice_needs_the_list_and_no_voice_does_not(
     )
 
     assert response.status_code == 502
-    assert "Could not list the ElevenLabs voices" in response.json()["detail"]
+    assert response.json() == {"detail": VOICES_REFUSED}
     assert client_without_voices.get("/api/v1/shows").json() == []
     # With no voice asked for, the list is not read: the show is created.
     assert _create(client_without_voices)["config"]["voice_id"] is None

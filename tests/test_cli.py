@@ -11,8 +11,8 @@ from radio_llama.config import Settings
 from radio_llama.generator import PipelineGenerator
 from radio_llama.llm import FakeLLM
 from radio_llama.music import LocalCatalog
-from radio_llama.voice import CachedTextToSpeech, FakeTTS, TTSError, VoiceOption
-from tests.conftest import FakeYouTube
+from radio_llama.voice import CachedTextToSpeech, FakeTTS
+from tests.conftest import FakeYouTube, refused_voices
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -93,18 +93,17 @@ def test_generate_with_an_unknown_voice_stops_before_generating(cli_env: Path) -
 def test_generate_reports_a_voice_list_that_cannot_be_read(
     cli_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    class FailingVoices:
-        def list_voices(self) -> list[VoiceOption]:
-            raise TTSError("Could not list the ElevenLabs voices: HTTP 401")
-
-    monkeypatch.setattr(cli, "make_voice_list", lambda settings: FailingVoices())
+    monkeypatch.setattr(cli, "make_voice_list", lambda settings: refused_voices())
 
     result = runner.invoke(
         app, ["generate", "--fake", "--style", "jazz", "--voice", "fake-voice-2"]
     )
 
+    # The same short sentence as the API, without what ElevenLabs answered.
     assert result.exit_code == 1
-    assert "Could not list the ElevenLabs voices" in result.output
+    assert "Could not list the ElevenLabs voices (HTTP 401)." in result.output
+    assert "Invalid API key" not in result.output
+    assert "Traceback" not in result.output
     assert not cli_env.exists()
     # Without --voice the list is not read, so the show is made.
     assert runner.invoke(app, ["generate", "--fake", "--style", "jazz"]).exit_code == 0

@@ -1,11 +1,14 @@
 """The voice lists behind the picker (D040): ElevenLabs on a stub client, and the fake."""
 
+import inspect
+import logging
 from typing import Any
 
 import pytest
 from elevenlabs import GetVoicesV2Response, VerifiedVoiceLanguageResponseModel
 from elevenlabs import Voice as AccountVoice
 from elevenlabs.core.api_error import ApiError
+from elevenlabs.voices.client import VoicesClient
 
 from radio_llama.voice import (
     ElevenLabsVoices,
@@ -201,10 +204,45 @@ def test_every_page_is_read() -> None:
     listing = ElevenLabsVoices("key", MODEL, client=client)  # type: ignore[arg-type]
 
     assert [voice.id for voice in listing.list_voices()] == ["a", "b", "c"]
-    assert client.voices.calls == [
-        {"page_size": 100, "next_page_token": None},
-        {"page_size": 100, "next_page_token": "page-2"},
+    assert [call["next_page_token"] for call in client.voices.calls] == [None, "page-2"]
+    assert all(call["page_size"] == 100 for call in client.voices.calls)
+
+
+def test_every_call_gives_up_after_ten_seconds_and_is_not_retried() -> None:
+    """A person waits on this call. The SDK's defaults are 240 seconds and two retries."""
+    client = StubClient(
+        {
+            None: page([account_voice("a")], next_page_token="page-2"),
+            "page-2": page([account_voice("b")]),
+        }
+    )
+    listing = ElevenLabsVoices("key", MODEL, client=client)  # type: ignore[arg-type]
+
+    listing.list_voices()
+
+    assert [call["request_options"] for call in client.voices.calls] == [
+        {"timeout_in_seconds": 10, "max_retries": 0},
+        {"timeout_in_seconds": 10, "max_retries": 0},
     ]
+
+
+def test_the_real_sdk_search_takes_the_arguments_the_stub_records() -> None:
+    """The stub accepts anything, so this pins the names to the installed SDK."""
+    parameters = inspect.signature(VoicesClient.search).parameters
+
+    assert {"page_size", "next_page_token", "request_options"} <= set(parameters)
+
+
+def test_a_caller_cannot_change_the_kept_list() -> None:
+    listing, client = make_voices(account_voice("a"), account_voice("b"))
+
+    first = listing.list_voices()
+    first.clear()
+    listing.list_voices().pop()
+
+    # Both the fresh answer and the kept one were copies: the list is whole, from one call.
+    assert [voice.id for voice in listing.list_voices()] == ["a", "b"]
+    assert len(client.voices.calls) == 1
 
 
 def test_the_list_is_kept_for_ten_minutes() -> None:
@@ -222,14 +260,19 @@ def test_the_list_is_kept_for_ten_minutes() -> None:
     assert len(client.voices.calls) == 2
 
 
-def test_a_failure_is_readable_and_not_kept() -> None:
+def test_a_failure_without_an_answer_is_a_short_sentence_and_not_kept(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     listing, client = make_voices(account_voice("a"))
-    client.voices.error = RuntimeError("connection reset")
+    client.voices.error = TimeoutError("timed out after 10 s")
 
-    with pytest.raises(TTSError, match="Could not list the ElevenLabs voices") as info:
+    with caplog.at_level(logging.WARNING), pytest.raises(TTSError) as info:
         listing.list_voices()
-    assert "connection reset" in str(info.value)
-    assert isinstance(info.value.__cause__, RuntimeError)
+
+    # The page and the CLI get the sentence; the reason is in the server log.
+    assert str(info.value) == "Could not list the ElevenLabs voices: no answer from ElevenLabs."
+    assert isinstance(info.value.__cause__, TimeoutError)
+    assert "timed out after 10 s" in caplog.text
 
     # The next call asks again and gets the list.
     client.voices.error = None
@@ -237,7 +280,9 @@ def test_a_failure_is_readable_and_not_kept() -> None:
     assert len(client.voices.calls) == 2
 
 
-def test_an_api_error_names_the_status_without_the_headers() -> None:
+def test_an_api_error_names_the_status_and_logs_the_body(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     listing, client = make_voices(account_voice("a"))
     client.voices.error = ApiError(
         headers={"x-request-id": "secret-looking-header"},
@@ -245,12 +290,17 @@ def test_an_api_error_names_the_status_without_the_headers() -> None:
         body={"detail": {"status": "invalid_api_key", "message": "Invalid API key"}},
     )
 
-    with pytest.raises(TTSError) as info:
+    with caplog.at_level(logging.WARNING), pytest.raises(TTSError) as info:
         listing.list_voices()
 
-    assert "HTTP 401" in str(info.value)
-    assert "Invalid API key" in str(info.value)
-    assert "x-request-id" not in str(info.value)
+    assert str(info.value) == "Could not list the ElevenLabs voices (HTTP 401)."
+    (record,) = caplog.records
+    assert record.levelname == "WARNING"
+    assert record.name == "radio_llama.voice.elevenlabs"
+    assert "HTTP 401" in record.getMessage()
+    assert "Invalid API key" in record.getMessage()
+    # The response headers stay out of both.
+    assert "x-request-id" not in record.getMessage()
 
 
 class CountingVoices:

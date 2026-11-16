@@ -1,5 +1,6 @@
 """ElevenLabs backend on the official SDK: text to speech, and the account's voice list."""
 
+import logging
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -8,13 +9,22 @@ from uuid import uuid4
 from elevenlabs import ElevenLabs, VerifiedVoiceLanguageResponseModel, VoiceSettings
 from elevenlabs import Voice as AccountVoice
 from elevenlabs.core.api_error import ApiError
+from elevenlabs.core.request_options import RequestOptions
 
 from radio_llama.voice.base import TTSError, Voice, VoiceOption
+
+log = logging.getLogger(__name__)
 
 # How long the voice list is kept in memory. The account's voices rarely change.
 VOICE_LIST_SECONDS = 600.0
 # The most voices ElevenLabs returns in one page.
 PAGE_SIZE = 100
+# A person waits on the create screen while the voices are listed, so that call gives up
+# after ten seconds and is not tried again. The SDK's defaults are 240 seconds and two
+# more tries after a 5xx or 429 answer, each after a pause of up to a minute. The TTS
+# client keeps those defaults: voicing a segment may take long, and it runs in the
+# background job, where waiting and trying again is right.
+VOICE_LIST_OPTIONS: RequestOptions = {"timeout_in_seconds": 10, "max_retries": 0}
 
 
 class ElevenLabsTTS:
@@ -65,32 +75,46 @@ class ElevenLabsVoices:
         self._fetched_at = 0.0
 
     def list_voices(self) -> list[VoiceOption]:
+        # There is no lock. The routes run in a thread pool, so two requests that find
+        # the list missing or expired may both call ElevenLabs. That is harmless: each
+        # call builds a complete list of its own before storing it, and the last one
+        # stored wins.
         now = self._clock()
         if self._voices is not None and now - self._fetched_at < VOICE_LIST_SECONDS:
-            return self._voices
-        # A failure raises before the two lines below, so it is never kept: the next
-        # call asks ElevenLabs again.
-        self._voices = self._fetch()
+            return list(self._voices)
+        # A failure raises here, before anything is stored, so it is never kept: the
+        # next call asks ElevenLabs again.
+        voices = self._fetch()
+        self._voices = voices
         self._fetched_at = now
-        return self._voices
+        # A copy, like the fake list gives: a caller cannot change the kept list.
+        return list(voices)
 
     def _fetch(self) -> list[VoiceOption]:
         found: list[AccountVoice] = []
         token: str | None = None
         try:
             while True:
-                page = self._client.voices.search(page_size=PAGE_SIZE, next_page_token=token)
+                page = self._client.voices.search(
+                    page_size=PAGE_SIZE, next_page_token=token, request_options=VOICE_LIST_OPTIONS
+                )
                 found.extend(page.voices)
                 token = page.next_page_token
                 if not page.has_more or token is None:
                     break
         except ApiError as exc:
-            # The SDK's own text lists the response headers; the status and body say enough.
+            # The page and the CLI get a short sentence. ElevenLabs' own answer is text
+            # this project does not control, so it goes to the server log only.
+            log.warning("ElevenLabs voice list failed: HTTP %s %s", exc.status_code, exc.body)
             raise TTSError(
-                f"Could not list the ElevenLabs voices: HTTP {exc.status_code} {exc.body}"
+                f"Could not list the ElevenLabs voices (HTTP {exc.status_code})."
             ) from exc
         except Exception as exc:
-            raise TTSError(f"Could not list the ElevenLabs voices: {exc}") from exc
+            # No HTTP answer at all: a timeout, no network, a reply the SDK cannot read.
+            log.warning("ElevenLabs voice list failed: %r", exc)
+            raise TTSError(
+                "Could not list the ElevenLabs voices: no answer from ElevenLabs."
+            ) from exc
         return [to_voice_option(voice, self._model_id) for voice in found]
 
 

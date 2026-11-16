@@ -17,7 +17,9 @@ from radio_llama.models import (
 from radio_llama.music.factory import delivery_of
 
 WISH_MAX_CHARS = 200
-# Voice ids are about twenty characters. The cap keeps a huge value out of the error text.
+# Voice ids are about twenty characters. The cap keeps a huge value away from the voice
+# lookup and out of the "Unknown voice" message. FastAPI's own 422 reply still repeats
+# the rejected value once, as it does for every field.
 VOICE_ID_MAX_CHARS = 100
 
 
