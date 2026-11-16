@@ -208,7 +208,9 @@ def get_segment_audio(show_id: str, index: int, settings: SettingsDep) -> FileRe
     if show.status != "ready" or not 0 <= index < len(show.segments):
         raise not_found
     segment = show.segments[index]
-    if segment.audio_file is None:
+    # A song is never served here: a file show keeps its songs inside show.mp3, an embed
+    # show plays them in the YouTube player. Only the host's speech files are.
+    if segment.kind == "song" or segment.audio_file is None:
         raise not_found
     path = settings.output_dir / show_id / segment.audio_file
     if not path.is_file():

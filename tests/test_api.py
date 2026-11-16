@@ -99,6 +99,21 @@ def test_create_show_then_read_it_and_its_audio(client: TestClient) -> None:
     assert audio.content.startswith(b"ID3") or audio.content.startswith(b"\xff")
 
 
+def test_segment_audio_of_a_catalog_show_serves_speech_only(client: TestClient) -> None:
+    """A file show keeps its songs inside show.mp3: the segment route never serves one,
+    even though the song segment points at its audio file."""
+    created = _create(client)
+    show = client.get(f"/api/v1/shows/{created['id']}").json()
+    assert show["segments"][1]["kind"] == "song"
+    assert show["segments"][1]["audio_file"] is not None
+
+    base = f"/api/v1/shows/{created['id']}/segments"
+    speech = client.get(f"{base}/0/audio")
+    assert speech.status_code == 200
+    assert speech.headers["content-type"].startswith("audio/mpeg")
+    assert client.get(f"{base}/1/audio").status_code == 404
+
+
 def test_list_shows_newest_first(client: TestClient) -> None:
     first = _create(client)
     second = _create(client, style="rock")
