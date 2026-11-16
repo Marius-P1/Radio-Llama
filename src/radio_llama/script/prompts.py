@@ -7,7 +7,7 @@ the same placeholders; a test checks it.
 from pathlib import Path
 from string import Template
 
-PROMPT_NAMES = ("system", "intro", "transition", "outro", "wish")
+PROMPT_NAMES = ("system", "intro", "transition", "outro", "wish", "playlist")
 
 
 def load_template(prompts_dir: Path, language: str, name: str) -> Template:

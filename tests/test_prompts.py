@@ -24,6 +24,7 @@ EXPECTED_PLACEHOLDERS = {
     },
     "outro": {"track_list", "transcript", "word_budget"},
     "wish": {"wish", "style", "energy"},
+    "playlist": {"style", "energy", "wish", "language", "count"},
 }
 
 
