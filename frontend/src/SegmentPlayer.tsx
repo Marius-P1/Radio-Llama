@@ -26,13 +26,16 @@ let apiLoading: Promise<typeof YT> | null = null
 
 /** Load https://www.youtube.com/iframe_api once per page and resolve when it is usable. */
 function loadYouTubeApi(): Promise<typeof YT> {
+  // Checked on every call: a script that finished after the timeout is picked up.
+  if (window.YT?.Player) return Promise.resolve(window.YT)
   if (apiLoading === null) {
     apiLoading = new Promise((resolve, reject) => {
-      if (window.YT?.Player) {
-        resolve(window.YT)
-        return
+      // A failed load is forgotten, so the next show tries again instead of running
+      // host-only for the rest of the page.
+      const fail = () => {
+        apiLoading = null
+        reject(new Error('The YouTube player did not load.'))
       }
-      const fail = () => reject(new Error('The YouTube player did not load.'))
       const timer = window.setTimeout(fail, API_TIMEOUT_MS)
       window.onYouTubeIframeAPIReady = () => {
         window.clearTimeout(timer)
