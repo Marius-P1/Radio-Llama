@@ -1,6 +1,6 @@
 # Radio Llama frontend
 
-The web page for Radio Llama. You pick a music source, a style, a host and a language, add a wish for Jamendo or YouTube if you like, press one button, follow the progress, then listen to the show with its script and track credits. Past shows can be replayed.
+The web page for Radio Llama. You pick a music source, a style, a host and a language, add a wish for Jamendo if you like, press one button, follow the progress, then listen to the show with its script and track credits. On YouTube there is no style to pick: you say what you want to hear, and that wish is the only required field. Past shows can be replayed.
 
 A catalog or Jamendo show plays as one MP3 in the browser's audio player. A YouTube show has no MP3: the page plays the host's segments from their own files and each song in the embedded YouTube player, in script order, with Play, Pause and Next (`src/SegmentPlayer.tsx`). The YouTube player is created once when the show opens and stays visible while the show plays, as YouTube's policies ask. The app itself stores nothing about who listens.
 
