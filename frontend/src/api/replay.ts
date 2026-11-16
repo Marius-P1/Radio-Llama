@@ -1,4 +1,4 @@
-import type { CreateShowRequest, Options, ShowResponse, ShowSummary } from './types'
+import type { CreateShowRequest, Options, Segment, ShowResponse, ShowSummary } from './types'
 
 // Static files under <site>/shows/, written by `radio-llama export-replay`.
 // BASE_URL already ends with a slash ("/" or "/Radio-Llama/").
@@ -8,8 +8,9 @@ const BASE_URL = import.meta.env.BASE_URL
 const SHOW_ID = /^[0-9]{8}-[0-9]{6}-[0-9a-f]{6}$/
 
 /** The backend `Show` model as written to `show.json`. */
-type ShowFile = Omit<ShowResponse, 'progress' | 'audio_url'> & {
+type ShowFile = Omit<ShowResponse, 'progress' | 'audio_url' | 'playback' | 'segments'> & {
   audio_file?: string | null
+  segments: Omit<Segment, 'audio_url'>[]
 }
 
 function checkId(id: string): void {
@@ -40,7 +41,9 @@ export async function getShow(id: string): Promise<ShowResponse> {
     config: show.config,
     error: show.error ?? null,
     progress: null,
-    segments: show.segments,
+    // Exported shows are single MP3s (YouTube shows on the replay page are MAR-13).
+    playback: 'file',
+    segments: show.segments.map((segment) => ({ ...segment, audio_url: null })),
     tracks: show.tracks,
     audio_url: audioUrl(id),
   }

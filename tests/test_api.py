@@ -80,6 +80,13 @@ def test_create_show_then_read_it_and_its_audio(client: TestClient) -> None:
     assert len(show["segments"]) == 7
     assert len(show["tracks"]) == 3
     assert show["audio_url"] == f"/api/v1/shows/{created['id']}/audio"
+    assert show["playback"] == "file"
+    # Every speech segment can be fetched on its own too (D038); songs cannot.
+    for index, segment in enumerate(show["segments"]):
+        if segment["kind"] == "song":
+            assert segment["audio_url"] is None
+        else:
+            assert segment["audio_url"] == (f"/api/v1/shows/{created['id']}/segments/{index}/audio")
     for track in show["tracks"]:
         assert track["license"] and track["license_url"]
         assert track["track_url"] and track["artist_url"]
@@ -184,6 +191,7 @@ def test_expected_generation_error_marks_the_show_failed(client: TestClient) -> 
     assert show["status"] == "failed"
     assert "quota" in show["error"]
     assert show["audio_url"] is None
+    assert show["segments"] == []
     assert client.get(f"/api/v1/shows/{created['id']}/audio").status_code == 404
     assert client.get("/api/v1/options").status_code == 200
 
@@ -242,6 +250,12 @@ def test_export_openapi_writes_the_schema(
     assert "/api/v1/shows" in schema["paths"]
     assert "/api/v1/options" in schema["paths"]
     assert "/api/v1/shows/{show_id}/audio" in schema["paths"]
+    assert "/api/v1/shows/{show_id}/segments/{index}/audio" in schema["paths"]
+    assert schema["components"]["schemas"]["ShowResponse"]["properties"]["playback"] == {
+        "enum": ["file", "segments"],
+        "title": "Playback",
+        "type": "string",
+    }
 
 
 def test_built_frontend_is_served_next_to_the_api(fake_settings: Settings, tmp_path: Path) -> None:
@@ -354,3 +368,95 @@ def test_style_is_checked_against_the_chosen_source(client_with_jamendo: TestCli
         "/api/v1/shows", json={"style": "lofi", "source": "jamendo"}
     )
     assert response.status_code == 202
+
+
+# YouTube shows (D038): no MP3, the segments play one by one.
+
+PLAYLIST_JSON = (
+    '{"songs": ['
+    '{"artist": "Example Artist", "title": "Blue Window"}, '
+    '{"artist": "Lea Example", "title": "Montreal Streets"}, '
+    '{"artist": "We Are FM", "title": "Night Train"}, '
+    '{"artist": "Example Records", "title": "Red Lights"}, '
+    '{"artist": "River Uploads", "title": "Slow River"}'
+    "]}"
+)
+
+
+@pytest.fixture
+def client_with_youtube(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube
+) -> TestClient:
+    sources = {"catalog": tiny_catalog, "youtube": fake_youtube.source}
+    with TestClient(create_app(fake_settings, sources)) as client:
+        client.app.state.jobs._generator._llm = FakeLLM([PLAYLIST_JSON, *(["Script."] * 4)])
+        yield client
+
+
+def test_options_list_youtube_when_configured(client_with_youtube: TestClient) -> None:
+    body = client_with_youtube.get("/api/v1/options").json()
+
+    assert [source["id"] for source in body["sources"]] == ["catalog", "youtube"]
+    youtube = body["sources"][1]
+    assert youtube["name"] == "YouTube"
+    assert youtube["wish"] is True
+    assert {"jazz", "rock", "lofi", "hiphop"} <= set(youtube["styles"])
+
+
+def test_create_a_youtube_show_and_fetch_its_segments(client_with_youtube: TestClient) -> None:
+    created = _create(client_with_youtube, source="youtube", wish="trains", demo=True)
+    show = client_with_youtube.get(f"/api/v1/shows/{created['id']}").json()
+
+    assert created["config"]["source"] == "youtube"
+    assert created["config"]["wish"] == "trains"
+    assert show["status"] == "ready", show["error"]
+    assert show["playback"] == "segments"
+    assert show["audio_url"] is None
+    assert client_with_youtube.get(f"/api/v1/shows/{created['id']}/audio").status_code == 404
+    assert [segment["kind"] for segment in show["segments"]] == [
+        "intro",
+        "song",
+        "transition",
+        "song",
+        "transition",
+        "song",
+        "outro",
+    ]
+    for index, segment in enumerate(show["segments"]):
+        if segment["kind"] == "song":
+            assert segment["audio_url"] is None
+            assert segment["audio_file"] is None
+            assert segment["duration_s"] == 30.0
+        else:
+            assert segment["audio_url"] == f"/api/v1/shows/{created['id']}/segments/{index}/audio"
+            assert segment["duration_s"] > 0
+    for track in show["tracks"]:
+        assert track["id"] == f"youtube-{track['video_id']}"
+        assert track["audio_file"] is None
+        assert track["track_url"] == f"https://www.youtube.com/watch?v={track['video_id']}"
+        assert track["license"] == "YouTube embed"
+
+    speech = client_with_youtube.get(show["segments"][0]["audio_url"])
+    assert speech.status_code == 200
+    assert speech.headers["content-type"].startswith("audio/mpeg")
+    assert speech.content.startswith(b"ID3") or speech.content.startswith(b"\xff")
+    base = f"/api/v1/shows/{created['id']}/segments"
+    assert client_with_youtube.get(f"{base}/1/audio").status_code == 404  # a song
+    assert client_with_youtube.get(f"{base}/7/audio").status_code == 404  # past the end
+    assert client_with_youtube.get(f"{base}/-1/audio").status_code == 404
+    assert client_with_youtube.get(f"{base}/intro/audio").status_code == 422
+    assert client_with_youtube.get("/api/v1/shows/not-an-id/segments/0/audio").status_code == 404
+
+
+def test_segment_audio_of_a_show_that_is_not_ready_is_a_404(client: TestClient) -> None:
+    client.app.state.jobs._generator = FailingGenerator(TTSError("quota"))
+    created = _create(client)
+
+    assert client.get(f"/api/v1/shows/{created['id']}/segments/0/audio").status_code == 404
+
+
+def test_unconfigured_youtube_is_a_400_naming_the_variable(client: TestClient) -> None:
+    response = client.post("/api/v1/shows", json={"style": "jazz", "source": "youtube"})
+
+    assert response.status_code == 400
+    assert "YOUTUBE_API_KEY" in response.json()["detail"]

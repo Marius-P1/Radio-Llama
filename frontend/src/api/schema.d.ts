@@ -73,6 +73,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shows/{show_id}/segments/{index}/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Segment Audio
+         * @description One speech file of a ready show, for per-segment playback (D038).
+         */
+        get: operations["get_segment_audio_api_v1_shows__show_id__segments__index__audio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -108,7 +128,7 @@ export interface components {
              * @default catalog
              * @enum {string}
              */
-            source: "catalog" | "jamendo";
+            source: "catalog" | "jamendo" | "youtube";
             /** Style */
             style: string;
             /** Wish */
@@ -165,10 +185,12 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** Segment */
-        Segment: {
+        /** SegmentResponse */
+        SegmentResponse: {
             /** Audio File */
             audio_file?: string | null;
+            /** Audio Url */
+            audio_url?: string | null;
             /** Duration S */
             duration_s?: number | null;
             /**
@@ -213,7 +235,7 @@ export interface components {
              * @default catalog
              * @enum {string}
              */
-            source: "catalog" | "jamendo";
+            source: "catalog" | "jamendo" | "youtube";
             /** Style */
             style: string;
             /**
@@ -238,9 +260,14 @@ export interface components {
             error?: string | null;
             /** Id */
             id: string;
+            /**
+             * Playback
+             * @enum {string}
+             */
+            playback: "file" | "segments";
             progress?: components["schemas"]["Progress"] | null;
             /** Segments */
-            segments: components["schemas"]["Segment"][];
+            segments: components["schemas"]["SegmentResponse"][];
             /**
              * Status
              * @enum {string}
@@ -273,7 +300,7 @@ export interface components {
              * Id
              * @enum {string}
              */
-            id: "catalog" | "jamendo";
+            id: "catalog" | "jamendo" | "youtube";
             /** Name */
             name: string;
             /** Styles */
@@ -290,7 +317,7 @@ export interface components {
             /** Artist Url */
             artist_url: string;
             /** Audio File */
-            audio_file: string;
+            audio_file?: string | null;
             /** Duration S */
             duration_s: number;
             /** Energy */
@@ -315,6 +342,8 @@ export interface components {
             title: string;
             /** Track Url */
             track_url: string;
+            /** Video Id */
+            video_id?: string | null;
             /** Year */
             year?: number | null;
         };
@@ -450,6 +479,38 @@ export interface operations {
             header?: never;
             path: {
                 show_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_segment_audio_api_v1_shows__show_id__segments__index__audio_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                show_id: string;
+                index: number;
             };
             cookie?: never;
         };

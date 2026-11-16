@@ -1,4 +1,4 @@
-"""The `/api/v1` routes: options, create a show, read shows, fetch the MP3."""
+"""The `/api/v1` routes: options, create a show, read shows, fetch the audio."""
 
 import logging
 import re
@@ -86,7 +86,7 @@ def get_options(settings: SettingsDep, sources: SourcesDep) -> OptionsResponse:
                 id=name,  # type: ignore[arg-type]
                 name=SOURCE_NAMES[name],
                 styles=music.list_styles(),
-                wish=name == "jamendo",
+                wish=music.accepts_wish,
             )
             for name, music in sources.items()
         ],
@@ -116,10 +116,12 @@ def create_show(
                 f"Known styles: {', '.join(styles)}."
             ),
         )
-    # A blank wish is no wish. A wish only means something on Jamendo (D030).
+    # A blank wish is no wish. A wish only means something on a source that takes one (D030).
     wish = (body.wish or "").strip() or None
-    if wish is not None and body.source != "jamendo":
-        raise HTTPException(status_code=400, detail="A wish needs the 'jamendo' music source.")
+    if wish is not None and not music.accepts_wish:
+        raise HTTPException(
+            status_code=400, detail="A wish needs the 'jamendo' or 'youtube' music source."
+        )
     persona_ids = [persona.id for persona in load_personas(settings.prompts_dir, body.language)]
     if body.persona not in persona_ids:
         raise HTTPException(
@@ -177,4 +179,22 @@ def get_show_audio(show_id: str, settings: SettingsDep) -> FileResponse:
     if show.status != "ready" or show.audio_file is None or not path.is_file():
         raise HTTPException(status_code=404, detail=f"Show {show_id!r} has no audio yet.")
     # No filename: the browser plays the MP3 inline instead of downloading it.
+    return FileResponse(path, media_type="audio/mpeg")
+
+
+@router.get("/shows/{show_id}/segments/{index}/audio")
+def get_segment_audio(show_id: str, index: int, settings: SettingsDep) -> FileResponse:
+    """One speech file of a ready show, for per-segment playback (D038)."""
+    show = load_show_or_404(settings.output_dir, show_id)
+    not_found = HTTPException(
+        status_code=404, detail=f"Segment {index} of show {show_id!r} has no audio."
+    )
+    if show.status != "ready" or not 0 <= index < len(show.segments):
+        raise not_found
+    segment = show.segments[index]
+    if segment.audio_file is None:
+        raise not_found
+    path = settings.output_dir / show_id / segment.audio_file
+    if not path.is_file():
+        raise not_found
     return FileResponse(path, media_type="audio/mpeg")
