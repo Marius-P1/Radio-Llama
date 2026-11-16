@@ -40,7 +40,8 @@ class OptionsResponse(BaseModel):
 
 
 class CreateShowRequest(BaseModel):
-    style: str
+    # Required on a source that offers styles, absent or null on one that does not (D039).
+    style: str | None = None
     persona: str = "calm"
     language: Literal["en", "fr"] = "en"
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1

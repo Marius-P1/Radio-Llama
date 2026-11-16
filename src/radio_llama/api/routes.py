@@ -107,8 +107,19 @@ def create_show(
     music = sources.get(body.source)
     if music is None:
         raise HTTPException(status_code=400, detail=missing_source_message(body.source))
+    # A source with styles needs one of them. A source without styles (YouTube) takes none:
+    # the wish is its theme, so it needs a wish instead (D039).
     styles = music.list_styles()
-    if body.style not in styles:
+    if not styles:
+        if body.style is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Source {body.source!r} has no styles to pick from. Leave the style out "
+                    "and say what you want to hear in the wish."
+                ),
+            )
+    elif body.style not in styles:
         raise HTTPException(
             status_code=400,
             detail=(
@@ -121,6 +132,11 @@ def create_show(
     if wish is not None and not music.accepts_wish:
         raise HTTPException(
             status_code=400, detail="A wish needs the 'jamendo' or 'youtube' music source."
+        )
+    if wish is None and not styles and music.accepts_wish:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A {SOURCE_NAMES[body.source]} show needs a wish: say what you want to hear.",
         )
     persona_ids = [persona.id for persona in load_personas(settings.prompts_dir, body.language)]
     if body.persona not in persona_ids:

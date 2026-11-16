@@ -133,8 +133,10 @@ class PipelineGenerator:
         self.last_responses = []
         candidates = self._candidates(config, music)
         if len(candidates) < config.track_count:
+            # A YouTube show has no style (D039): name the source instead.
+            what = f"Style {config.style!r}" if config.style else f"Source {config.source!r}"
             raise GenerationError(
-                f"Style {config.style!r} has {len(candidates)} tracks, {config.track_count} needed."
+                f"{what} has {len(candidates)} tracks, {config.track_count} needed."
             )
         rng = random.Random(config.seed)
         tracks = pick_tracks(candidates, config.track_count, config.energy, rng)
@@ -175,6 +177,7 @@ class PipelineGenerator:
         if config.wish and not music.accepts_wish:
             raise GenerationError("A wish needs the 'jamendo' or 'youtube' music source.")
         if isinstance(music, YouTubeSource):
+            # No style on YouTube (D039): the wish is the theme, and the prompt says so.
             proposals, response = propose_playlist(
                 self._llm,
                 self._settings.prompts_dir,
@@ -189,6 +192,9 @@ class PipelineGenerator:
                 return music.find_tracks(proposals, style=config.style, minimum=config.track_count)
             except YouTubeQuotaError as exc:
                 raise GenerationError(str(exc)) from exc
+        # The catalog and Jamendo search by style; the API and the CLI check it is given.
+        if config.style is None:
+            raise GenerationError(f"Source {config.source!r} needs a style.")
         if isinstance(music, JamendoSource):
             filters = None
             if config.wish:

@@ -55,8 +55,15 @@
             "type": "string"
           },
           "style": {
-            "title": "Style",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
           },
           "wish": {
             "anyOf": [
@@ -71,9 +78,6 @@
             "title": "Wish"
           }
         },
-        "required": [
-          "style"
-        ],
         "title": "CreateShowRequest",
         "type": "object"
       },
@@ -372,8 +376,15 @@
             "type": "string"
           },
           "style": {
-            "title": "Style",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
           },
           "track_count": {
             "default": 3,
@@ -393,7 +404,6 @@
           }
         },
         "required": [
-          "style",
           "persona"
         ],
         "title": "ShowConfig",

@@ -62,7 +62,9 @@ MusicSourceName = Literal["catalog", "jamendo", "youtube"]  # D029, D038
 
 
 class ShowConfig(BaseModel):
-    style: str  # a style of the chosen source
+    # A style of the chosen source. None on YouTube, which offers no styles: the wish is
+    # the theme there (D039).
+    style: str | None = None
     persona: str  # Persona.id
     language: Literal["en", "fr"] = "en"
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1

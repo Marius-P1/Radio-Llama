@@ -398,18 +398,18 @@ def test_options_list_youtube_when_configured(client_with_youtube: TestClient) -
     body = client_with_youtube.get("/api/v1/options").json()
 
     assert [source["id"] for source in body["sources"]] == ["catalog", "youtube"]
-    youtube = body["sources"][1]
-    assert youtube["name"] == "YouTube"
-    assert youtube["wish"] is True
-    assert {"jazz", "rock", "lofi", "hiphop"} <= set(youtube["styles"])
+    # No style to pick on YouTube: the wish is the theme (D039).
+    assert body["sources"][1] == {"id": "youtube", "name": "YouTube", "styles": [], "wish": True}
 
 
 def test_create_a_youtube_show_and_fetch_its_segments(client_with_youtube: TestClient) -> None:
-    created = _create(client_with_youtube, source="youtube", wish="trains", demo=True)
+    created = _create(client_with_youtube, style=None, source="youtube", wish="trains", demo=True)
     show = client_with_youtube.get(f"/api/v1/shows/{created['id']}").json()
 
     assert created["config"]["source"] == "youtube"
     assert created["config"]["wish"] == "trains"
+    assert created["config"]["style"] is None
+    assert show["config"]["style"] is None
     assert show["status"] == "ready", show["error"]
     assert show["playback"] == "segments"
     assert show["audio_url"] is None
@@ -476,7 +476,60 @@ def test_segment_audio_of_a_show_that_is_not_ready_is_a_404(client: TestClient) 
 
 
 def test_unconfigured_youtube_is_a_400_naming_the_variable(client: TestClient) -> None:
-    response = client.post("/api/v1/shows", json={"style": "jazz", "source": "youtube"})
+    response = client.post("/api/v1/shows", json={"source": "youtube", "wish": "trains"})
 
     assert response.status_code == 400
     assert "YOUTUBE_API_KEY" in response.json()["detail"]
+
+
+# No style on YouTube (D039): the wish is the one required input.
+
+
+def test_youtube_show_takes_no_style(client_with_youtube: TestClient) -> None:
+    response = client_with_youtube.post(
+        "/api/v1/shows", json={"style": "jazz", "source": "youtube", "wish": "trains"}
+    )
+
+    assert response.status_code == 400
+    assert "'youtube'" in response.json()["detail"]
+    assert "no styles" in response.json()["detail"]
+    assert client_with_youtube.get("/api/v1/shows").json() == []
+
+
+def test_youtube_show_needs_a_wish(client_with_youtube: TestClient) -> None:
+    for body in ({"source": "youtube"}, {"source": "youtube", "wish": "   "}):
+        response = client_with_youtube.post("/api/v1/shows", json=body)
+
+        assert response.status_code == 400
+        assert (
+            response.json()["detail"] == "A YouTube show needs a wish: say what you want to hear."
+        )
+    assert client_with_youtube.get("/api/v1/shows").json() == []
+
+
+def test_youtube_show_without_a_style_is_stored_with_a_null_style(
+    client_with_youtube: TestClient,
+) -> None:
+    created = _create(client_with_youtube, style=None, source="youtube", wish="90s French rap")
+    show = client_with_youtube.get(f"/api/v1/shows/{created['id']}").json()
+
+    assert created["config"]["style"] is None
+    assert show["status"] == "ready", show["error"]
+    assert show["config"]["style"] is None
+    assert [
+        summary["config"]["style"] for summary in client_with_youtube.get("/api/v1/shows").json()
+    ] == [None]
+    # The key may also be left out of the request.
+    response = client_with_youtube.post(
+        "/api/v1/shows", json={"source": "youtube", "wish": "80s Italian disco"}
+    )
+    assert response.status_code == 202
+    assert response.json()["config"]["style"] is None
+
+
+def test_catalog_show_still_needs_a_style(client_with_youtube: TestClient) -> None:
+    for body in ({"persona": "calm"}, {"style": None}):
+        response = client_with_youtube.post("/api/v1/shows", json=body)
+
+        assert response.status_code == 400
+        assert "Known styles" in response.json()["detail"]

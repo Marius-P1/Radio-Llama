@@ -27,10 +27,11 @@ class FailingTTS:
 
 
 def _show(**config) -> Show:
+    """A jazz show on the catalog with the calm host; `config` overrides any field."""
     return Show(
         id="test-show",
         created_at=datetime(2026, 10, 30, 12, 0, tzinfo=UTC),
-        config=ShowConfig(style="jazz", persona="calm", **config),
+        config=ShowConfig(**{"style": "jazz", "persona": "calm", **config}),
     )
 
 
@@ -501,7 +502,8 @@ def test_merge_facts_drops_repeats_and_caps_the_list() -> None:
 
 
 # YouTube shows (D038): the model proposes songs, the source checks them, the songs play in
-# the web app, so the pipeline writes the speech files only.
+# the web app, so the pipeline writes the speech files only. A YouTube show has no style:
+# the wish is its theme (D039).
 
 PLAYLIST_JSON = (
     '{"songs": ['
@@ -513,6 +515,10 @@ PLAYLIST_JSON = (
     "]}"
 )
 YOUTUBE_ARTISTS = ("Example Artist", "Lea Example", "We Are FM", "Example Records", "River Uploads")
+
+
+def _youtube_show(**config) -> Show:
+    return _show(**{"style": None, "source": "youtube", "wish": "songs about trains", **config})
 
 
 def _youtube_generator(
@@ -537,7 +543,7 @@ def test_youtube_show_reaches_ready_without_an_mp3(
     out_dir = tmp_path / "out"
 
     show = run_generation(
-        generator, _show(source="youtube", seed=1), out_dir, lambda d, t: progress.append((d, t))
+        generator, _youtube_show(seed=1), out_dir, lambda d, t: progress.append((d, t))
     )
 
     assert show.status == "ready", show.error
@@ -565,7 +571,7 @@ def test_youtube_show_reaches_ready_without_an_mp3(
         assert track.id.startswith("youtube-")
         assert track.video_id and track.audio_file is None
         assert track.license == "YouTube embed"
-        assert track.style == "jazz"
+        assert track.style == ""  # no style on YouTube (D039); Track needs a str
     # Five proposals asked, three searched: the spare ones cost no quota.
     assert "Number of songs: 5" in llm.calls[0][0].content
     assert len(fake_youtube.searches()) == 3
@@ -580,7 +586,7 @@ def test_youtube_demo_show_plays_thirty_seconds_of_each_song(
     llm = FakeLLM([PLAYLIST_JSON, *([CANNED] * 4)])
     generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
 
-    show = run_generation(generator, _show(source="youtube", demo=True), tmp_path / "out")
+    show = run_generation(generator, _youtube_show(demo=True), tmp_path / "out")
 
     assert show.status == "ready", show.error
     songs = [segment for segment in show.segments if segment.kind == "song"]
@@ -594,15 +600,60 @@ def test_youtube_show_with_a_wish_passes_it_to_the_playlist_and_the_host(
     llm = FakeLLM([PLAYLIST_JSON, *([CANNED] * 4)])
     generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
 
-    show = run_generation(
-        generator, _show(source="youtube", wish="songs about trains", energy="upbeat"), tmp_path
-    )
+    show = run_generation(generator, _youtube_show(energy="upbeat"), tmp_path)
 
     assert show.status == "ready", show.error
     playlist_prompt = llm.calls[0][0].content
     assert "The listener's request: songs about trains" in playlist_prompt
     assert "Energy chosen by the listener: upbeat" in playlist_prompt
     assert "Listeners asked for: songs about trains" in llm.calls[1][0].content
+
+
+def test_youtube_show_without_a_style_renders_no_none_in_the_prompts(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    """The wish is the theme (D039): the prompts say so and never show a Python None."""
+    llm = FakeLLM([PLAYLIST_JSON, *([CANNED] * 4)])
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+
+    show = run_generation(generator, _youtube_show(wish="90s French rap, upbeat"), tmp_path)
+
+    assert show.status == "ready", show.error
+    assert show.config.style is None
+    assert load_show(tmp_path).config.style is None
+    playlist_prompt = llm.calls[0][0].content
+    assert "Style chosen by the listener: (none: the request is the theme)" in playlist_prompt
+    assert "The listener's request: 90s French rap, upbeat" in playlist_prompt
+    system_prompt = llm.calls[1][0].content
+    assert (
+        "The show has no set style tonight: its theme is what the listeners asked for."
+        in system_prompt
+    )
+    assert "Listeners asked for: 90s French rap, upbeat" in system_prompt
+    for call in llm.calls:
+        for message in call:
+            assert "None" not in message.content
+
+
+def test_youtube_show_with_too_few_songs_names_the_source_not_a_style(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    playlist = '{"songs": [{"artist": "Lea Example", "title": "Montreal Streets"}]}'
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, FakeLLM([playlist]))
+
+    show = run_generation(generator, _youtube_show(), tmp_path)
+
+    assert show.status == "failed"
+    assert show.error == "Source 'youtube' has 1 tracks, 3 needed."
+
+
+def test_a_catalog_show_without_a_style_fails_readably(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, tmp_path: Path
+) -> None:
+    show = run_generation(_generator(fake_settings, tiny_catalog), _show(style=None), tmp_path)
+
+    assert show.status == "failed"
+    assert show.error == "Source 'catalog' needs a style."
 
 
 def test_youtube_quota_marks_the_show_failed_naming_the_limit(
@@ -612,13 +663,13 @@ def test_youtube_quota_marks_the_show_failed_naming_the_limit(
     llm = FakeLLM([PLAYLIST_JSON])  # the quota stops the show before any script
     generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
 
-    show = run_generation(generator, _show(source="youtube"), tmp_path)
+    show = run_generation(generator, _youtube_show(), tmp_path)
 
     assert show.status == "failed"
     assert show.error is not None
     assert "100 searches a day" in show.error
     with pytest.raises(GenerationError, match="100 searches"):
-        generator.generate(_show(source="youtube"), tmp_path / "again")
+        generator.generate(_youtube_show(), tmp_path / "again")
 
 
 def test_youtube_show_with_a_bad_playlist_reply_fails_readably(
@@ -626,7 +677,7 @@ def test_youtube_show_with_a_bad_playlist_reply_fails_readably(
 ) -> None:
     generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, FakeLLM(["nope"]))
 
-    show = run_generation(generator, _show(source="youtube"), tmp_path)
+    show = run_generation(generator, _youtube_show(), tmp_path)
 
     assert show.status == "failed"
     assert show.error is not None
@@ -644,7 +695,7 @@ def test_youtube_show_with_too_few_playable_songs_fails(
     )
     generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, FakeLLM([playlist]))
 
-    show = run_generation(generator, _show(source="youtube"), tmp_path)
+    show = run_generation(generator, _youtube_show(), tmp_path)
 
     assert show.status == "failed"
     assert show.error is not None
@@ -657,7 +708,7 @@ def test_write_script_works_for_youtube(
     llm = FakeLLM([PLAYLIST_JSON, *([CANNED] * 4)])
     generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
 
-    show = generator.write_script(_show(source="youtube", seed=1))
+    show = generator.write_script(_youtube_show(seed=1))
 
     assert [segment.kind for segment in show.segments] == EXPECTED_KINDS
     assert all(segment.audio_file is None for segment in show.segments)
@@ -679,7 +730,7 @@ def test_youtube_artists_get_looked_up_facts(
     llm = FakeLLM([PLAYLIST_JSON, *([CANNED] * 4)])
     generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm, fake_facts)
 
-    show = run_generation(generator, _show(source="youtube", seed=1), tmp_path / "out")
+    show = run_generation(generator, _youtube_show(seed=1), tmp_path / "out")
 
     assert show.status == "ready", show.error
     for track in show.tracks:
@@ -691,9 +742,7 @@ def test_youtube_artists_get_looked_up_facts(
 def test_unconfigured_youtube_fails_with_the_variable_name(
     fake_settings: Settings, tiny_catalog: LocalCatalog, tmp_path: Path
 ) -> None:
-    show = run_generation(
-        _generator(fake_settings, tiny_catalog), _show(source="youtube"), tmp_path
-    )
+    show = run_generation(_generator(fake_settings, tiny_catalog), _youtube_show(), tmp_path)
 
     assert show.status == "failed"
     assert show.error is not None

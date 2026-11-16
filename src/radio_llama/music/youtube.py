@@ -29,7 +29,6 @@ from pydantic import AwareDatetime, BaseModel, Field, ValidationError
 from radio_llama import trace
 from radio_llama.models import Track
 from radio_llama.music.base import MusicSourceError, UnknownTrackError
-from radio_llama.music.styles import STYLES
 
 log = logging.getLogger(__name__)
 
@@ -109,7 +108,8 @@ class YouTubeSource:
         self._tracks: dict[str, Track] = {}  # the last find_tracks result, for get_track
 
     def list_styles(self) -> list[str]:
-        return list(STYLES)
+        """Always empty: a YouTube show has no style, the listener's wish is its theme (D039)."""
+        return []
 
     def list_tracks(self, style: str) -> list[Track]:
         """Always empty: YouTube's own search by genre returns mixes, not songs. The songs
@@ -117,7 +117,7 @@ class YouTubeSource:
         return []
 
     def find_tracks(
-        self, proposals: list[SongProposal], *, style: str, minimum: int
+        self, proposals: list[SongProposal], *, style: str | None, minimum: int
     ) -> list[Track]:
         """One track per proposal that has a playable video, in the proposals' order.
 
@@ -319,13 +319,16 @@ def to_video(raw: dict) -> Video:
     )
 
 
-def to_track(proposal: SongProposal, video: Video, style: str) -> Track:
-    """The Track the show plays: the proposal's names, the video's length and links (D038)."""
+def to_track(proposal: SongProposal, video: Video, style: str | None) -> Track:
+    """The Track the show plays: the proposal's names, the video's length and links (D038).
+
+    `style` is "" for a show without one (D039), like `album` is (Track needs a str).
+    """
     return Track(
         id=f"{ID_PREFIX}{video.id}",
         title=proposal.title,
         artist=proposal.artist,
-        style=style,
+        style=style or "",
         album="",
         duration_s=video.duration_s,
         license=LICENSE,

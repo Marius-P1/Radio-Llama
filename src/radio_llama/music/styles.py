@@ -1,8 +1,7 @@
-"""The style words the online sources offer (D030, D038).
+"""The style words Jamendo offers (D030, D038, D039).
 
-Jamendo's featured genres plus lofi. Jamendo searches each word as a tag; YouTube hands it
-to the playlist prompt. Both sources list the same words so the create screen looks the
-same whichever one is picked.
+Jamendo's featured genres plus lofi, each searched as a tag. YouTube listed the same words
+until D039: it now offers no style and takes the listener's wish as the theme.
 """
 
 STYLES = (

@@ -130,7 +130,7 @@ export interface components {
              */
             source: "catalog" | "jamendo" | "youtube";
             /** Style */
-            style: string;
+            style?: string | null;
             /** Wish */
             wish?: string | null;
         };
@@ -237,7 +237,7 @@ export interface components {
              */
             source: "catalog" | "jamendo" | "youtube";
             /** Style */
-            style: string;
+            style?: string | null;
             /**
              * Track Count
              * @default 3

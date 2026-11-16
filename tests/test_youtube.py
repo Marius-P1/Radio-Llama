@@ -8,7 +8,6 @@ import httpx
 import pytest
 
 from radio_llama.music import (
-    STYLES,
     MusicSourceError,
     SongProposal,
     UnknownTrackError,
@@ -16,7 +15,6 @@ from radio_llama.music import (
     YouTubeQuotaError,
     YouTubeSource,
 )
-from radio_llama.music.jamendo import STYLE_TAGS
 from radio_llama.music.youtube import (
     CacheEntry,
     Video,
@@ -46,11 +44,17 @@ def _videos_by_id() -> dict[str, dict]:
     return {item["id"]: item for item in body["items"]}
 
 
-def test_styles_are_the_shared_words(fake_youtube: FakeYouTube) -> None:
-    styles = fake_youtube.source.list_styles()
-
-    assert styles == list(STYLES) == sorted(STYLE_TAGS)
+def test_youtube_offers_no_styles(fake_youtube: FakeYouTube) -> None:
+    """The wish is the theme of a YouTube show (D039)."""
+    assert fake_youtube.source.list_styles() == []
     assert fake_youtube.requests == []
+
+
+def test_find_tracks_without_a_style_leaves_it_blank(fake_youtube: FakeYouTube) -> None:
+    (track,) = fake_youtube.source.find_tracks([BLUE_WINDOW], style=None, minimum=1)
+
+    assert track.style == ""  # Track needs a str; "" like album (D039)
+    assert track.title == "Blue Window"
 
 
 def test_list_tracks_is_empty_without_a_call(fake_youtube: FakeYouTube) -> None:
