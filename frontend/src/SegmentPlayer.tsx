@@ -18,6 +18,9 @@ type Phase = 'idle' | 'playing' | 'paused' | 'blocked' | 'ended'
 
 // A song that cannot play is marked in the script, then the show goes on after this pause.
 const SKIP_PAUSE_MS = 1500
+// How long the IFrame API gets to call back. A privacy extension can serve a stub that
+// never does: the show then plays without the songs instead of staying disabled.
+const API_TIMEOUT_MS = 10_000
 
 let apiLoading: Promise<typeof YT> | null = null
 
@@ -25,13 +28,20 @@ let apiLoading: Promise<typeof YT> | null = null
 function loadYouTubeApi(): Promise<typeof YT> {
   if (apiLoading === null) {
     apiLoading = new Promise((resolve, reject) => {
+      if (window.YT?.Player) {
+        resolve(window.YT)
+        return
+      }
+      const fail = () => reject(new Error('The YouTube player did not load.'))
+      const timer = window.setTimeout(fail, API_TIMEOUT_MS)
       window.onYouTubeIframeAPIReady = () => {
-        if (window.YT) resolve(window.YT)
-        else reject(new Error('The YouTube player did not load.'))
+        window.clearTimeout(timer)
+        if (window.YT?.Player) resolve(window.YT)
+        else fail()
       }
       const script = document.createElement('script')
       script.src = 'https://www.youtube.com/iframe_api'
-      script.onerror = () => reject(new Error('The YouTube player did not load.'))
+      script.onerror = fail
       document.head.appendChild(script)
     })
   }
