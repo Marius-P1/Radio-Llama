@@ -2,7 +2,7 @@
 
 ## What this is
 
-The music Radio Llama plays comes from 48 hand-picked Creative Commons tracks from the Free Music Archive, described in `catalog.json`: 12 or 13 tracks per style, each with its album, year, tags, an energy label, two or three sourced facts and curator notes. The audio files are never committed to git. They are published as a GitHub Release asset and fetched with `download.py`.
+The music Radio Llama plays comes from 48 hand-picked Creative Commons tracks from the Free Music Archive, described in `catalog.json`: 11 to 13 tracks per style, each with its album, year, tags, an energy label, two or three sourced facts and curator notes. The audio files are never committed to git. They are published as a GitHub Release asset and fetched with `download.py`.
 
 The twelve `fake-*` placeholder tracks used before the real catalog live in `tests/fixtures/catalog/`. The tests and CI use them, with sine tones generated on the fly. They are not part of this catalog.
 
