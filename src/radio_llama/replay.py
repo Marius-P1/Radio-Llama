@@ -1,8 +1,10 @@
 """Export ready shows into the static layout the replay page reads (D010, D018).
 
 The replay build of the frontend fetches `shows/index.json`, then `shows/<id>/show.json`
-and `shows/<id>/show.mp3`. This module fills that folder from `output/<id>/` and packs it
-into a zip for the release asset, since MP3s are never committed (D002).
+and the show's audio: `show.mp3` for a file show, one speech file per host segment for a
+YouTube show, whose songs play in the embedded player (D043). This module fills that folder
+from `output/<id>/` and packs it into a zip for the release asset, since audio is never
+committed (D002).
 """
 
 import json
@@ -12,17 +14,18 @@ from pathlib import Path
 
 from radio_llama.api.schemas import ShowSummary
 from radio_llama.models import Show
+from radio_llama.music.factory import delivery_of
 from radio_llama.storage import SHOW_FILE, load_show
 
 INDEX_FILE = "index.json"
 
 
 def export_replay(show_ids: list[str], output_dir: Path, dest: Path) -> list[dict]:
-    """Copy each ready show's `show.json` and MP3 into `dest / id /`, then rewrite the index.
+    """Copy each ready show's `show.json` and audio into `dest / id /`, then rewrite the index.
 
-    Returns one summary dict per exported show. Raises FileNotFoundError for an unknown id
-    and ValueError for a show that is not ready or has no MP3 (a YouTube show plays segment
-    by segment, which the replay page cannot do yet, MAR-13); nothing is copied for that id.
+    A file show brings its MP3, an embed show (YouTube) its speech files. Returns one summary
+    dict per exported show. Raises FileNotFoundError for an unknown id or a missing audio file
+    and ValueError for a show that is not ready; nothing is copied for that id.
     """
     summaries = []
     for show_id in show_ids:
@@ -34,18 +37,16 @@ def export_replay(show_ids: list[str], output_dir: Path, dest: Path) -> list[dic
             raise ValueError(
                 f"Show {show_id} is {show.status}, not ready. Only ready shows can be exported."
             )
-        if show.audio_file is None:
-            raise ValueError(
-                f"Show {show_id} has no show.mp3: it plays segment by segment. YouTube shows "
-                "cannot be exported to the replay page yet (MAR-13)."
-            )
-        if not (source / show.audio_file).exists():
-            raise FileNotFoundError(f"Show {show_id} has no audio file {show.audio_file}.")
+        audio_files = _audio_files(show)
+        for name in audio_files:
+            if not (source / name).exists():
+                raise FileNotFoundError(f"Show {show_id} has no audio file {name}.")
 
         target = dest / show_id
         target.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source / SHOW_FILE, target / SHOW_FILE)
-        shutil.copyfile(source / show.audio_file, target / show.audio_file)
+        for name in audio_files:
+            shutil.copyfile(source / name, target / name)
         summaries.append(_summary(show).model_dump(mode="json"))
 
     write_index(dest)
@@ -75,6 +76,19 @@ def zip_replay(dest: Path, zip_path: Path) -> Path:
             if path.is_file() and path.resolve() != zip_path.resolve():
                 archive.write(path, arcname=path.relative_to(dest).as_posix())
     return zip_path
+
+
+def _audio_files(show: Show) -> list[str]:
+    """The files a ready show plays from: show.mp3, or the speech files of an embed show."""
+    if show.audio_file is not None:
+        return [show.audio_file]
+    if delivery_of(show.config.source) != "embed":
+        raise ValueError(f"Show {show.id} is ready but has no show.mp3.")
+    return [
+        segment.audio_file
+        for segment in show.segments
+        if segment.kind != "song" and segment.audio_file is not None
+    ]
 
 
 def _summary(show: Show) -> ShowSummary:
