@@ -1,14 +1,14 @@
-"""The voice lists behind the picker (D040): ElevenLabs on a stub client, and the fake."""
+"""The voice lists behind the picker (D040): ElevenLabs on a stub client, once on the real
+SDK client over a mock transport, and the fake."""
 
-import inspect
 import logging
 from typing import Any
 
+import httpx
 import pytest
-from elevenlabs import GetVoicesV2Response, VerifiedVoiceLanguageResponseModel
+from elevenlabs import ElevenLabs, GetVoicesV2Response, VerifiedVoiceLanguageResponseModel
 from elevenlabs import Voice as AccountVoice
 from elevenlabs.core.api_error import ApiError
-from elevenlabs.voices.client import VoicesClient
 
 from radio_llama.voice import (
     ElevenLabsVoices,
@@ -226,11 +226,25 @@ def test_every_call_gives_up_after_ten_seconds_and_is_not_retried() -> None:
     ]
 
 
-def test_the_real_sdk_search_takes_the_arguments_the_stub_records() -> None:
-    """The stub accepts anything, so this pins the names to the installed SDK."""
-    parameters = inspect.signature(VoicesClient.search).parameters
+def test_the_real_sdk_client_asks_once_when_elevenlabs_answers_500() -> None:
+    """The real SDK client on a mock transport, like the Jamendo and YouTube fakes. Left
+    to its defaults the SDK would ask three times, with a pause before each new try."""
+    requests: list[httpx.Request] = []
 
-    assert {"page_size", "next_page_token", "request_options"} <= set(parameters)
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(500, json={"detail": "server error"})
+
+    http = httpx.Client(transport=httpx.MockTransport(handle))
+    listing = ElevenLabsVoices("key", MODEL, client=ElevenLabs(api_key="key", httpx_client=http))
+
+    with pytest.raises(TTSError) as info:
+        listing.list_voices()
+
+    assert str(info.value) == "Could not list the ElevenLabs voices (HTTP 500)."
+    assert len(requests) == 1
+    assert requests[0].url.path == "/v2/voices"
+    assert requests[0].url.params["page_size"] == "100"
 
 
 def test_a_caller_cannot_change_the_kept_list() -> None:

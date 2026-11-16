@@ -1,4 +1,5 @@
 import json
+import logging
 import shutil
 from pathlib import Path
 
@@ -91,18 +92,20 @@ def test_generate_with_an_unknown_voice_stops_before_generating(cli_env: Path) -
 
 
 def test_generate_reports_a_voice_list_that_cannot_be_read(
-    cli_env: Path, monkeypatch: pytest.MonkeyPatch
+    cli_env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.setattr(cli, "make_voice_list", lambda settings: refused_voices())
 
-    result = runner.invoke(
-        app, ["generate", "--fake", "--style", "jazz", "--voice", "fake-voice-2"]
-    )
+    with caplog.at_level(logging.WARNING, logger="radio_llama.voice.elevenlabs"):
+        result = runner.invoke(
+            app, ["generate", "--fake", "--style", "jazz", "--voice", "fake-voice-2"]
+        )
 
-    # The same short sentence as the API, without what ElevenLabs answered.
+    # The error the command prints is the same short sentence as the API's. What
+    # ElevenLabs answered is a warning in the log, which a terminal shows on stderr.
     assert result.exit_code == 1
     assert "Could not list the ElevenLabs voices (HTTP 401)." in result.output
-    assert "Invalid API key" not in result.output
+    assert "Invalid API key" in caplog.text
     assert "Traceback" not in result.output
     assert not cli_env.exists()
     # Without --voice the list is not read, so the show is made.

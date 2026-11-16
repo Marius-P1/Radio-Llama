@@ -103,8 +103,9 @@ class ElevenLabsVoices:
                 if not page.has_more or token is None:
                     break
         except ApiError as exc:
-            # The page and the CLI get a short sentence. ElevenLabs' own answer is text
-            # this project does not control, so it goes to the server log only.
+            # The error shown by the page and the CLI is a short sentence. ElevenLabs' own
+            # answer is text this project does not control, so it is logged as a warning
+            # instead: the server log for the API, stderr in the terminal for the CLI.
             log.warning("ElevenLabs voice list failed: HTTP %s %s", exc.status_code, exc.body)
             raise TTSError(
                 f"Could not list the ElevenLabs voices (HTTP {exc.status_code})."
