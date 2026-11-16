@@ -1,4 +1,4 @@
-"""The `/api/v1` routes: options, create a show, read shows, fetch the audio."""
+"""The `/api/v1` routes: options, voices, create a show, read shows, fetch the audio."""
 
 import logging
 import re
@@ -23,6 +23,7 @@ from radio_llama.models import ENERGIES, Show, ShowConfig
 from radio_llama.music import SOURCE_NAMES, MusicSource, missing_source_message
 from radio_llama.personas import load_personas
 from radio_llama.storage import SHOW_FILE, load_show, new_show_id, save_show
+from radio_llama.voice import TTSError, UnknownVoiceError, VoiceList, VoiceOption, find_voice
 
 log = logging.getLogger(__name__)
 
@@ -44,9 +45,14 @@ def get_jobs(request: Request) -> Jobs:
     return request.app.state.jobs
 
 
+def get_voice_list(request: Request) -> VoiceList:
+    return request.app.state.voices
+
+
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 SourcesDep = Annotated[dict[str, MusicSource], Depends(get_sources)]
 JobsDep = Annotated[Jobs, Depends(get_jobs)]
+VoicesDep = Annotated[VoiceList, Depends(get_voice_list)]
 
 
 def load_show_or_404(output_dir: Path, show_id: str) -> Show:
@@ -75,7 +81,12 @@ def _summary(show: Show) -> ShowSummary:
 def get_options(settings: SettingsDep, sources: SourcesDep) -> OptionsResponse:
     personas = {
         language: [
-            PersonaOption(id=persona.id, name=persona.name, description=persona.description)
+            PersonaOption(
+                id=persona.id,
+                name=persona.name,
+                description=persona.description,
+                voice_id=persona.voice_id,
+            )
             for persona in load_personas(settings.prompts_dir, language)
         ]
         for language in LANGUAGES
@@ -96,6 +107,19 @@ def get_options(settings: SettingsDep, sources: SourcesDep) -> OptionsResponse:
     )
 
 
+@router.get("/voices")
+def list_voices(voices: VoicesDep) -> list[VoiceOption]:
+    """The voices the host can speak with (D040).
+
+    Its own route and not a part of `/options`: with ElevenLabs it is a remote call, and
+    a slow or failing one must not hold back the rest of the create screen.
+    """
+    try:
+        return voices.list_voices()
+    except TTSError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @router.post("/shows", status_code=202)
 def create_show(
     body: CreateShowRequest,
@@ -103,6 +127,7 @@ def create_show(
     settings: SettingsDep,
     sources: SourcesDep,
     jobs: JobsDep,
+    voices: VoicesDep,
 ) -> ShowSummary:
     music = sources.get(body.source)
     if music is None:
@@ -147,6 +172,15 @@ def create_show(
                 f"Known personas: {', '.join(persona_ids)}."
             ),
         )
+    # A picked voice must be one of the listed ones. Its name is stored with the show, so
+    # the player can show it later without the voice list (D040). A blank voice is no
+    # voice, like a blank wish: the list is then not read.
+    try:
+        voice = find_voice(voices, body.voice_id)
+    except UnknownVoiceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except TTSError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     now = datetime.now(UTC)
     show = Show(
         id=new_show_id(now),
@@ -154,6 +188,8 @@ def create_show(
         config=ShowConfig(
             style=body.style,
             persona=body.persona,
+            voice_id=voice.id if voice is not None else None,
+            voice_name=voice.name if voice is not None else None,
             language=body.language,
             generator=body.generator,
             energy=body.energy,

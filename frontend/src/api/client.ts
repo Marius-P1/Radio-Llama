@@ -1,6 +1,6 @@
 import createClient from 'openapi-fetch'
 import type { paths } from './schema'
-import type { CreateShowRequest, Options, ShowResponse, ShowSummary } from './types'
+import type { CreateShowRequest, Options, ShowResponse, ShowSummary, VoiceOption } from './types'
 
 // Relative URLs on purpose: Vite proxies /api in dev, the backend serves the built files in production.
 export const api = createClient<paths>({ baseUrl: '' })
@@ -21,6 +21,13 @@ function toError(error: unknown, response: Response): Error {
 
 export async function getOptions(): Promise<Options> {
   const { data, error, response } = await api.GET('/api/v1/options')
+  if (data === undefined) throw toError(error, response)
+  return data
+}
+
+/** The voices the host can speak with (D040). Fails when the backend cannot list them. */
+export async function getVoices(): Promise<VoiceOption[]> {
+  const { data, error, response } = await api.GET('/api/v1/voices')
   if (data === undefined) throw toError(error, response)
   return data
 }

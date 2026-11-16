@@ -1,4 +1,11 @@
-import type { CreateShowRequest, Options, Segment, ShowResponse, ShowSummary } from './types'
+import type {
+  CreateShowRequest,
+  Options,
+  Segment,
+  ShowResponse,
+  ShowSummary,
+  VoiceOption,
+} from './types'
 
 // Static files under <site>/shows/, written by `radio-llama export-replay`.
 // BASE_URL already ends with a slash ("/" or "/Radio-Llama/").
@@ -72,6 +79,10 @@ export function audioUrl(id: string): string {
 }
 
 export async function getOptions(): Promise<Options> {
+  throw new Error('Not available on the replay page.')
+}
+
+export async function getVoices(): Promise<VoiceOption[]> {
   throw new Error('Not available on the replay page.')
 }
 

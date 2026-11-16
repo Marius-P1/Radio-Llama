@@ -1,6 +1,14 @@
-import { useEffect, useState } from 'react'
-import { createShow, getOptions, type CreateShowRequest, type Options } from './api'
-import { energyLabel, languageLabel, styleLabel } from './labels'
+import { useEffect, useRef, useState } from 'react'
+import {
+  createShow,
+  getOptions,
+  getVoices,
+  type CreateShowRequest,
+  type Options,
+  type VoiceOption,
+} from './api'
+import { energyLabel, languageLabel, shortVoiceName, styleLabel } from './labels'
+import { VoicePicker } from './VoicePicker'
 
 type Language = 'en' | 'fr'
 type Energy = NonNullable<CreateShowRequest['energy']>
@@ -20,7 +28,16 @@ export function CreateShow({ onCreated }: Props) {
   const [source, setSource] = useState<Source>('catalog')
   // The style, or '' on a source that offers none: YouTube takes the wish instead (D039).
   const [style, setStyle] = useState('')
+  // The host style: how the host talks. Who it sounds like is the voice below (D040).
   const [persona, setPersona] = useState('')
+  // The voices the backend lists, null until they are loaded. A list that fails to load
+  // is not an error of the form: the show then uses the style's own voice.
+  const [voices, setVoices] = useState<VoiceOption[] | null>(null)
+  const [voicesFailed, setVoicesFailed] = useState(false)
+  // The listener's own pick, kept when the style changes. null: the style's own voice.
+  const [voiceId, setVoiceId] = useState<string | null>(null)
+  // The search box of the voice list, to send the keyboard focus there.
+  const voiceSearchRef = useRef<HTMLInputElement>(null)
   const [language, setLanguage] = useState<Language>('en')
   // null is "any energy": the backend then samples every track of the style.
   const [energy, setEnergy] = useState<Energy | null>(null)
@@ -51,7 +68,31 @@ export function CreateShow({ onCreated }: Props) {
     }
   }, [])
 
+  // The voices load on their own, next to the choices: with ElevenLabs they are a remote
+  // call, and the form must not wait for it (D040).
+  useEffect(() => {
+    let cancelled = false
+    getVoices()
+      .then((loaded) => {
+        if (!cancelled) setVoices(loaded)
+      })
+      .catch(() => {
+        if (!cancelled) setVoicesFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const personas = options?.personas[language] ?? []
+  const selectedPersona = personas.find((p) => p.id === persona)
+  // The voice the show will use: the listener's pick, else the one that comes with the
+  // style. Its name is undefined when the voice is not in the list (the fake backend
+  // lists made-up voices, not the styles' own).
+  const activeVoiceId = voiceId ?? selectedPersona?.voice_id ?? null
+  const activeVoice = voices?.find((voice) => voice.id === activeVoiceId)
+  // In a sentence the short name is enough; the list rows show the full one.
+  const activeVoiceName = activeVoice ? shortVoiceName(activeVoice.name) : undefined
   const selectedSource = options?.sources.find((s) => s.id === source)
   const styles = selectedSource?.styles ?? []
   // A source without styles (YouTube) needs the wish: it is the only thing to say (D039).
@@ -64,6 +105,13 @@ export function CreateShow({ onCreated }: Props) {
     // first. A source without styles gets none.
     const available = options?.sources.find((s) => s.id === next)?.styles ?? []
     if (!available.includes(style)) setStyle(available[0] ?? '')
+  }
+
+  const resetVoice = () => {
+    setVoiceId(null)
+    // The button that was clicked leaves the page with the pick. Without this the
+    // keyboard focus would fall back to the top of the page.
+    voiceSearchRef.current?.focus()
   }
 
   const chooseLanguage = (next: Language) => {
@@ -79,6 +127,7 @@ export function CreateShow({ onCreated }: Props) {
     try {
       const body: CreateShowRequest = {
         persona,
+        voice_id: voiceId,
         language,
         generator: 'pipeline',
         energy,
@@ -219,7 +268,7 @@ export function CreateShow({ onCreated }: Props) {
       )}
 
       <fieldset disabled={busy}>
-        <legend>Host</legend>
+        <legend>Host style</legend>
         <div className="choices">
           {personas.map((p) => (
             <button
@@ -234,6 +283,44 @@ export function CreateShow({ onCreated }: Props) {
           ))}
         </div>
       </fieldset>
+
+      {/* Who the host sounds like (D040). Hidden when the backend lists no voice. */}
+      {(voices === null || voices.length > 0) && (
+        <fieldset disabled={busy}>
+          <legend>Voice</legend>
+          {voices === null ? (
+            <p className="muted">
+              {voicesFailed
+                ? "The voices could not be loaded. The host will use the style's own voice."
+                : 'Loading the voices...'}
+            </p>
+          ) : (
+            <>
+              {voiceId === null ? (
+                <p className="muted">
+                  The {selectedPersona?.name ?? 'host'} style comes with its own voice
+                  {activeVoiceName !== undefined && <>, {activeVoiceName}</>}. Pick another one
+                  if you like.
+                </p>
+              ) : (
+                <p className="muted">
+                  Your pick: {activeVoiceName ?? voiceId}.{' '}
+                  <button type="button" className="text-button" onClick={resetVoice}>
+                    Use the style's own voice
+                  </button>
+                </p>
+              )}
+              <VoicePicker
+                voices={voices}
+                language={language}
+                selectedId={activeVoiceId}
+                onSelect={setVoiceId}
+                searchRef={voiceSearchRef}
+              />
+            </>
+          )}
+        </fieldset>
+      )}
 
       <fieldset disabled={busy}>
         <legend>Song length</legend>

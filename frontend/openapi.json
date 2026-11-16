@@ -65,6 +65,18 @@
             ],
             "title": "Style"
           },
+          "voice_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Id"
+          },
           "wish": {
             "anyOf": [
               {
@@ -199,12 +211,17 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "voice_id": {
+            "title": "Voice Id",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "name",
-          "description"
+          "description",
+          "voice_id"
         ],
         "title": "PersonaOption",
         "type": "object"
@@ -390,6 +407,28 @@
             "default": 3,
             "title": "Track Count",
             "type": "integer"
+          },
+          "voice_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Id"
+          },
+          "voice_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Name"
           },
           "wish": {
             "anyOf": [
@@ -763,6 +802,105 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VoiceOption": {
+        "description": "One voice the listener can give the host (D040). Sent to the web app as is.",
+        "properties": {
+          "accent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accent"
+          },
+          "age": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          },
+          "descriptive": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descriptive"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "preview_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Url"
+          },
+          "previews": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Previews",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "VoiceOption",
+        "type": "object"
       }
     }
   },
@@ -969,6 +1107,29 @@
           }
         },
         "summary": "Get Segment Audio"
+      }
+    },
+    "/api/v1/voices": {
+      "get": {
+        "description": "The voices the host can speak with (D040).\n\nIts own route and not a part of `/options`: with ElevenLabs it is a remote call, and\na slow or failing one must not hold back the rest of the create screen.",
+        "operationId": "list_voices_api_v1_voices_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VoiceOption"
+                  },
+                  "title": "Response List Voices Api V1 Voices Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Voices"
       }
     }
   }

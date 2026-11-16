@@ -4,7 +4,16 @@ import pytest
 
 from radio_llama.config import ConfigError, Settings, load_settings
 from radio_llama.models import Persona
-from radio_llama.voice import CachedTextToSpeech, FakeTTS, Voice, make_tts, voice_for
+from radio_llama.voice import (
+    CachedTextToSpeech,
+    ElevenLabsVoices,
+    FakeTTS,
+    FakeVoices,
+    Voice,
+    make_tts,
+    make_voice_list,
+    voice_for,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -35,3 +44,30 @@ def test_voice_for_combines_persona_voice_and_configured_model(
     persona = Persona(id="calm", name="Calm", description="Slow and warm.", voice_id="abc")
     expected = Voice(voice_id="abc", model_id="eleven_flash_v2_5")
     assert voice_for(persona, load_settings()) == expected
+
+
+def test_voice_for_takes_the_picked_voice_over_the_personas() -> None:
+    persona = Persona(id="calm", name="Calm", description="Slow and warm.", voice_id="abc")
+    settings = load_settings()
+
+    assert voice_for(persona, settings, "picked").voice_id == "picked"
+    assert voice_for(persona, settings, None).voice_id == "abc"
+    assert voice_for(persona, settings, "picked").model_id == settings.elevenlabs_model_id
+
+
+def test_fake_backend_lists_the_fake_voices(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TTS_BACKEND", "fake")
+    assert isinstance(make_voice_list(load_settings()), FakeVoices)
+
+
+def test_elevenlabs_backend_lists_the_account_voices(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Building the list calls nothing: the first request goes out on `list_voices()`.
+    monkeypatch.setenv("TTS_BACKEND", "elevenlabs")
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+    assert isinstance(make_voice_list(load_settings()), ElevenLabsVoices)
+
+
+def test_voice_list_without_key_names_the_variable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TTS_BACKEND", "elevenlabs")
+    with pytest.raises(ConfigError, match="ELEVENLABS_API_KEY"):
+        make_voice_list(load_settings())

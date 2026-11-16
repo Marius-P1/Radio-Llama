@@ -8,12 +8,14 @@ from pathlib import Path
 
 import httpx
 import pytest
+from elevenlabs.core.api_error import ApiError
 
 from radio_llama import facts
 from radio_llama.config import Settings
 from radio_llama.facts import FactLookup
 from radio_llama.generator import factory
 from radio_llama.music import JamendoSource, LocalCatalog, YouTubeSource, jamendo
+from radio_llama.voice import ElevenLabsVoices
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 TONE_SECONDS = 3.0
@@ -229,6 +231,25 @@ class FakeYouTube:
 @pytest.fixture
 def fake_youtube(tmp_path: Path) -> FakeYouTube:
     return FakeYouTube(tmp_path / "cache")
+
+
+class RefusingVoiceSearch:
+    def search(self, **kwargs: object) -> None:
+        raise ApiError(
+            status_code=401,
+            body={"detail": {"status": "invalid_api_key", "message": "Invalid API key"}},
+        )
+
+
+class RefusingElevenLabs:
+    """Stands in for the ElevenLabs client: its voice search answers 401 (D040)."""
+
+    voices = RefusingVoiceSearch()
+
+
+def refused_voices() -> ElevenLabsVoices:
+    """The real voice list on a client ElevenLabs refuses, for the error path end to end."""
+    return ElevenLabsVoices("test-key", "test-model", client=RefusingElevenLabs())  # type: ignore[arg-type]
 
 
 FACTS_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "facts"

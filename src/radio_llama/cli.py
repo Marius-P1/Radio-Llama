@@ -18,6 +18,7 @@ from radio_llama.models import Show, ShowConfig
 from radio_llama.replay import export_replay, zip_replay
 from radio_llama.storage import new_show_id
 from radio_llama.trace import script_trace_dir
+from radio_llama.voice import TTSError, UnknownVoiceError, find_voice, make_voice_list
 
 app = typer.Typer(
     help="Radio Llama: an LLM radio host between Creative Commons songs.",
@@ -59,6 +60,13 @@ def generate(
         typer.Option(help="Music style of the source, for example jazz. Not used with youtube."),
     ] = None,
     persona: Annotated[str, typer.Option(help="Host persona id.")] = "calm",
+    voice: Annotated[
+        str | None,
+        typer.Option(
+            help="Id of a voice of the voice list (GET /api/v1/voices) for the host. "
+            "The persona's own voice when left out."
+        ),
+    ] = None,
     language: Annotated[
         str | None, typer.Option(help="en or fr. Defaults to RADIO_LANGUAGE.")
     ] = None,
@@ -97,7 +105,10 @@ def generate(
         if fake:
             settings = settings.model_copy(update={"llm_provider": "fake", "tts_backend": "fake"})
         generator = make_generator(settings)
-    except ConfigError as exc:
+        # The voice is checked against the voice list like the API does, before anything
+        # is generated: listing voices is free, a wrong id found later is not (D040).
+        picked = find_voice(make_voice_list(settings), voice)
+    except (ConfigError, UnknownVoiceError, TTSError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from None
 
@@ -105,6 +116,8 @@ def generate(
         config = ShowConfig(
             style=style,
             persona=persona,
+            voice_id=picked.id if picked is not None else None,
+            voice_name=picked.name if picked is not None else None,
             language=language or settings.radio_language,  # type: ignore[arg-type]
             energy=energy,  # type: ignore[arg-type]
             source=source,  # type: ignore[arg-type]

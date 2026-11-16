@@ -6,5 +6,5 @@ export const REPLAY = import.meta.env.VITE_REPLAY === '1'
 // One switch, so no component knows which mode it runs in.
 const impl = REPLAY ? replay : live
 
-export const { listShows, getShow, audioUrl, getOptions, createShow } = impl
+export const { listShows, getShow, audioUrl, getOptions, getVoices, createShow } = impl
 export type * from './types'

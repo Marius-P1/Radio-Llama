@@ -67,7 +67,8 @@ class PipelineGenerator:
                     raise GenerationError(
                         f"Audio file missing: {path}. Run `uv run python catalog/download.py`."
                     )
-        voice = voice_for(writer.persona, self._settings)
+        # The voice the listener picked, else the persona's own (D040).
+        voice = voice_for(writer.persona, self._settings, show.config.voice_id)
 
         # Write and voice each speech segment, point each song at its audio file. An embed
         # show has no song file: the segment only carries how long the video plays.
