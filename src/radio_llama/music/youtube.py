@@ -78,7 +78,7 @@ class Video(BaseModel):
     """What the cache keeps of a chosen video: enough to build the Track again."""
 
     id: str
-    title: str  # YouTube's title, kept for reading the cache; the Track uses the proposal's
+    title: str  # YouTube's title, for the cache and the trace; the Track uses the proposal's
     channel_id: str
     channel_title: str
     duration_s: float
@@ -152,19 +152,16 @@ class YouTubeSource:
     # Internals
 
     def _lookup(self, proposal: SongProposal) -> Video | None:
-        """The chosen video for a proposal, from the cache when it is under 30 days old."""
+        """The chosen video for a proposal, from the cache when it is under 30 days old.
+
+        The choice is recorded in `youtube.jsonl` either way (`method` "cache" or "pick"),
+        with the video's own title, so the trace tells which video the show got.
+        """
         path = self._dir / f"{cache_key(proposal)}.json"
         cached = read_cache(path)
         started = time.perf_counter()
         if cached is not None:
-            trace.record(
-                "youtube",
-                started,
-                method="cache",
-                artist=proposal.artist,
-                title=proposal.title,
-                video=cached.video.model_dump() if cached.video else None,
-            )
+            self._record_choice("cache", started, proposal, cached.video)
             return cached.video
         video = self._search_video(proposal)
         entry = CacheEntry(
@@ -172,7 +169,21 @@ class YouTubeSource:
         )
         self._dir.mkdir(parents=True, exist_ok=True)
         path.write_text(entry.model_dump_json(indent=2), encoding="utf-8")
+        self._record_choice("pick", started, proposal, video)
         return video
+
+    def _record_choice(
+        self, method: str, started: float, proposal: SongProposal, video: Video | None
+    ) -> None:
+        trace.record(
+            "youtube",
+            started,
+            method=method,
+            artist=proposal.artist,
+            title=proposal.title,
+            video_title=video.title if video else None,
+            video=video.model_dump() if video else None,
+        )
 
     def _search_video(self, proposal: SongProposal) -> Video | None:
         """One search, then one videos call on its ids. None when no result is playable."""

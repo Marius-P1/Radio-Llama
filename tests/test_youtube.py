@@ -404,14 +404,38 @@ def test_the_key_never_reaches_the_trace(fake_youtube: FakeYouTube, tmp_path: Pa
     assert search["error"] is None
     assert videos["method"] == "videos"
     assert videos["body"]["items"][-1]["id"] == "okTopic0001"
+    assert picked["method"] == "pick"
+    assert picked["video"]["id"] == "okTopic0001"
     assert cached["method"] == "cache"
     assert cached["video"]["id"] == "okTopic0001"
+
+
+def test_the_trace_names_the_chosen_video(fake_youtube: FakeYouTube, tmp_path: Path) -> None:
+    """The Track carries the proposal's title; the trace tells which video YouTube gave,
+    on a fresh pick and on a cache hit alike, and None for a miss."""
+    unknown = SongProposal(artist="Nobody", title="Nothing")
+    with tracing(tmp_path / "trace"):
+        fake_youtube.source.find_tracks([NIGHT_TRAIN], minimum=1)
+        fake_youtube.source.find_tracks([NIGHT_TRAIN, unknown], minimum=2)
+
+    lines = (tmp_path / "trace" / "youtube.jsonl").read_text(encoding="utf-8").splitlines()
+    choices = [record for record in map(json.loads, lines) if record["method"] in ("pick", "cache")]
+    assert [(record["method"], record["title"]) for record in choices] == [
+        ("pick", "Night Train"),
+        ("cache", "Night Train"),
+        ("pick", "Nothing"),
+    ]
+    assert [record["video_title"] for record in choices] == [
+        "We Are FM - Night Train (Official Video)",
+        "We Are FM - Night Train (Official Video)",
+        None,
+    ]
 
 
 def test_quota_error_is_traced(fake_youtube: FakeYouTube, tmp_path: Path) -> None:
     fake_youtube.quota_exceeded = True
     with tracing(tmp_path / "trace"), pytest.raises(YouTubeQuotaError):
-        fake_youtube.source.find_tracks([BLUE_WINDOW], style="jazz", minimum=1)
+        fake_youtube.source.find_tracks([BLUE_WINDOW], minimum=1)
 
     (record,) = [
         json.loads(line)
