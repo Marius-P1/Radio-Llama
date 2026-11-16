@@ -9,6 +9,8 @@ from radio_llama.llm.base import LLMError, LLMResponse, Message
 
 
 class AnthropicClient:
+    provider = "anthropic"  # named in the trace (D037)
+
     def __init__(
         self, api_key: str, model: str, client: anthropic_sdk.Anthropic | None = None
     ) -> None:

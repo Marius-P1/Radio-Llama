@@ -103,7 +103,9 @@ def test_write_script_writes_text_without_audio(
     assert show.audio_file is None
     assert len(show.tracks) == 3
     assert len(generator.last_responses) == 4
-    assert not (tmp_path / "output").exists()
+    # Only the trace is written (D037): no show folder, no audio.
+    assert [path.name for path in (tmp_path / "output").iterdir()] == ["scripts"]
+    assert not (tmp_path / "output" / show.id).exists()
 
 
 def test_same_seed_picks_the_same_tracks(

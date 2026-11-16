@@ -9,6 +9,8 @@ from radio_llama.llm.base import LLMError, LLMResponse, Message
 
 
 class MistralClient:
+    provider = "mistral"  # named in the trace (D037)
+
     def __init__(self, api_key: str, model: str, client: Mistral | None = None) -> None:
         self._model = model
         self._client = client if client is not None else Mistral(api_key=api_key)

@@ -15,6 +15,7 @@ from radio_llama.personas import get_persona
 from radio_llama.script.shapes import Shape, load_shapes, plan_shapes
 from radio_llama.script.wish import map_wish
 from radio_llama.script.writer import ScriptWriter
+from radio_llama.trace import TRACE_DIR, script_trace_dir, tracing
 from radio_llama.voice.base import TextToSpeech
 from radio_llama.voice.factory import voice_for
 
@@ -43,6 +44,11 @@ class PipelineGenerator:
     def generate(
         self, show: Show, out_dir: Path, on_progress: ProgressCallback | None = None
     ) -> Show:
+        # Every API call of the run is recorded under the show folder (D037).
+        with tracing(out_dir / TRACE_DIR):
+            return self._generate(show, out_dir, on_progress)
+
+    def _generate(self, show: Show, out_dir: Path, on_progress: ProgressCallback | None) -> Show:
         music, tracks, plan, shapes, writer = self._prepare(show)
 
         # Every audio file present, fetched first for a remote source, before any LLM call.
@@ -78,12 +84,14 @@ class PipelineGenerator:
         """Pick the tracks and write every spoken segment, with no voice and no audio.
 
         For the `radio-llama script` command: reading ten scripts costs cents, voicing
-        them does not (D033).
+        them does not (D033). With no show folder, the trace goes under the output
+        folder's `scripts/` (D037).
         """
-        _, tracks, plan, shapes, writer = self._prepare(show)
-        for segment in plan:
-            if segment.kind != "song":
-                segment.text = _write_speech(writer, segment, tracks, shapes)
+        with tracing(script_trace_dir(self._settings.output_dir, show.id)):
+            _, tracks, plan, shapes, writer = self._prepare(show)
+            for segment in plan:
+                if segment.kind != "song":
+                    segment.text = _write_speech(writer, segment, tracks, shapes)
         show.tracks = tracks
         show.segments = plan
         self.last_responses.extend(writer.responses)

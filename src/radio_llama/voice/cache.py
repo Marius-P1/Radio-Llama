@@ -11,9 +11,11 @@ import hashlib
 import json
 import logging
 import shutil
+import time
 from pathlib import Path
 
-from radio_llama.voice.base import TextToSpeech, Voice
+from radio_llama import trace
+from radio_llama.voice.base import TextToSpeech, TTSError, Voice
 
 log = logging.getLogger(__name__)
 
@@ -41,12 +43,32 @@ class CachedTextToSpeech:
     def synthesize(self, text: str, voice: Voice) -> Path:
         key = cache_key(text, voice)
         final = self._dir / f"{key}.mp3"
+        # The trace (D037) names the file and its size, never the audio.
+        sent = {
+            "text": text,
+            "voice_id": voice.voice_id,
+            "model_id": voice.model_id,
+            "voice_settings": voice.settings,
+        }
+        started = time.perf_counter()
         if final.exists():
             log.info("TTS cache hit %s", key[:12])
+            trace.record(
+                "tts", started, **sent, cached=True, path=str(final), bytes=final.stat().st_size
+            )
             return final
         log.info("TTS cache miss %s", key[:12])
-        raw = self._inner.synthesize(text, voice)
+        try:
+            raw = self._inner.synthesize(text, voice)
+        except TTSError as exc:
+            trace.record(
+                "tts", started, error=str(exc), **sent, cached=False, path=None, bytes=None
+            )
+            raise
         self._dir.mkdir(parents=True, exist_ok=True)
         # A rename when the work dir is on the same filesystem, a copy otherwise.
         shutil.move(raw, final)
+        trace.record(
+            "tts", started, **sent, cached=False, path=str(final), bytes=final.stat().st_size
+        )
         return final

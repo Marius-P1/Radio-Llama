@@ -25,6 +25,8 @@ class LLMError(Exception):
 
 
 class LLMClient(Protocol):
+    provider: str  # a short name such as "mistral", written in the trace (D037)
+
     def generate(
         self, messages: list[Message], *, max_tokens: int, temperature: float
     ) -> LLMResponse: ...

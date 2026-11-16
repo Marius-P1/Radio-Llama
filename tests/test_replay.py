@@ -65,6 +65,19 @@ def test_export_copies_the_ready_show(output_dir: Path, tmp_path: Path) -> None:
     assert (dest / "index.json").exists()
 
 
+def test_export_leaves_the_trace_behind(output_dir: Path, tmp_path: Path) -> None:
+    """The prompts in the trace are not for the public page (D037)."""
+    assert (output_dir / READY_ID / "trace" / "llm.jsonl").exists()
+    dest = tmp_path / "shows"
+
+    export_replay([READY_ID], output_dir, dest)
+    zip_path = zip_replay(dest, tmp_path / "replay-shows.zip")
+
+    assert sorted(path.name for path in (dest / READY_ID).iterdir()) == ["show.json", "show.mp3"]
+    with zipfile.ZipFile(zip_path) as archive:
+        assert not [name for name in archive.namelist() if "trace" in name]
+
+
 def test_export_refuses_a_show_that_is_not_ready(output_dir: Path, tmp_path: Path) -> None:
     dest = tmp_path / "shows"
 

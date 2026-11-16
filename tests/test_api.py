@@ -104,6 +104,21 @@ def test_list_shows_newest_first(client: TestClient) -> None:
     assert "segments" not in response.json()[0]
 
 
+def test_list_shows_ignores_folders_without_a_show_file(
+    client: TestClient, fake_settings: Settings
+) -> None:
+    """`radio-llama script` leaves its trace under output/scripts/ (D037)."""
+    scripts = fake_settings.output_dir / "scripts" / "20261030-120000-abcdef"
+    scripts.mkdir(parents=True)
+    (scripts / "llm.jsonl").write_text("{}\n", encoding="utf-8")
+    created = _create(client)
+
+    response = client.get("/api/v1/shows")
+
+    assert response.status_code == 200
+    assert [show["id"] for show in response.json()] == [created["id"]]
+
+
 def test_energy_is_stored_in_the_config(client: TestClient) -> None:
     created = _create(client, energy="calm")
 
