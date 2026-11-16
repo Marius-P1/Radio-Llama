@@ -5,9 +5,14 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from radio_llama import cli
 from radio_llama.cli import app
 from radio_llama.config import Settings
+from radio_llama.generator import PipelineGenerator
+from radio_llama.llm import FakeLLM
 from radio_llama.music import LocalCatalog
+from radio_llama.voice import CachedTextToSpeech, FakeTTS
+from tests.conftest import FakeYouTube
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -132,3 +137,83 @@ def test_generate_with_unknown_source_fails_cleanly(cli_env: Path) -> None:
     assert result.exit_code == 1
     assert "source" in result.output
     assert "Traceback" not in result.output
+
+
+def test_youtube_without_a_key_explains_the_variable(cli_env: Path) -> None:
+    for command in ("generate", "script"):
+        result = runner.invoke(
+            app, [command, "--fake", "--source", "youtube", "--wish", "songs about trains"]
+        )
+
+        assert result.exit_code == 1
+        assert "YOUTUBE_API_KEY" in result.output
+        assert "Traceback" not in result.output
+
+
+# No style on YouTube (D039): --wish is the one required option there.
+
+
+def test_youtube_refuses_a_style(cli_env: Path) -> None:
+    for command in ("generate", "script"):
+        result = runner.invoke(
+            app, [command, "--fake", "--source", "youtube", "--style", "jazz", "--wish", "trains"]
+        )
+
+        assert result.exit_code == 1
+        assert "--style is not used with --source youtube" in result.output
+        assert "--wish" in result.output
+        assert "Traceback" not in result.output
+    assert not cli_env.exists()
+
+
+def test_youtube_needs_a_wish(cli_env: Path) -> None:
+    for args in (["--source", "youtube"], ["--source", "youtube", "--wish", "  "]):
+        result = runner.invoke(app, ["generate", "--fake", *args])
+
+        assert result.exit_code == 1
+        assert "--source youtube needs --wish" in result.output
+    assert not cli_env.exists()
+
+
+def test_other_sources_need_a_style(cli_env: Path) -> None:
+    for command, source in (("generate", "catalog"), ("script", "jamendo")):
+        result = runner.invoke(app, [command, "--fake", "--source", source])
+
+        assert result.exit_code == 1
+        assert f"--style is required with --source {source}" in result.output
+    assert not cli_env.exists()
+
+
+def test_generate_youtube_prints_the_folder(
+    cli_env: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An embed show has no show.mp3, so the command names the folder instead (D038)."""
+    playlist = (
+        '{"songs": [{"artist": "Example Artist", "title": "Blue Window"}, '
+        '{"artist": "Lea Example", "title": "Montreal Streets"}, '
+        '{"artist": "We Are FM", "title": "Night Train"}]}'
+    )
+    youtube = FakeYouTube(tmp_path / "cache")
+
+    def fake_generator(settings):
+        tts = CachedTextToSpeech(FakeTTS(settings.cache_dir / "tts-raw"), settings.cache_dir)
+        llm = FakeLLM([playlist, "This is a fake radio script."])
+        return PipelineGenerator(llm, tts, {"youtube": youtube.source}, settings)
+
+    monkeypatch.setattr(cli, "make_generator", fake_generator)
+
+    result = runner.invoke(
+        app, ["generate", "--fake", "--source", "youtube", "--wish", "90s French rap, upbeat"]
+    )
+
+    assert result.exit_code == 0, result.output
+    (show_dir,) = cli_env.iterdir()
+    assert f"Show written to {show_dir}" in result.output
+    assert "no show.mp3" in result.output
+    assert not (show_dir / "show.mp3").exists()
+    assert (show_dir / "00-intro.mp3").exists()
+    show = json.loads((show_dir / "show.json").read_text(encoding="utf-8"))
+    assert show["audio_file"] is None
+    assert show["tracks"][0]["video_id"]
+    assert show["config"]["style"] is None  # no style on YouTube (D039)
+    assert show["config"]["wish"] == "90s French rap, upbeat"

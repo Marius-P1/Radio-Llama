@@ -1,22 +1,46 @@
 """Build the music sources the settings allow, keyed by the name a show request uses (D029)."""
 
+from typing import Literal
+
 from radio_llama.config import Settings
+from radio_llama.models import MusicSourceName
 from radio_llama.music.base import MusicSource
 from radio_llama.music.jamendo import JamendoSource
 from radio_llama.music.local_catalog import LocalCatalog
+from radio_llama.music.youtube import YouTubeSource
 
-SOURCE_NAMES = {"catalog": "Local catalog", "jamendo": "Jamendo"}
+SOURCE_NAMES = {"catalog": "Local catalog", "jamendo": "Jamendo", "youtube": "YouTube"}
+SOURCE_CLASSES: dict[MusicSourceName, type] = {
+    "catalog": LocalCatalog,
+    "jamendo": JamendoSource,
+    "youtube": YouTubeSource,
+}
 
 
 def make_music_sources(settings: Settings) -> dict[str, MusicSource]:
-    """The local catalog always; Jamendo when JAMENDO_CLIENT_ID is set."""
+    """The local catalog always; Jamendo and YouTube when their key is set."""
     sources: dict[str, MusicSource] = {"catalog": LocalCatalog(settings.catalog_path)}
     if settings.jamendo_client_id:
         sources["jamendo"] = JamendoSource(settings.jamendo_client_id, settings.cache_dir)
+    if settings.youtube_api_key is not None:
+        sources["youtube"] = YouTubeSource(
+            settings.require_api_key("youtube"), settings.cache_dir, settings.youtube_region
+        )
     return sources
+
+
+def delivery_of(name: MusicSourceName) -> Literal["file", "embed"]:
+    """How the songs of a source reach the listener, read from the class (D038).
+
+    No instance is needed, so the API can say how a show plays before it is ready and
+    for a source that is not configured on this server.
+    """
+    return SOURCE_CLASSES[name].delivery
 
 
 def missing_source_message(name: str) -> str:
     if name == "jamendo":
         return "Music source 'jamendo' is not configured. Set JAMENDO_CLIENT_ID in .env."
+    if name == "youtube":
+        return "Music source 'youtube' is not configured. Set YOUTUBE_API_KEY in .env."
     return f"Music source {name!r} is not configured."

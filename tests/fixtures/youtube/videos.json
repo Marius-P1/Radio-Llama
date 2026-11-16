@@ -1,0 +1,172 @@
+{
+  "kind": "youtube#videoListResponse",
+  "etag": "fake-etag",
+  "pageInfo": {"totalResults": 11, "resultsPerPage": 11},
+  "items": [
+    {
+      "kind": "youtube#video",
+      "etag": "v1",
+      "id": "okPlain0001",
+      "snippet": {
+        "publishedAt": "2019-05-02T10:00:00Z",
+        "channelId": "UCuploader001",
+        "title": "Example Artist - Blue Window (live in Lyon)",
+        "channelTitle": "Some Uploader",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {"duration": "PT3M20S", "dimension": "2d", "definition": "hd", "caption": "false", "licensedContent": false, "projection": "rectangular"},
+      "status": {"uploadStatus": "processed", "privacyStatus": "public", "license": "youtube", "embeddable": true, "publicStatsViewable": true, "madeForKids": false}
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "v2",
+      "id": "noEmbed0001",
+      "snippet": {
+        "publishedAt": "2016-01-10T10:00:00Z",
+        "channelId": "UCnoembed001",
+        "title": "Blue Window - Example Artist (album version)",
+        "channelTitle": "No Embeds Here",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {"duration": "PT3M34S", "dimension": "2d", "definition": "hd", "caption": "false", "licensedContent": true, "projection": "rectangular"},
+      "status": {"uploadStatus": "processed", "privacyStatus": "public", "license": "youtube", "embeddable": false, "publicStatsViewable": true, "madeForKids": false}
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "v3",
+      "id": "liveNow0001",
+      "snippet": {
+        "publishedAt": "2026-11-01T10:00:00Z",
+        "channelId": "UClive0000001",
+        "title": "Blue Window radio 24/7",
+        "channelTitle": "Live Jazz Stream",
+        "categoryId": "10",
+        "liveBroadcastContent": "live"
+      },
+      "contentDetails": {"duration": "P0D", "dimension": "2d", "definition": "hd", "caption": "false", "licensedContent": false, "projection": "rectangular"},
+      "status": {"uploadStatus": "uploaded", "privacyStatus": "public", "license": "youtube", "embeddable": true, "publicStatsViewable": true, "madeForKids": false}
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "v4",
+      "id": "tooLong0001",
+      "snippet": {
+        "publishedAt": "2021-03-03T10:00:00Z",
+        "channelId": "UCmixes000001",
+        "title": "Blue Window extended mix",
+        "channelTitle": "Long Mixes",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {"duration": "PT15M2S", "dimension": "2d", "definition": "hd", "caption": "false", "licensedContent": false, "projection": "rectangular"},
+      "status": {"uploadStatus": "processed", "privacyStatus": "public", "license": "youtube", "embeddable": true, "publicStatsViewable": true, "madeForKids": false}
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "v5",
+      "id": "ageRestr001",
+      "snippet": {
+        "publishedAt": "2018-07-07T10:00:00Z",
+        "channelId": "UCrestrict001",
+        "title": "Blue Window (uncensored video)",
+        "channelTitle": "Restricted Uploads",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {"duration": "PT3M40S", "dimension": "2d", "definition": "hd", "caption": "false", "licensedContent": false, "contentRating": {"ytRating": "ytAgeRestricted"}, "projection": "rectangular"},
+      "status": {"uploadStatus": "processed", "privacyStatus": "public", "license": "youtube", "embeddable": true, "publicStatsViewable": true, "madeForKids": false}
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "v6",
+      "id": "blockedFR01",
+      "snippet": {
+        "publishedAt": "2017-09-09T10:00:00Z",
+        "channelId": "UCblocked0001",
+        "title": "Blue Window (not in France)",
+        "channelTitle": "Elsewhere Records",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {"duration": "PT3M31S", "dimension": "2d", "definition": "hd", "caption": "false", "licensedContent": true, "regionRestriction": {"blocked": ["FR", "DE"]}, "projection": "rectangular"},
+      "status": {"uploadStatus": "processed", "privacyStatus": "public", "license": "youtube", "embeddable": true, "publicStatsViewable": true, "madeForKids": false}
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "v7",
+      "id": "okTopic0001",
+      "snippet": {
+        "publishedAt": "2015-03-21T10:00:00Z",
+        "channelId": "UCtopic000001",
+        "title": "Blue Window",
+        "channelTitle": "Example Artist - Topic",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {"duration": "PT3M34S", "dimension": "2d", "definition": "sd", "caption": "false", "licensedContent": true, "projection": "rectangular"},
+      "status": {"uploadStatus": "processed", "privacyStatus": "public", "license": "youtube", "embeddable": true, "publicStatsViewable": true, "madeForKids": false}
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "v8",
+      "id": "montreal001",
+      "snippet": {
+        "publishedAt": "2013-11-11T10:00:00Z",
+        "channelId": "UClea00000001",
+        "title": "Montreal Streets",
+        "channelTitle": "Lea Example",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {"duration": "PT4M1S", "dimension": "2d", "definition": "hd", "caption": "false", "licensedContent": false, "projection": "rectangular"},
+      "status": {"uploadStatus": "processed", "privacyStatus": "public", "license": "youtube", "embeddable": true, "publicStatsViewable": true, "madeForKids": false}
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "v9",
+      "id": "nightTrn001",
+      "snippet": {
+        "publishedAt": "2020-02-02T10:00:00Z",
+        "channelId": "UCvevo0000001",
+        "title": "We Are FM - Night Train (Official Video)",
+        "channelTitle": "WeAreFMVEVO",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {"duration": "PT2M58S", "dimension": "2d", "definition": "hd", "caption": "true", "licensedContent": true, "projection": "rectangular"},
+      "status": {"uploadStatus": "processed", "privacyStatus": "public", "license": "youtube", "embeddable": true, "publicStatsViewable": true, "madeForKids": false}
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "v10",
+      "id": "redLight001",
+      "snippet": {
+        "publishedAt": "2022-06-06T10:00:00Z",
+        "channelId": "UCrecords0001",
+        "title": "Red Lights",
+        "channelTitle": "Example Records Official",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {"duration": "PT3M10S", "dimension": "2d", "definition": "hd", "caption": "false", "licensedContent": true, "projection": "rectangular"},
+      "status": {"uploadStatus": "processed", "privacyStatus": "public", "license": "youtube", "embeddable": true, "publicStatsViewable": true, "madeForKids": false}
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "v11",
+      "id": "slowRivr001",
+      "snippet": {
+        "publishedAt": "2014-04-04T10:00:00Z",
+        "channelId": "UCriver000001",
+        "title": "Slow River (lyrics)",
+        "channelTitle": "River Uploads",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {"duration": "PT5M", "dimension": "2d", "definition": "sd", "caption": "false", "licensedContent": false, "projection": "rectangular"},
+      "status": {"uploadStatus": "processed", "privacyStatus": "public", "license": "youtube", "embeddable": true, "publicStatsViewable": true, "madeForKids": false}
+    }
+  ]
+}

@@ -48,14 +48,22 @@
             "default": "catalog",
             "enum": [
               "catalog",
-              "jamendo"
+              "jamendo",
+              "youtube"
             ],
             "title": "Source",
             "type": "string"
           },
           "style": {
-            "title": "Style",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
           },
           "wish": {
             "anyOf": [
@@ -70,9 +78,6 @@
             "title": "Wish"
           }
         },
-        "required": [
-          "style"
-        ],
         "title": "CreateShowRequest",
         "type": "object"
       },
@@ -222,7 +227,7 @@
         "title": "Progress",
         "type": "object"
       },
-      "Segment": {
+      "SegmentResponse": {
         "properties": {
           "audio_file": {
             "anyOf": [
@@ -234,6 +239,17 @@
               }
             ],
             "title": "Audio File"
+          },
+          "audio_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Url"
           },
           "duration_s": {
             "anyOf": [
@@ -293,7 +309,7 @@
         "required": [
           "kind"
         ],
-        "title": "Segment",
+        "title": "SegmentResponse",
         "type": "object"
       },
       "ShowConfig": {
@@ -353,14 +369,22 @@
             "default": "catalog",
             "enum": [
               "catalog",
-              "jamendo"
+              "jamendo",
+              "youtube"
             ],
             "title": "Source",
             "type": "string"
           },
           "style": {
-            "title": "Style",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
           },
           "track_count": {
             "default": 3,
@@ -380,7 +404,6 @@
           }
         },
         "required": [
-          "style",
           "persona"
         ],
         "title": "ShowConfig",
@@ -422,6 +445,14 @@
             "title": "Id",
             "type": "string"
           },
+          "playback": {
+            "enum": [
+              "file",
+              "segments"
+            ],
+            "title": "Playback",
+            "type": "string"
+          },
           "progress": {
             "anyOf": [
               {
@@ -434,7 +465,7 @@
           },
           "segments": {
             "items": {
-              "$ref": "#/components/schemas/Segment"
+              "$ref": "#/components/schemas/SegmentResponse"
             },
             "title": "Segments",
             "type": "array"
@@ -462,6 +493,7 @@
           "status",
           "created_at",
           "config",
+          "playback",
           "segments",
           "tracks"
         ],
@@ -518,7 +550,8 @@
           "id": {
             "enum": [
               "catalog",
-              "jamendo"
+              "jamendo",
+              "youtube"
             ],
             "title": "Id",
             "type": "string"
@@ -563,8 +596,15 @@
             "type": "string"
           },
           "audio_file": {
-            "title": "Audio File",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio File"
           },
           "duration_s": {
             "title": "Duration S",
@@ -646,6 +686,17 @@
             "title": "Track Url",
             "type": "string"
           },
+          "video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Id"
+          },
           "year": {
             "anyOf": [
               {
@@ -668,8 +719,7 @@
           "license",
           "license_url",
           "track_url",
-          "artist_url",
-          "audio_file"
+          "artist_url"
         ],
         "title": "Track",
         "type": "object"
@@ -872,6 +922,53 @@
           }
         },
         "summary": "Get Show Audio"
+      }
+    },
+    "/api/v1/shows/{show_id}/segments/{index}/audio": {
+      "get": {
+        "description": "One speech file of a ready show, for per-segment playback (D038).",
+        "operationId": "get_segment_audio_api_v1_shows__show_id__segments__index__audio_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "show_id",
+            "required": true,
+            "schema": {
+              "title": "Show Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "title": "Index",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Segment Audio"
       }
     }
   }

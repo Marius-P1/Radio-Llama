@@ -33,7 +33,10 @@ class Track(BaseModel):
     license_url: str
     track_url: str  # page where the track was found, used for credits
     artist_url: str
-    audio_file: str  # file name inside catalog/audio/
+    # File name inside catalog/audio/ or the source's cache. None for a YouTube track, which
+    # the player streams through the embedded player instead (D038).
+    audio_file: str | None = None
+    video_id: str | None = None  # the YouTube video, set only by the YouTube source
     tags: list[str] = Field(default_factory=list)
     facts: list[Fact] = Field(default_factory=list)
     spoken_title: str | None = None  # what the host says when the title is not speakable as is
@@ -55,17 +58,19 @@ class Persona(BaseModel):
     voice_id: str  # ElevenLabs voice id
 
 
-MusicSourceName = Literal["catalog", "jamendo"]  # D029: the local catalog or Jamendo
+MusicSourceName = Literal["catalog", "jamendo", "youtube"]  # D029, D038
 
 
 class ShowConfig(BaseModel):
-    style: str  # a style of the chosen source
+    # A style of the chosen source. None on YouTube, which offers no styles: the wish is
+    # the theme there (D039).
+    style: str | None = None
     persona: str  # Persona.id
     language: Literal["en", "fr"] = "en"
     generator: Literal["pipeline"] = "pipeline"  # D008: only "pipeline" in Phase 1
     energy: Energy | None = None  # the listener's choice; None means any (D020)
     source: MusicSourceName = "catalog"  # where the songs come from (D029)
-    wish: str | None = None  # free text that refines the search; Jamendo only (D030)
+    wish: str | None = None  # free text that refines the song choice; Jamendo and YouTube (D030)
     track_count: int = 3
     demo: bool = False  # cut each song to a 30 s excerpt, for a fast short show
     seed: int | None = None  # fixes the random track pick, for reproducible runs (D017)
@@ -94,4 +99,6 @@ class Show(BaseModel):
     error: str | None = None
     segments: list[Segment] = Field(default_factory=list)
     tracks: list[Track] = Field(default_factory=list)  # the tracks used, in order, for credits
-    audio_file: str | None = None  # the assembled MP3 file name, set when status is "ready"
+    # The assembled MP3 file name, set when status is "ready". None on a ready YouTube show:
+    # its speech segments have files and its songs play in the embedded player (D038).
+    audio_file: str | None = None

@@ -4,14 +4,21 @@ import random
 from datetime import datetime
 from pathlib import Path
 
-from radio_llama.audio.assemble import assemble_show
+from radio_llama.audio.assemble import DEMO_SONG_LENGTH_S, assemble_show, write_speech
 from radio_llama.config import Settings
 from radio_llama.facts import FactLookup
 from radio_llama.generator.base import GenerationError, ProgressCallback
 from radio_llama.llm.base import LLMClient, LLMResponse
 from radio_llama.models import ENERGIES, Energy, Fact, Segment, Show, ShowConfig, Track
-from radio_llama.music import JamendoSource, MusicSource, missing_source_message
+from radio_llama.music import (
+    JamendoSource,
+    MusicSource,
+    YouTubeQuotaError,
+    YouTubeSource,
+    missing_source_message,
+)
 from radio_llama.personas import get_persona
+from radio_llama.script.playlist import propose_playlist
 from radio_llama.script.shapes import Shape, load_shapes, plan_shapes
 from radio_llama.script.wish import map_wish
 from radio_llama.script.writer import ScriptWriter
@@ -36,7 +43,7 @@ class PipelineGenerator:
         self._tts = tts
         self._sources = sources
         self._settings = settings
-        # Looks up facts for Jamendo tracks on Wikipedia and MusicBrainz (D029). None: no lookup.
+        # Looks up facts for online tracks on Wikipedia and MusicBrainz (D029). None: no lookup.
         self._facts = facts
         # Every LLM response of the last run, so the CLI can print token totals (D004).
         self.last_responses: list[LLMResponse] = []
@@ -49,34 +56,45 @@ class PipelineGenerator:
             return self._generate(show, out_dir, on_progress)
 
     def _generate(self, show: Show, out_dir: Path, on_progress: ProgressCallback | None) -> Show:
-        music, tracks, plan, shapes, writer = self._prepare(show)
+        music, tracks, plan, shapes, writer = self._prepare(show, on_progress)
+        embed = music.delivery == "embed"  # songs play in the web app, not from a file (D038)
 
         # Every audio file present, fetched first for a remote source, before any LLM call.
-        for track in tracks:
-            path = music.audio_path(track)
-            if not path.exists():
-                raise GenerationError(
-                    f"Audio file missing: {path}. Run `uv run python catalog/download.py`."
-                )
+        if not embed:
+            for track in tracks:
+                path = music.audio_path(track)
+                if not path.exists():
+                    raise GenerationError(
+                        f"Audio file missing: {path}. Run `uv run python catalog/download.py`."
+                    )
         voice = voice_for(writer.persona, self._settings)
 
-        # Write and voice each speech segment, point each song at its audio file.
+        # Write and voice each speech segment, point each song at its audio file. An embed
+        # show has no song file: the segment only carries how long the video plays.
         total = len(plan)
-        sources: list[Path] = []
-        for done, segment in enumerate(plan, start=1):
+        demo = show.config.demo
+        sources: dict[int, Path] = {}  # raw audio per segment index
+        for index, segment in enumerate(plan):
             if segment.kind == "song":
-                sources.append(music.audio_path(_track_by_id(tracks, segment.track_id)))
+                track = _track_by_id(tracks, segment.track_id)
+                if embed:
+                    segment.duration_s = DEMO_SONG_LENGTH_S if demo else track.duration_s
+                else:
+                    sources[index] = music.audio_path(track)
             else:
                 segment.text = _write_speech(writer, segment, tracks, shapes)
-                sources.append(self._tts.synthesize(segment.text, voice))
+                sources[index] = self._tts.synthesize(segment.text, voice)
             if on_progress is not None:
-                on_progress(done, total)
+                on_progress(index + 1, total)
 
-        # Assemble the audio; this fills audio_file and duration_s. Status and show.json
+        # Build the audio; this fills audio_file and duration_s. Status and show.json
         # belong to the lifecycle owner.
         show.tracks = tracks
         show.segments = plan
-        assemble_show(show, sources, out_dir)
+        if embed:
+            write_speech(show, sources, out_dir)
+        else:
+            assemble_show(show, [sources[index] for index in range(total)], out_dir)
         self.last_responses.extend(writer.responses)
         return show
 
@@ -98,9 +116,13 @@ class PipelineGenerator:
         return show
 
     def _prepare(
-        self, show: Show
+        self, show: Show, on_progress: ProgressCallback | None = None
     ) -> tuple[MusicSource, list[Track], list[Segment], dict[str, Shape], ScriptWriter]:
-        """Pick the tracks and the break shapes, build the plan and the writer."""
+        """Pick the tracks and the break shapes, build the plan and the writer.
+
+        `on_progress` gets (0, total) as soon as the tracks are picked, before the facts
+        lookups, so the page shows the total while the network is slow.
+        """
         config = show.config
         music = self._sources.get(config.source)
         if music is None:
@@ -111,14 +133,18 @@ class PipelineGenerator:
         self.last_responses = []
         candidates = self._candidates(config, music)
         if len(candidates) < config.track_count:
+            # A YouTube show has no style (D039): name the source instead.
+            what = f"Style {config.style!r}" if config.style else f"Source {config.source!r}"
             raise GenerationError(
-                f"Style {config.style!r} has {len(candidates)} tracks, {config.track_count} needed."
+                f"{what} has {len(candidates)} tracks, {config.track_count} needed."
             )
         rng = random.Random(config.seed)
         tracks = pick_tracks(candidates, config.track_count, config.energy, rng)
+        if on_progress is not None:
+            on_progress(0, plan_length(len(tracks)))
         # Before the shapes: a track that gains facts can get the story break.
         lookup = self._facts
-        if lookup is not None and isinstance(music, JamendoSource):
+        if lookup is not None and music.needs_facts_lookup:
             tracks = [
                 _add_facts(track, lookup.artist_facts(track.artist, config.language))
                 for track in tracks
@@ -142,7 +168,39 @@ class PipelineGenerator:
         return music, tracks, plan, {shape.id: shape for shape in shapes}, writer
 
     def _candidates(self, config: ShowConfig, music: MusicSource) -> list[Track]:
-        """The tracks to sample from. Jamendo searches with the energy and the wish (D030)."""
+        """The tracks to sample from, one search per source.
+
+        Jamendo searches with the energy and the wish (D030). YouTube asks the model for
+        songs, two more than needed, and keeps those with a playable video (D038). The
+        catalog lists its tracks.
+        """
+        if config.wish and not music.accepts_wish:
+            raise GenerationError("A wish needs the 'jamendo' or 'youtube' music source.")
+        # A source without styles takes the wish as its theme (D039), so it needs one. The
+        # API and the CLI check it too; a show built in code must not slip through.
+        if not music.list_styles() and music.accepts_wish and not config.wish:
+            raise GenerationError(
+                f"Source {config.source!r} needs a wish: say what you want to hear."
+            )
+        if isinstance(music, YouTubeSource):
+            # No style on YouTube (D039): the wish is the theme, and the prompt says so.
+            proposals, response = propose_playlist(
+                self._llm,
+                self._settings.prompts_dir,
+                config.language,
+                style=config.style,
+                energy=config.energy,
+                wish=config.wish,
+                count=config.track_count + 2,
+            )
+            self.last_responses.append(response)
+            try:
+                return music.find_tracks(proposals, minimum=config.track_count)
+            except YouTubeQuotaError as exc:
+                raise GenerationError(str(exc)) from exc
+        # The catalog and Jamendo search by style; the API and the CLI check it is given.
+        if config.style is None:
+            raise GenerationError(f"Source {config.source!r} needs a style.")
         if isinstance(music, JamendoSource):
             filters = None
             if config.wish:
@@ -158,8 +216,6 @@ class PipelineGenerator:
             return music.find_tracks(
                 config.style, energy=config.energy, filters=filters, minimum=config.track_count
             )
-        if config.wish:
-            raise GenerationError("A wish needs the 'jamendo' music source.")
         return music.list_tracks(config.style)
 
 
@@ -206,6 +262,11 @@ def merge_facts(own: list[Fact], found: list[Fact]) -> list[Fact]:
             seen.add(key)
             merged.append(fact)
     return merged[:MAX_TRACK_FACTS]
+
+
+def plan_length(track_count: int) -> int:
+    """How many segments `_plan` makes: intro, the songs, a break between each two, outro."""
+    return 2 * track_count + 1
 
 
 def _plan(tracks: list[Track], breaks: list[Shape]) -> list[Segment]:

@@ -31,9 +31,33 @@ def main() -> None:
     # Typer turns a lone command into the root command; a callback keeps `radio-llama generate`.
 
 
+def check_style_and_wish(source: str, style: str | None, wish: str | None) -> None:
+    """Exit with a message when the style or the wish does not fit the source (D039).
+
+    YouTube has no styles and the wish is its one required input; the catalog and Jamendo
+    search by style. The API applies the same rules in `create_show`.
+    """
+    if source == "youtube":
+        if style is not None:
+            typer.echo(
+                "--style is not used with --source youtube: say what you want to hear with --wish.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        if not (wish or "").strip():
+            typer.echo("--source youtube needs --wish: say what you want to hear.", err=True)
+            raise typer.Exit(code=1)
+    elif style is None:
+        typer.echo(f"--style is required with --source {source}.", err=True)
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def generate(
-    style: Annotated[str, typer.Option(help="Music style of the source, for example jazz.")],
+    style: Annotated[
+        str | None,
+        typer.Option(help="Music style of the source, for example jazz. Not used with youtube."),
+    ] = None,
     persona: Annotated[str, typer.Option(help="Host persona id.")] = "calm",
     language: Annotated[
         str | None, typer.Option(help="en or fr. Defaults to RADIO_LANGUAGE.")
@@ -42,10 +66,13 @@ def generate(
         str | None, typer.Option(help="calm, medium or upbeat. Any energy when left out.")
     ] = None,
     source: Annotated[
-        str, typer.Option(help="Where the songs come from: catalog or jamendo.")
+        str, typer.Option(help="Where the songs come from: catalog, jamendo or youtube.")
     ] = "catalog",
     wish: Annotated[
-        str | None, typer.Option(help="Free text that refines the search. Jamendo only.")
+        str | None,
+        typer.Option(
+            help="Free text that refines the song choice. Optional on Jamendo, required on YouTube."
+        ),
     ] = None,
     tracks: Annotated[int, typer.Option(help="Number of songs.")] = 3,
     demo: Annotated[
@@ -59,7 +86,12 @@ def generate(
         Path | None, typer.Option(help="Folder for shows. Defaults to OUTPUT_DIR.")
     ] = None,
 ) -> None:
-    """Generate one show into output/<show_id>/ as show.mp3 and show.json."""
+    """Generate one show into output/<show_id>/ as show.mp3 and show.json.
+
+    A YouTube show has no show.mp3: its speech files sit next to show.json and its songs
+    play in the web app's embedded player (D038). It takes a wish and no style (D039).
+    """
+    check_style_and_wish(source, style, wish)
     try:
         settings = load_settings()
         if fake:
@@ -102,14 +134,20 @@ def generate(
         raise typer.Exit(code=1)
     tokens_in = sum(response.input_tokens for response in generator.last_responses)
     tokens_out = sum(response.output_tokens for response in generator.last_responses)
-    typer.echo(f"Show written to {out_dir / show.audio_file}")
+    if show.audio_file is None:
+        typer.echo(f"Show written to {out_dir} (no show.mp3: the songs play in the web app)")
+    else:
+        typer.echo(f"Show written to {out_dir / show.audio_file}")
     typer.echo(f"Segments: {len(show.segments)}")
     typer.echo(f"LLM tokens: {tokens_in} in, {tokens_out} out")
 
 
 @app.command()
 def script(
-    style: Annotated[str, typer.Option(help="Music style of the source, for example jazz.")],
+    style: Annotated[
+        str | None,
+        typer.Option(help="Music style of the source, for example jazz. Not used with youtube."),
+    ] = None,
     persona: Annotated[str, typer.Option(help="Host persona id.")] = "calm",
     language: Annotated[
         str | None, typer.Option(help="en or fr. Defaults to RADIO_LANGUAGE.")
@@ -118,10 +156,13 @@ def script(
         str | None, typer.Option(help="calm, medium or upbeat. Any energy when left out.")
     ] = None,
     source: Annotated[
-        str, typer.Option(help="Where the songs come from: catalog or jamendo.")
+        str, typer.Option(help="Where the songs come from: catalog, jamendo or youtube.")
     ] = "catalog",
     wish: Annotated[
-        str | None, typer.Option(help="Free text that refines the search. Jamendo only.")
+        str | None,
+        typer.Option(
+            help="Free text that refines the song choice. Optional on Jamendo, required on YouTube."
+        ),
     ] = None,
     tracks: Annotated[int, typer.Option(help="Number of songs.")] = 3,
     seed: Annotated[int | None, typer.Option(help="Fix the track and break pick.")] = None,
@@ -130,6 +171,7 @@ def script(
     ] = False,
 ) -> None:
     """Write a show's script and print it, with no voice and no audio. For tuning prompts."""
+    check_style_and_wish(source, style, wish)
     try:
         settings = load_settings()
         if fake:

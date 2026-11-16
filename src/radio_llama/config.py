@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     elevenlabs_api_key: SecretStr | None = None
     # Jamendo client id from devportal.jamendo.com. Not a secret, but unset means no Jamendo.
     jamendo_client_id: str | None = None
+    # YouTube Data API v3 key from a Google Cloud project. Unset means no YouTube (D038).
+    youtube_api_key: SecretStr | None = None
+    # Two-letter country whose YouTube catalog the search reads, and whose region blocks count.
+    youtube_region: str = "FR"
 
     # Radio settings
     radio_language: Literal["en", "fr"] = "en"
@@ -68,7 +72,7 @@ class Settings(BaseSettings):
 
     def require_api_key(self, provider: str) -> str:
         """Return the API key for `provider` as a plain string, or raise ConfigError."""
-        if provider not in ("mistral", "anthropic", "elevenlabs"):
+        if provider not in ("mistral", "anthropic", "elevenlabs", "youtube"):
             raise ValueError(f"Unknown provider: {provider!r}")
         field = f"{provider}_api_key"
         secret: SecretStr | None = getattr(self, field)

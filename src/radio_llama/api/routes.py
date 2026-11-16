@@ -1,4 +1,4 @@
-"""The `/api/v1` routes: options, create a show, read shows, fetch the MP3."""
+"""The `/api/v1` routes: options, create a show, read shows, fetch the audio."""
 
 import logging
 import re
@@ -86,7 +86,7 @@ def get_options(settings: SettingsDep, sources: SourcesDep) -> OptionsResponse:
                 id=name,  # type: ignore[arg-type]
                 name=SOURCE_NAMES[name],
                 styles=music.list_styles(),
-                wish=name == "jamendo",
+                wish=music.accepts_wish,
             )
             for name, music in sources.items()
         ],
@@ -107,8 +107,19 @@ def create_show(
     music = sources.get(body.source)
     if music is None:
         raise HTTPException(status_code=400, detail=missing_source_message(body.source))
+    # A source with styles needs one of them. A source without styles (YouTube) takes none:
+    # the wish is its theme, so it needs a wish instead (D039).
     styles = music.list_styles()
-    if body.style not in styles:
+    if not styles:
+        if body.style is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Source {body.source!r} has no styles to pick from. Leave the style out "
+                    "and say what you want to hear in the wish."
+                ),
+            )
+    elif body.style not in styles:
         raise HTTPException(
             status_code=400,
             detail=(
@@ -116,10 +127,17 @@ def create_show(
                 f"Known styles: {', '.join(styles)}."
             ),
         )
-    # A blank wish is no wish. A wish only means something on Jamendo (D030).
+    # A blank wish is no wish. A wish only means something on a source that takes one (D030).
     wish = (body.wish or "").strip() or None
-    if wish is not None and body.source != "jamendo":
-        raise HTTPException(status_code=400, detail="A wish needs the 'jamendo' music source.")
+    if wish is not None and not music.accepts_wish:
+        raise HTTPException(
+            status_code=400, detail="A wish needs the 'jamendo' or 'youtube' music source."
+        )
+    if wish is None and not styles and music.accepts_wish:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A {SOURCE_NAMES[body.source]} show needs a wish: say what you want to hear.",
+        )
     persona_ids = [persona.id for persona in load_personas(settings.prompts_dir, body.language)]
     if body.persona not in persona_ids:
         raise HTTPException(
@@ -177,4 +195,24 @@ def get_show_audio(show_id: str, settings: SettingsDep) -> FileResponse:
     if show.status != "ready" or show.audio_file is None or not path.is_file():
         raise HTTPException(status_code=404, detail=f"Show {show_id!r} has no audio yet.")
     # No filename: the browser plays the MP3 inline instead of downloading it.
+    return FileResponse(path, media_type="audio/mpeg")
+
+
+@router.get("/shows/{show_id}/segments/{index}/audio")
+def get_segment_audio(show_id: str, index: int, settings: SettingsDep) -> FileResponse:
+    """One speech file of a ready show, for per-segment playback (D038)."""
+    show = load_show_or_404(settings.output_dir, show_id)
+    not_found = HTTPException(
+        status_code=404, detail=f"Segment {index} of show {show_id!r} has no audio."
+    )
+    if show.status != "ready" or not 0 <= index < len(show.segments):
+        raise not_found
+    segment = show.segments[index]
+    # A song is never served here: a file show keeps its songs inside show.mp3, an embed
+    # show plays them in the YouTube player. Only the host's speech files are.
+    if segment.kind == "song" or segment.audio_file is None:
+        raise not_found
+    path = settings.output_dir / show_id / segment.audio_file
+    if not path.is_file():
+        raise not_found
     return FileResponse(path, media_type="audio/mpeg")

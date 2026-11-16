@@ -115,6 +115,10 @@ class ArtistInfo:
 
 
 class JamendoSource:
+    delivery = "file"
+    accepts_wish = True
+    needs_facts_lookup = True
+
     def __init__(self, client_id: str, cache_dir: Path, http: httpx.Client | None = None) -> None:
         self._client_id = client_id
         self._dir = cache_dir / "jamendo"
@@ -201,7 +205,7 @@ class JamendoSource:
 
     def audio_path(self, track: Track) -> Path:
         """The cached MP3, fetched through the stream URL on first use."""
-        path = self._dir / track.audio_file
+        path = self._dir / f"{track.id}.mp3"  # what to_track sets as audio_file
         if path.exists():
             return path
         if track.id not in self._stream_urls:

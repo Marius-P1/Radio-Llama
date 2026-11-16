@@ -1,7 +1,7 @@
-"""The MusicSource protocol and its errors (D002, D014, D029)."""
+"""The MusicSource protocol and its errors (D002, D014, D029, D038)."""
 
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 from radio_llama.models import Track
 
@@ -15,6 +15,16 @@ class MusicSourceError(Exception):
 
 
 class MusicSource(Protocol):
+    # How the songs reach the listener: "file" sources give an audio file per track that the
+    # pipeline assembles into show.mp3; an "embed" source only names a video the player
+    # streams itself, so the show keeps its speech files apart (D038).
+    delivery: Literal["file", "embed"]
+    # Whether a free-text wish refines the song choice on this source (D030).
+    accepts_wish: bool
+    # Whether the pipeline looks the artists up on MusicBrainz and Wikipedia (D036). The
+    # catalog is hand-written with its own sourced facts; the online sources are not.
+    needs_facts_lookup: bool
+
     def list_styles(self) -> list[str]:
         """Return the styles the source offers, sorted and unique."""
         ...
@@ -28,5 +38,8 @@ class MusicSource(Protocol):
         ...
 
     def audio_path(self, track: Track) -> Path:
-        """Return the local audio file of `track`, fetching it first when the source is remote."""
+        """Return the local audio file of `track`, fetching it first when the source is remote.
+
+        Raises MusicSourceError on an embed source, which has no audio file.
+        """
         ...

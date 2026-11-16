@@ -1,4 +1,4 @@
-import type { ShowSummary } from './api'
+import type { ShowSummary, Track } from './api'
 
 /** Plain-English labels for values the API returns as identifiers. */
 
@@ -8,6 +8,16 @@ function capitalize(value: string): string {
 
 export function styleLabel(style: string): string {
   return capitalize(style)
+}
+
+/**
+ * What the show is about: its style, or its wish in quotes when it has no style (a YouTube
+ * show, D039), or null when it has neither.
+ */
+export function themeLabel(config: ShowSummary['config']): string | null {
+  if (config.style) return styleLabel(config.style)
+  if (config.wish) return `"${config.wish}"`
+  return null
 }
 
 export function energyLabel(energy: string | null | undefined): string {
@@ -23,7 +33,13 @@ export function personaLabel(persona: string): string {
 /** The music source as a short tag. The catalog is the default and gets no tag. */
 export function sourceTag(source: ShowSummary['config']['source']): string | null {
   if (source === 'jamendo') return 'Jamendo'
+  if (source === 'youtube') return 'YouTube'
   return null
+}
+
+/** The title to show and speak: the spoken title when the catalog sets one. */
+export function displayTitle(track: Track): string {
+  return track.spoken_title ?? track.title
 }
 
 export function languageLabel(language: string): string {

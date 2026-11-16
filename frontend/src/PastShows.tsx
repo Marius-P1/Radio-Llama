@@ -6,7 +6,7 @@ import {
   personaLabel,
   sourceTag,
   statusLabel,
-  styleLabel,
+  themeLabel,
 } from './labels'
 
 type Props = {
@@ -55,8 +55,9 @@ function ShowRow({ show, onOpen }: { show: ShowSummary; onOpen: (id: string) => 
     <>
       <span className="show-date">{dateLabel(show.created_at)}</span>
       <span className="show-meta">
-        {styleLabel(show.config.style)}, {personaLabel(show.config.persona)} host,{' '}
-        {languageLabel(show.config.language)}
+        {/* The style, or the wish for a show without one (YouTube, D039). */}
+        {themeLabel(show.config) && <>{themeLabel(show.config)}, </>}
+        {personaLabel(show.config.persona)} host, {languageLabel(show.config.language)}
       </span>
       {sourceTag(show.config.source) && (
         <span className="tag">{sourceTag(show.config.source)}</span>

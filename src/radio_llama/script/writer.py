@@ -20,6 +20,8 @@ UI_STRINGS = {
         "by": "by",
         "no_facts": "(no facts available for this track)",
         "no_notes": "(none)",
+        "no_wish": "(none)",
+        "language_name": "English",
         "about": {"artist": "About the artist:", "track": "About the track:"},
         "album": "Album:",
         "tags": "Tags:",
@@ -30,6 +32,11 @@ UI_STRINGS = {
             "upbeat": "Listeners asked for an upbeat show.",
         },
         "any_energy": "any",
+        "no_style": "(none: the request is the theme)",
+        "style_line": "The show's style is {style}.",
+        "theme_line": (
+            "The show has no set style tonight: its theme is what the listeners asked for."
+        ),
         "wish_line": "Listeners asked for: {wish}",
         "nothing_yet": "(nothing yet)",
         "kinds": {"intro": "Opening", "transition": "Break", "outro": "Closing"},
@@ -38,6 +45,8 @@ UI_STRINGS = {
         "by": "de",
         "no_facts": "(aucune anecdote disponible pour ce morceau)",
         "no_notes": "(aucune)",
+        "no_wish": "(aucune)",
+        "language_name": "français",
         "about": {"artist": "Sur l'artiste :", "track": "Sur le morceau :"},
         "album": "Album :",
         "tags": "Tags :",
@@ -48,6 +57,12 @@ UI_STRINGS = {
             "upbeat": "Les auditeurs ont demandé une émission entraînante.",
         },
         "any_energy": "indifférente",
+        "no_style": "(aucun : la demande est le thème)",
+        "style_line": "Le style de l'émission est {style}.",
+        "theme_line": (
+            "L'émission n'a pas de style imposé ce soir : son thème est ce que les auditeurs "
+            "ont demandé."
+        ),
         "wish_line": "Les auditeurs ont demandé : {wish}",
         "nothing_yet": "(rien encore)",
         "kinds": {"intro": "Ouverture", "transition": "Intervention", "outro": "Clôture"},
@@ -127,6 +142,17 @@ def wish_line(wish: str | None, language: str) -> str:
     return UI_STRINGS[language]["wish_line"].format(wish=wish)
 
 
+def theme_line(style: str | None, wish: str | None, language: str) -> str:
+    """The sentence naming the show's style, or saying the wish is the theme when there is
+    no style (D039). Empty with neither; the wish itself is on `wish_line`."""
+    strings = UI_STRINGS[language]
+    if style:
+        return strings["style_line"].format(style=style)
+    if wish:
+        return strings["theme_line"]
+    return ""
+
+
 class ScriptWriter:
     def __init__(
         self,
@@ -134,7 +160,7 @@ class ScriptWriter:
         prompts_dir: Path,
         language: Literal["en", "fr"],
         persona: Persona,
-        style: str,
+        style: str | None,  # None on a source without styles: the wish is the theme (D039)
         *,
         energy: Energy | None = None,
         wish: str | None = None,
@@ -199,7 +225,7 @@ class ScriptWriter:
             load_template(self._prompts_dir, self._language, "system"),
             {
                 "persona_description": self.persona.description,
-                "style": self._style,
+                "theme_line": theme_line(self._style, self._wish, self._language),
                 "time_line": time_line(self._now, self._language),
                 "energy_line": energy_line(self._energy, self._language),
                 "wish_line": wish_line(self._wish, self._language),

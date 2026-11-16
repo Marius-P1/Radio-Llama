@@ -19,6 +19,7 @@ from radio_llama.script.writer import (
     format_programme,
     format_track_details,
     format_track_list,
+    theme_line,
 )
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
@@ -201,6 +202,44 @@ def test_system_prompt_names_the_energy_only_when_asked() -> None:
 
     assert "Listeners asked for an upbeat show." in llm.calls[0][0].content
     assert "asked for" not in llm.calls[1][0].content
+
+
+def test_system_prompt_names_the_style_on_its_own_line() -> None:
+    llm = FakeLLM([CANNED])
+    persona = get_persona(PROMPTS_DIR, "en", "calm")
+    ScriptWriter(llm, PROMPTS_DIR, "en", persona, "jazz").write_intro(TRACKS)
+
+    assert "never one single listener.\nThe show's style is jazz.\n" in llm.calls[0][0].content
+
+
+def test_system_prompt_without_a_style_makes_the_wish_the_theme() -> None:
+    """A YouTube show has no style (D039): the host hears that the wish sets the theme, and
+    no Python None reaches the prompt."""
+    llm = FakeLLM([CANNED, CANNED])
+    wish = "90s French rap, upbeat"
+    for language in ("en", "fr"):
+        persona = get_persona(PROMPTS_DIR, language, "calm")
+        ScriptWriter(llm, PROMPTS_DIR, language, persona, None, wish=wish).write_intro(TRACKS)
+
+    english, french = (call[0].content for call in llm.calls)
+    assert (
+        "never one single listener.\n"
+        "The show has no set style tonight: its theme is what the listeners asked for.\n"
+    ) in english
+    assert "Listeners asked for: 90s French rap, upbeat" in english
+    assert "L'émission n'a pas de style imposé ce soir" in french
+    assert "Les auditeurs ont demandé : 90s French rap, upbeat" in french
+    for call in llm.calls:
+        for message in call:
+            assert "None" not in message.content
+            assert "style is" not in message.content
+
+
+def test_theme_line() -> None:
+    assert theme_line("jazz", None, "en") == "The show's style is jazz."
+    assert theme_line("jazz", "trains", "fr") == "Le style de l'émission est jazz."
+    assert theme_line(None, "trains", "en").startswith("The show has no set style tonight")
+    assert theme_line(None, None, "en") == ""
 
 
 def test_system_prompt_carries_the_clock_when_given() -> None:

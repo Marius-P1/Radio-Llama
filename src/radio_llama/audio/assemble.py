@@ -151,3 +151,23 @@ def assemble_show(show: Show, sources: list[Path], out_dir: Path) -> Show:
     concat_parts(parts, out_dir / "show.mp3")
     show.audio_file = "show.mp3"
     return show
+
+
+def write_speech(show: Show, sources: dict[int, Path], out_dir: Path) -> Show:
+    """Build the speech files only, for a show whose songs play in an embedded player (D038).
+
+    `sources[i]` is the raw TTS audio of the speech segment `show.segments[i]`; song
+    segments have no entry, keep the duration the generator set, and get no file. There
+    is no show.mp3, so `show.audio_file` stays None: the player plays the segments in
+    order, speech from these files, songs from YouTube.
+    """
+    check_order(show.segments)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for index, segment in enumerate(show.segments):
+        if segment.kind == "song":
+            continue
+        part = out_dir / f"{index:02d}-{segment.kind}.mp3"
+        normalize_voice(sources[index], part)
+        segment.audio_file = part.name
+        segment.duration_s = probe_duration(part)
+    return show

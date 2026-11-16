@@ -10,7 +10,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from radio_llama.models import Track
-from radio_llama.music.base import UnknownTrackError
+from radio_llama.music.base import MusicSourceError, UnknownTrackError
 
 
 class Catalog(BaseModel):
@@ -21,6 +21,10 @@ class Catalog(BaseModel):
 
 
 class LocalCatalog:
+    delivery = "file"
+    accepts_wish = False
+    needs_facts_lookup = False  # the catalog is hand-written with its own sourced facts
+
     def __init__(self, catalog_path: Path, audio_dir: Path | None = None) -> None:
         self.catalog_path = catalog_path
         self.audio_dir = audio_dir if audio_dir is not None else catalog_path.parent / "audio"
@@ -46,4 +50,6 @@ class LocalCatalog:
 
     def audio_path(self, track: Track) -> Path:
         """Where the track's audio file should be. The caller checks that it exists."""
+        if track.audio_file is None:
+            raise MusicSourceError(f"Catalog track {track.id!r} names no audio file.")
         return self.audio_dir / track.audio_file

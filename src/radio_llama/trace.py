@@ -2,8 +2,8 @@
 
 After a show is generated this is the only way to see what the host was told. A trace is a
 folder of JSON Lines files, one per remote service: `llm.jsonl`, `tts.jsonl`,
-`jamendo.jsonl`, `musicbrainz.jsonl`, `wikidata.jsonl`, `wikipedia.jsonl`, plus
-`facts.jsonl` for facts answers served from a cache. One JSON object per line per call,
+`jamendo.jsonl`, `youtube.jsonl`, `musicbrainz.jsonl`, `wikidata.jsonl`, `wikipedia.jsonl`,
+plus `facts.jsonl` for facts answers served from a cache. One JSON object per line per call,
 with the UTC timestamp, the latency, the error text when the call failed, what was sent
 and what came back in full. Audio is never recorded, only its path and byte count.
 
@@ -12,9 +12,9 @@ a record made with no current trace is dropped, so a client called on its own st
 silent. Writes are synchronous: appending one record of a few kilobytes costs about half
 a millisecond on a laptop (measured for the MAR-15 PR), against calls that take seconds.
 
-Secrets never reach a trace: no API keys, no request headers, and the Jamendo client id is
-redacted from the written line. A record that cannot be written is logged and dropped: the
-trace never fails a show.
+Secrets never reach a trace: no request headers, and the Jamendo client id and the YouTube
+API key are redacted from the written line. A record that cannot be written is logged and
+dropped: the trace never fails a show.
 """
 
 import json

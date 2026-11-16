@@ -1,5 +1,6 @@
 """Shared fixtures: a tiny catalog with real (tone) audio, settings that use the fakes, and
-the remote services (Jamendo, MusicBrainz, Wikidata, Wikipedia) on mock transports."""
+the remote services (Jamendo, YouTube, MusicBrainz, Wikidata, Wikipedia) on mock
+transports."""
 
 import json
 import subprocess
@@ -12,7 +13,7 @@ from radio_llama import facts
 from radio_llama.config import Settings
 from radio_llama.facts import FactLookup
 from radio_llama.generator import factory
-from radio_llama.music import JamendoSource, LocalCatalog, jamendo
+from radio_llama.music import JamendoSource, LocalCatalog, YouTubeSource, jamendo
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 TONE_SECONDS = 3.0
@@ -148,6 +149,86 @@ def fake_jamendo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeJamendo
     tone_path = tmp_path / "jamendo-tone.mp3"
     _tone(tone_path, 330.0, TONE_SECONDS)
     return FakeJamendo(tmp_path / "cache", tone_path.read_bytes())
+
+
+YOUTUBE_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "youtube"
+
+# Which videos of search.json each query returns, by the song title inside the query. The
+# Blue Window search returns every kind of unplayable video before the artist's own upload;
+# "broken song" returns unplayable videos only. A query that matches nothing returns nothing.
+# The fake ignores maxResults so one search can exercise every keep rule.
+SEARCH_RESULTS = {
+    "blue window": [
+        "okPlain0001",
+        "noEmbed0001",
+        "liveNow0001",
+        "tooLong0001",
+        "ageRestr001",
+        "blockedFR01",
+        "okTopic0001",
+    ],
+    "montreal streets": ["montreal001", "slowRivr001"],
+    "night train": ["slowRivr001", "nightTrn001"],
+    "red lights": ["redLight001"],
+    "slow river": ["slowRivr001"],
+    "broken song": ["noEmbed0001", "liveNow0001"],
+}
+QUOTA_ERROR = {
+    "error": {
+        "code": 403,
+        "message": "The request cannot be completed because you have exceeded your quota.",
+        "errors": [
+            {
+                "message": "The request cannot be completed because you have exceeded your quota.",
+                "domain": "youtube.quota",
+                "reason": "quotaExceeded",
+            }
+        ],
+    }
+}
+
+
+class FakeYouTube:
+    """A YouTubeSource on a mock transport answering recorded JSON (D038).
+
+    `search.json` holds every search result and `videos.json` the matching `videos.list`
+    items; SEARCH_RESULTS says which results a query gets. `requests` records every
+    request. `quota_exceeded` makes every search answer the 403 the live API sends once
+    the daily search quota is used up.
+    """
+
+    def __init__(self, cache_dir: Path, region: str = "FR") -> None:
+        self.requests: list[httpx.Request] = []
+        self.quota_exceeded = False
+        self._search = json.loads((YOUTUBE_FIXTURES / "search.json").read_text(encoding="utf-8"))
+        self._videos = json.loads((YOUTUBE_FIXTURES / "videos.json").read_text(encoding="utf-8"))
+        client = httpx.Client(transport=httpx.MockTransport(self._handle))
+        self.source = YouTubeSource("test-api-key", cache_dir, region, http=client)
+
+    def _handle(self, request: httpx.Request) -> httpx.Response:
+        self.requests.append(request)
+        params = request.url.params
+        if request.url.path == "/youtube/v3/search":
+            if self.quota_exceeded:
+                return httpx.Response(403, json=QUOTA_ERROR)
+            query = params.get("q", "").casefold()
+            wanted = next((ids for title, ids in SEARCH_RESULTS.items() if title in query), [])
+            by_id = {item["id"]["videoId"]: item for item in self._search["items"]}
+            items = [by_id[video_id] for video_id in wanted]
+            return httpx.Response(200, json={**self._search, "items": items})
+        if request.url.path == "/youtube/v3/videos":
+            wanted = params.get("id", "").split(",")
+            items = [item for item in self._videos["items"] if item["id"] in wanted]
+            return httpx.Response(200, json={**self._videos, "items": items})
+        return httpx.Response(404)
+
+    def searches(self) -> list[httpx.Request]:
+        return [r for r in self.requests if r.url.path == "/youtube/v3/search"]
+
+
+@pytest.fixture
+def fake_youtube(tmp_path: Path) -> FakeYouTube:
+    return FakeYouTube(tmp_path / "cache")
 
 
 FACTS_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "facts"
