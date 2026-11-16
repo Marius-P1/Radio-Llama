@@ -176,6 +176,12 @@ class PipelineGenerator:
         """
         if config.wish and not music.accepts_wish:
             raise GenerationError("A wish needs the 'jamendo' or 'youtube' music source.")
+        # A source without styles takes the wish as its theme (D039), so it needs one. The
+        # API and the CLI check it too; a show built in code must not slip through.
+        if not music.list_styles() and music.accepts_wish and not config.wish:
+            raise GenerationError(
+                f"Source {config.source!r} needs a wish: say what you want to hear."
+            )
         if isinstance(music, YouTubeSource):
             # No style on YouTube (D039): the wish is the theme, and the prompt says so.
             proposals, response = propose_playlist(

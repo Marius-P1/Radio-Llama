@@ -656,6 +656,19 @@ def test_a_catalog_show_without_a_style_fails_readably(
     assert show.error == "Source 'catalog' needs a style."
 
 
+def test_a_youtube_show_without_a_wish_fails_readably(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube
+) -> None:
+    """The API and the CLI refuse it first; a show built in code gets the same answer."""
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, FakeLLM([CANNED]))
+
+    with pytest.raises(GenerationError, match="Source 'youtube' needs a wish"):
+        generator.write_script(_youtube_show(wish=None))
+
+    assert generator.last_responses == []  # no playlist asked for
+    assert fake_youtube.requests == []
+
+
 def test_youtube_quota_marks_the_show_failed_naming_the_limit(
     fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
 ) -> None:
