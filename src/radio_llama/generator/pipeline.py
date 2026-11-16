@@ -6,9 +6,10 @@ from pathlib import Path
 
 from radio_llama.audio.assemble import assemble_show
 from radio_llama.config import Settings
+from radio_llama.facts import FactLookup
 from radio_llama.generator.base import GenerationError, ProgressCallback
 from radio_llama.llm.base import LLMClient, LLMResponse
-from radio_llama.models import ENERGIES, Energy, Segment, Show, ShowConfig, Track
+from radio_llama.models import ENERGIES, Energy, Fact, Segment, Show, ShowConfig, Track
 from radio_llama.music import JamendoSource, MusicSource, missing_source_message
 from radio_llama.personas import get_persona
 from radio_llama.script.shapes import Shape, load_shapes, plan_shapes
@@ -16,6 +17,9 @@ from radio_llama.script.wish import map_wish
 from radio_llama.script.writer import ScriptWriter
 from radio_llama.voice.base import TextToSpeech
 from radio_llama.voice.factory import voice_for
+
+# Facts kept per track once the looked-up ones are added. The host uses at most two.
+MAX_TRACK_FACTS = 5
 
 
 class PipelineGenerator:
@@ -25,11 +29,14 @@ class PipelineGenerator:
         tts: TextToSpeech,
         sources: dict[str, MusicSource],
         settings: Settings,
+        facts: FactLookup | None = None,
     ) -> None:
         self._llm = llm
         self._tts = tts
         self._sources = sources
         self._settings = settings
+        # Looks up facts for Jamendo tracks on Wikipedia and MusicBrainz (D029). None: no lookup.
+        self._facts = facts
         # Every LLM response of the last run, so the CLI can print token totals (D004).
         self.last_responses: list[LLMResponse] = []
 
@@ -101,6 +108,13 @@ class PipelineGenerator:
             )
         rng = random.Random(config.seed)
         tracks = pick_tracks(candidates, config.track_count, config.energy, rng)
+        # Before the shapes: a track that gains facts can get the story break.
+        lookup = self._facts
+        if lookup is not None and isinstance(music, JamendoSource):
+            tracks = [
+                _add_facts(track, lookup.artist_facts(track.artist, config.language))
+                for track in tracks
+            ]
         shapes = load_shapes(self._settings.prompts_dir, config.language)
         breaks = plan_shapes(shapes, [bool(track.facts) for track in tracks[1:]], rng)
         plan = _plan(tracks, breaks)
@@ -164,6 +178,26 @@ def pick_tracks(
         tracks = [track for track in candidates if tier(track) == rank]
         picked.extend(rng.sample(tracks, min(count - len(picked), len(tracks))))
     return picked
+
+
+def _add_facts(track: Track, found: list[Fact]) -> Track:
+    """A copy of `track` with the looked-up facts after its own.
+
+    A copy, so the music source keeps the track as Jamendo described it.
+    """
+    return track.model_copy(update={"facts": merge_facts(track.facts, found)})
+
+
+def merge_facts(own: list[Fact], found: list[Fact]) -> list[Fact]:
+    """`own` then `found`, without a sentence twice, at most MAX_TRACK_FACTS."""
+    merged: list[Fact] = []
+    seen: set[str] = set()
+    for fact in [*own, *found]:
+        key = fact.text.casefold()
+        if key not in seen:
+            seen.add(key)
+            merged.append(fact)
+    return merged[:MAX_TRACK_FACTS]
 
 
 def _plan(tracks: list[Track], breaks: list[Shape]) -> list[Segment]:

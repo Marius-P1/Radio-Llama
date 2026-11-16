@@ -48,3 +48,15 @@ export function statusLabel(status: ShowSummary['status']): string {
 export function dateLabel(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
+
+/** A fact's source as a short link label: the service's name, else the site's host name. */
+export function factSourceLabel(sourceType: string | null | undefined, url: string): string {
+  if (sourceType === 'wikipedia') return 'Wikipedia'
+  if (sourceType === 'musicbrainz') return 'MusicBrainz'
+  if (sourceType === 'jamendo_artist_page') return 'Jamendo'
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
