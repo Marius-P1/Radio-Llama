@@ -42,10 +42,11 @@ def generate(
         str | None, typer.Option(help="calm, medium or upbeat. Any energy when left out.")
     ] = None,
     source: Annotated[
-        str, typer.Option(help="Where the songs come from: catalog or jamendo.")
+        str, typer.Option(help="Where the songs come from: catalog, jamendo or youtube.")
     ] = "catalog",
     wish: Annotated[
-        str | None, typer.Option(help="Free text that refines the search. Jamendo only.")
+        str | None,
+        typer.Option(help="Free text that refines the song choice. Jamendo and YouTube."),
     ] = None,
     tracks: Annotated[int, typer.Option(help="Number of songs.")] = 3,
     demo: Annotated[
@@ -59,7 +60,11 @@ def generate(
         Path | None, typer.Option(help="Folder for shows. Defaults to OUTPUT_DIR.")
     ] = None,
 ) -> None:
-    """Generate one show into output/<show_id>/ as show.mp3 and show.json."""
+    """Generate one show into output/<show_id>/ as show.mp3 and show.json.
+
+    A YouTube show has no show.mp3: its speech files sit next to show.json and its songs
+    play in the web app's embedded player (D038).
+    """
     try:
         settings = load_settings()
         if fake:
@@ -102,7 +107,10 @@ def generate(
         raise typer.Exit(code=1)
     tokens_in = sum(response.input_tokens for response in generator.last_responses)
     tokens_out = sum(response.output_tokens for response in generator.last_responses)
-    typer.echo(f"Show written to {out_dir / show.audio_file}")
+    if show.audio_file is None:
+        typer.echo(f"Show written to {out_dir} (no show.mp3: the songs play in the web app)")
+    else:
+        typer.echo(f"Show written to {out_dir / show.audio_file}")
     typer.echo(f"Segments: {len(show.segments)}")
     typer.echo(f"LLM tokens: {tokens_in} in, {tokens_out} out")
 
@@ -118,10 +126,11 @@ def script(
         str | None, typer.Option(help="calm, medium or upbeat. Any energy when left out.")
     ] = None,
     source: Annotated[
-        str, typer.Option(help="Where the songs come from: catalog or jamendo.")
+        str, typer.Option(help="Where the songs come from: catalog, jamendo or youtube.")
     ] = "catalog",
     wish: Annotated[
-        str | None, typer.Option(help="Free text that refines the search. Jamendo only.")
+        str | None,
+        typer.Option(help="Free text that refines the song choice. Jamendo and YouTube."),
     ] = None,
     tracks: Annotated[int, typer.Option(help="Number of songs.")] = 3,
     seed: Annotated[int | None, typer.Option(help="Fix the track and break pick.")] = None,
