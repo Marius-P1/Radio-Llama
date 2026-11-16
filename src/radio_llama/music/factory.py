@@ -1,12 +1,20 @@
 """Build the music sources the settings allow, keyed by the name a show request uses (D029)."""
 
+from typing import Literal
+
 from radio_llama.config import Settings
+from radio_llama.models import MusicSourceName
 from radio_llama.music.base import MusicSource
 from radio_llama.music.jamendo import JamendoSource
 from radio_llama.music.local_catalog import LocalCatalog
 from radio_llama.music.youtube import YouTubeSource
 
 SOURCE_NAMES = {"catalog": "Local catalog", "jamendo": "Jamendo", "youtube": "YouTube"}
+SOURCE_CLASSES: dict[MusicSourceName, type] = {
+    "catalog": LocalCatalog,
+    "jamendo": JamendoSource,
+    "youtube": YouTubeSource,
+}
 
 
 def make_music_sources(settings: Settings) -> dict[str, MusicSource]:
@@ -19,6 +27,15 @@ def make_music_sources(settings: Settings) -> dict[str, MusicSource]:
             settings.require_api_key("youtube"), settings.cache_dir, settings.youtube_region
         )
     return sources
+
+
+def delivery_of(name: MusicSourceName) -> Literal["file", "embed"]:
+    """How the songs of a source reach the listener, read from the class (D038).
+
+    No instance is needed, so the API can say how a show plays before it is ready and
+    for a source that is not configured on this server.
+    """
+    return SOURCE_CLASSES[name].delivery
 
 
 def missing_source_message(name: str) -> str:

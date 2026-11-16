@@ -14,6 +14,7 @@ from radio_llama.models import (
     ShowStatus,
     Track,
 )
+from radio_llama.music.factory import delivery_of
 
 WISH_MAX_CHARS = 200
 
@@ -70,9 +71,10 @@ class SegmentResponse(Segment):
 
 class ShowResponse(ShowSummary):
     progress: Progress | None = None  # set while generating
-    # How a ready show plays (D038). "file": one MP3 at audio_url. "segments": the player
-    # runs the segments in order, speech from each segment's audio_url, songs in the
-    # embedded YouTube player by the track's video_id for duration_s seconds.
+    # How the show plays once ready (D038), known from its source at any status. "file":
+    # one MP3 at audio_url. "segments": the player runs the segments in order, speech from
+    # each segment's audio_url, songs in the embedded YouTube player by the track's
+    # video_id for duration_s seconds.
     playback: Literal["file", "segments"]
     segments: list[SegmentResponse]
     tracks: list[Track]  # credits: artist, title, license and the links are all in Track
@@ -81,7 +83,7 @@ class ShowResponse(ShowSummary):
     @classmethod
     def from_show(cls, show: Show, progress: Progress | None) -> "ShowResponse":
         ready = show.status == "ready"
-        playback = "file" if show.audio_file is not None else "segments"
+        playback = "segments" if delivery_of(show.config.source) == "embed" else "file"
         return cls(
             id=show.id,
             status=show.status,

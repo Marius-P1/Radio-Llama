@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
 from radio_llama.api.app import create_app
+from radio_llama.api.schemas import ShowResponse
 from radio_llama.cli import app as cli_app
 from radio_llama.config import Settings
 from radio_llama.llm import FakeLLM
@@ -446,6 +447,25 @@ def test_create_a_youtube_show_and_fetch_its_segments(client_with_youtube: TestC
     assert client_with_youtube.get(f"{base}/-1/audio").status_code == 404
     assert client_with_youtube.get(f"{base}/intro/audio").status_code == 422
     assert client_with_youtube.get("/api/v1/shows/not-an-id/segments/0/audio").status_code == 404
+
+
+def test_playback_comes_from_the_source_at_any_status() -> None:
+    """A catalog show says "file" while it generates; a YouTube show says "segments" even
+    before it is ready, so the page never needs the audio file to know the player."""
+
+    def playback(source: str, status: str) -> str:
+        show = Show(
+            id="20261030-120000-abc123",
+            created_at=datetime(2026, 10, 30, 12, 0, tzinfo=UTC),
+            config=ShowConfig(style="jazz", persona="calm", source=source),
+            status=status,
+        )
+        return ShowResponse.from_show(show, None).playback
+
+    assert playback("catalog", "generating") == "file"
+    assert playback("jamendo", "failed") == "file"
+    assert playback("youtube", "pending") == "segments"
+    assert playback("youtube", "ready") == "segments"
 
 
 def test_segment_audio_of_a_show_that_is_not_ready_is_a_404(client: TestClient) -> None:
