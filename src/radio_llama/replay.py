@@ -2,9 +2,10 @@
 
 The replay build of the frontend fetches `shows/index.json`, then `shows/<id>/show.json`
 and the show's audio: `show.mp3` for a file show, one speech file per host segment for a
-YouTube show, whose songs play in the embedded player (D043). This module fills that folder
-from `output/<id>/` and packs it into a zip for the release asset, since audio is never
-committed (D002).
+YouTube show, whose songs play in the embedded player (D043). An endless show the host
+closed exports the same way, with one file per song as well when its songs are Jamendo
+files (D044). This module fills that folder from `output/<id>/` and packs it into a zip
+for the release asset, since audio is never committed (D002).
 """
 
 import json
@@ -14,7 +15,7 @@ from pathlib import Path
 
 from radio_llama.api.schemas import ShowSummary
 from radio_llama.models import Show
-from radio_llama.music.factory import delivery_of
+from radio_llama.music.factory import playback_of
 from radio_llama.storage import SHOW_FILE, load_show
 
 INDEX_FILE = "index.json"
@@ -23,9 +24,10 @@ INDEX_FILE = "index.json"
 def export_replay(show_ids: list[str], output_dir: Path, dest: Path) -> list[dict]:
     """Copy each ready show's `show.json` and audio into `dest / id /`, then rewrite the index.
 
-    A file show brings its MP3, an embed show (YouTube) its speech files. Returns one summary
-    dict per exported show. Raises FileNotFoundError for an unknown id or a missing audio file
-    and ValueError for a show that is not ready; nothing is copied for that id.
+    A file show brings its MP3, a show that plays by segments the file of each segment that
+    has one. Returns one summary dict per exported show. Raises FileNotFoundError for an
+    unknown id or a missing audio file and ValueError for a show that is not ready or is
+    an endless show still open; nothing is copied for that id.
     """
     summaries = []
     for show_id in show_ids:
@@ -36,6 +38,11 @@ def export_replay(show_ids: list[str], output_dir: Path, dest: Path) -> list[dic
         if show.status != "ready":
             raise ValueError(
                 f"Show {show_id} is {show.status}, not ready. Only ready shows can be exported."
+            )
+        # An endless show the listener left is ready but stops with no goodbye (D044).
+        if show.is_open:
+            raise ValueError(
+                f"Show {show_id} has no closing. Only a show the host closed can be exported."
             )
         audio_files = _audio_files(show)
         for name in audio_files:
@@ -79,16 +86,17 @@ def zip_replay(dest: Path, zip_path: Path) -> Path:
 
 
 def _audio_files(show: Show) -> list[str]:
-    """The files a ready show plays from: show.mp3, or the speech files of an embed show."""
+    """The files a ready show plays from: show.mp3, or one file per segment that has one.
+
+    A show that plays by segments has no show.mp3. A YouTube show brings its speech
+    files, since its songs are videos; an endless Jamendo show brings its song files
+    too (D044).
+    """
     if show.audio_file is not None:
         return [show.audio_file]
-    if delivery_of(show.config.source) != "embed":
+    if playback_of(show.config) != "segments":
         raise ValueError(f"Show {show.id} is ready but has no show.mp3.")
-    return [
-        segment.audio_file
-        for segment in show.segments
-        if segment.kind != "song" and segment.audio_file is not None
-    ]
+    return [segment.audio_file for segment in show.segments if segment.audio_file is not None]
 
 
 def _summary(show: Show) -> ShowSummary:

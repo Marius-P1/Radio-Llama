@@ -42,7 +42,8 @@ export async function getShow(id: string): Promise<ShowResponse> {
   checkId(id)
   const show = await fetchJson<ShowFile>(`${BASE_URL}shows/${id}/show.json`)
   // Every exported show is ready, so a null audio_file means the show plays segment by
-  // segment: speech from one file per host segment, songs in the YouTube player (D043).
+  // segment (D043). Each segment that has a file plays from it: the host's speech, and
+  // the songs of an endless Jamendo show (D044). A song without one is a YouTube video.
   const playback = show.audio_file ? 'file' : 'segments'
   return {
     id: show.id,
@@ -55,18 +56,17 @@ export async function getShow(id: string): Promise<ShowResponse> {
     segments: show.segments.map((segment) => ({
       ...segment,
       audio_url:
-        playback === 'segments' && segment.kind !== 'song' && segment.audio_file
-          ? speechUrl(id, segment.audio_file)
-          : null,
+        playback === 'segments' && segment.audio_file ? segmentUrl(id, segment.audio_file) : null,
     })),
     tracks: show.tracks,
     audio_url: playback === 'file' ? audioUrl(id) : null,
+    end_note: show.end_note ?? null,
   }
 }
 
-// A speech file name comes from the backend (`NN-kind.mp3`); refuse anything that could
+// A segment file name comes from the backend (`NN-kind.mp3`); refuse anything that could
 // leave the show's folder.
-function speechUrl(id: string, file: string): string {
+function segmentUrl(id: string, file: string): string {
   if (file.includes('/') || file.includes('\\') || file.includes('..')) {
     throw new Error('Invalid segment audio file.')
   }

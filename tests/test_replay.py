@@ -16,7 +16,7 @@ from radio_llama.music import LocalCatalog
 from radio_llama.replay import export_replay, write_index, zip_replay
 from radio_llama.storage import load_show, save_show
 from radio_llama.voice import CachedTextToSpeech, FakeTTS
-from tests.conftest import FakeYouTube
+from tests.conftest import FakeJamendo, FakeYouTube
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -216,6 +216,124 @@ def test_zip_holds_the_speech_files_of_a_youtube_show(output_dir: Path, tmp_path
     assert {f"{YOUTUBE_ID}/{name}" for name in SPEECH_FILES} <= names
     assert f"{YOUTUBE_ID}/show.mp3" not in names
     assert f"{READY_ID}/show.mp3" in names
+
+
+# Endless shows (D044): a show the host closed exports like any other, with one file per
+# segment. A show the listener left open is refused.
+
+CLOSED_ID = "20261030-160000-abc111"
+OPEN_ID = "20261030-170000-abc222"
+ENDLESS_CONFIG = ShowConfig(style="jazz", persona="calm", seed=1, source="jamendo", endless=True)
+ENDLESS_FILES = [
+    "00-intro.mp3",
+    "01-song.mp3",
+    "02-transition.mp3",
+    "03-song.mp3",
+    "04-outro.mp3",
+]
+
+
+@pytest.fixture
+def endless_output_dir(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo
+) -> Path:
+    """Two endless Jamendo shows made with the fakes: one closed after two songs, one
+    left open after its first song."""
+    tts = CachedTextToSpeech(FakeTTS(fake_settings.cache_dir / "tts-raw"), fake_settings.cache_dir)
+    generator = PipelineGenerator(
+        FakeLLM(["A fake script."]),
+        tts,
+        {"catalog": tiny_catalog, "jamendo": fake_jamendo.source},
+        fake_settings,
+    )
+    for show_id, hour in ((CLOSED_ID, 16), (OPEN_ID, 17)):
+        show = Show(
+            id=show_id,
+            created_at=datetime(2026, 10, 30, hour, 0, tzinfo=UTC),
+            config=ENDLESS_CONFIG.model_copy(),
+        )
+        show = run_generation(generator, show, fake_settings.output_dir / show_id)
+        assert show.status == "ready", show.error
+    closed_dir = fake_settings.output_dir / CLOSED_ID
+    for end in (False, True):
+        show = generator.extend(load_show(closed_dir), closed_dir, end=end)
+        save_show(show, closed_dir)
+    assert not show.is_open
+    return fake_settings.output_dir
+
+
+def test_export_copies_every_segment_file_of_a_closed_endless_show(
+    endless_output_dir: Path, tmp_path: Path
+) -> None:
+    """No show.mp3: the songs of an endless Jamendo show travel as one file each (D044)."""
+    dest = tmp_path / "shows"
+
+    summaries = export_replay([CLOSED_ID], endless_output_dir, dest)
+
+    assert sorted(path.name for path in (dest / CLOSED_ID).iterdir()) == [
+        *ENDLESS_FILES,
+        "show.json",
+    ]
+    for name in [*ENDLESS_FILES, "show.json"]:
+        assert (dest / CLOSED_ID / name).read_bytes() == (
+            endless_output_dir / CLOSED_ID / name
+        ).read_bytes()
+    assert summaries[0]["id"] == CLOSED_ID
+    assert summaries[0]["config"]["endless"] is True
+    assert summaries[0]["config"]["track_count"] == 2
+    index = json.loads((dest / "index.json").read_text(encoding="utf-8"))
+    assert [entry["id"] for entry in index] == [CLOSED_ID]
+    # The trace, steps.jsonl included, stays behind (D037).
+    assert (endless_output_dir / CLOSED_ID / "trace" / "steps.jsonl").exists()
+    zip_path = zip_replay(dest, tmp_path / "replay-shows.zip")
+    with zipfile.ZipFile(zip_path) as archive:
+        names = set(archive.namelist())
+    assert {f"{CLOSED_ID}/{name}" for name in ENDLESS_FILES} <= names
+    assert not [name for name in names if "trace" in name]
+
+
+def test_export_refuses_an_endless_show_that_is_still_open(
+    endless_output_dir: Path, tmp_path: Path
+) -> None:
+    dest = tmp_path / "shows"
+
+    with pytest.raises(ValueError) as info:
+        export_replay([OPEN_ID], endless_output_dir, dest)
+
+    assert str(info.value) == (
+        f"Show {OPEN_ID} has no closing. Only a show the host closed can be exported."
+    )
+    assert not (dest / OPEN_ID).exists()
+
+
+def test_export_refuses_a_closed_endless_show_with_a_missing_song_file(
+    endless_output_dir: Path, tmp_path: Path
+) -> None:
+    (endless_output_dir / CLOSED_ID / "03-song.mp3").unlink()
+    dest = tmp_path / "shows"
+
+    with pytest.raises(FileNotFoundError, match=f"{CLOSED_ID} has no audio file 03-song.mp3"):
+        export_replay([CLOSED_ID], endless_output_dir, dest)
+
+    assert not (dest / CLOSED_ID).exists()
+
+
+def test_cli_refuses_an_open_endless_show_cleanly(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, endless_output_dir: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    for name in Settings.model_fields:
+        monkeypatch.delenv(name.upper(), raising=False)
+    monkeypatch.setenv("OUTPUT_DIR", str(endless_output_dir))
+    dest = tmp_path / "shows"
+
+    result = runner.invoke(app, ["export-replay", OPEN_ID, "--dest", str(dest)])
+
+    assert result.exit_code == 1
+    assert "has no closing" in result.output
+    assert "Traceback" not in result.output
+    assert runner.invoke(app, ["export-replay", CLOSED_ID, "--dest", str(dest)]).exit_code == 0
+    assert (dest / CLOSED_ID / "03-song.mp3").exists()
 
 
 @pytest.fixture
