@@ -69,8 +69,10 @@ export function Player({ id, live, onBack }: Props) {
         {/* A YouTube show has no style (D039): its wish is shown on the line below. */}
         {show.config.style && <>{styleLabel(show.config.style)} show, </>}
         {/* On the replay page, a hand-written show.json may have no track_count. The generated
-            type says it is always a number, which holds for every file the backend writes. */}
-        {typeof show.config.track_count === 'number' && (
+            type says it is always a number, which holds for every file the backend writes.
+            An endless show counts the songs it has so far, so the title grows with a live
+            show; 0 songs is never shown (D044). */}
+        {typeof show.config.track_count === 'number' && show.config.track_count > 0 && (
           <>{songsLabel(show.config.track_count)}, </>
         )}
         {hostLabel(show.config)}, {languageLabel(show.config.language)}
@@ -78,6 +80,12 @@ export function Player({ id, live, onBack }: Props) {
           <>
             {' '}
             <span className="tag">{sourceTag(show.config.source)}</span>
+          </>
+        )}
+        {show.config.endless && (
+          <>
+            {' '}
+            <span className="tag">Endless</span>
           </>
         )}
         {show.config.demo && (

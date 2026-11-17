@@ -54,6 +54,9 @@ export function CreateShow({ onCreated }: Props) {
   const [wish, setWish] = useState('')
   // How many songs the show has (D041).
   const [trackCount, setTrackCount] = useState(SONG_COUNTS[0])
+  // An endless show has no set length: it goes on until the listener stops it (D042).
+  // Only Jamendo and YouTube can make one, so the choice is unset on another source.
+  const [endless, setEndless] = useState(false)
   // Off by default: the full songs play. A demo cuts each song to 30 seconds (D023).
   const [demo, setDemo] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -115,8 +118,11 @@ export function CreateShow({ onCreated }: Props) {
     setSource(next)
     // Each source has its own styles: keep the style when both offer it, else take the
     // first. A source without styles gets none.
-    const available = options?.sources.find((s) => s.id === next)?.styles ?? []
+    const chosen = options?.sources.find((s) => s.id === next)
+    const available = chosen?.styles ?? []
     if (!available.includes(style)) setStyle(available[0] ?? '')
+    // A source that cannot make an endless show goes back to the chosen number of songs.
+    if (!chosen?.endless) setEndless(false)
   }
 
   const resetVoice = () => {
@@ -145,10 +151,10 @@ export function CreateShow({ onCreated }: Props) {
         energy,
         source,
         wish: selectedSource?.wish && wish.trim() !== '' ? wish.trim() : null,
+        // The API ignores the count of an endless show: it counts the songs as they come.
         track_count: trackCount,
         demo,
-        // The create screen has no "Endless" choice yet (D044): every show has a set length.
-        endless: false,
+        endless,
       }
       // The style goes only when one is chosen: a source without styles refuses one (D039).
       if (style !== '') body.style = style
@@ -345,8 +351,11 @@ export function CreateShow({ onCreated }: Props) {
               key={count}
               type="button"
               className="choice length"
-              aria-pressed={count === trackCount}
-              onClick={() => setTrackCount(count)}
+              aria-pressed={!endless && count === trackCount}
+              onClick={() => {
+                setTrackCount(count)
+                setEndless(false)
+              }}
             >
               {/* The space is not drawn between the two lines. It keeps the two
                   parts apart in the name a screen reader says. */}
@@ -354,9 +363,22 @@ export function CreateShow({ onCreated }: Props) {
               <span className="muted">about {count * minutesPerSong} min</span>
             </button>
           ))}
+          {/* The fifth choice, only on a source that can go on without repeating (D042). */}
+          {selectedSource?.endless && (
+            <button
+              type="button"
+              className="choice length"
+              aria-pressed={endless}
+              onClick={() => setEndless(true)}
+            >
+              <span>Endless</span> <span className="muted">until you stop it</span>
+            </button>
+          )}
         </div>
         <p className="muted length-hint">
-          The whole show is made before it plays. More songs, a longer wait.
+          {endless
+            ? 'The show starts when the first song is ready and goes on until you stop it.'
+            : 'The whole show is made before it plays. More songs, a longer wait.'}
         </p>
         <label className="checkbox">
           <input

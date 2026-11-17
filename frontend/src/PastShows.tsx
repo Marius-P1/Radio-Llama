@@ -58,12 +58,15 @@ function ShowRow({ show, onOpen }: { show: ShowSummary; onOpen: (id: string) => 
       <span className="show-meta">
         {/* The style, or the wish for a show without one (YouTube, D039). */}
         {themeLabel(show.config) && <>{themeLabel(show.config)}, </>}
-        {songsLabel(show.config.track_count)}, {hostLabel(show.config)},{' '}
-        {languageLabel(show.config.language)}
+        {/* An endless show counts its songs as they come: 0 until the first one is
+            ready, and the row then says nothing about songs (D044). */}
+        {show.config.track_count > 0 && <>{songsLabel(show.config.track_count)}, </>}
+        {hostLabel(show.config)}, {languageLabel(show.config.language)}
       </span>
       {sourceTag(show.config.source) && (
         <span className="tag">{sourceTag(show.config.source)}</span>
       )}
+      {show.config.endless && <span className="tag">Endless</span>}
       {show.config.demo && <span className="tag">Demo</span>}
       <span className={`status status-${show.status}`}>{statusLabel(show.status)}</span>
     </>
