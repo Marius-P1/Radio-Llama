@@ -10,6 +10,7 @@ Phase 1 is done (v1.0). The pipeline, the API, the web app and the replay page r
 The web app uses the hackathon look: its font, its background and its magenta buttons.
 Songs play in full by default. A demo mode plays 30 second excerpts instead.
 The listener chooses the show length on the create screen: 3, 5, 8 or 10 songs, each with an estimated length.
+On Jamendo and YouTube the listener can also choose an endless show. It is made one song ahead while it plays and goes on until the listener ends it.
 The create screen has a voice picker: the listener hears a sample of each voice of the ElevenLabs account and picks who the host sounds like, separately from the host style.
 
 ## Quickstart
@@ -32,7 +33,11 @@ Open http://localhost:8000. Pick a style, an energy, a host style, a voice, a la
 
 A show has 3 songs unless you pick 5, 8 or 10. Each choice shows an estimated length: about 4 minutes per song, so about 40 minutes for 10 songs, or about 1 minute per song with Demo ticked. A longer show takes longer to generate, because the whole show is generated before it plays.
 
-<!-- MAR-18, for the frontend Developer: the user-facing description of the endless show goes here (the "Endless" choice on the create screen, what the player does, "End after this song", "Still listening?"), plus one line in Status above. Replace this comment. How it works on the backend is under "The endless show" below. -->
+On Jamendo and YouTube the show length has a fifth choice, Endless. An endless show has no set length. It starts as soon as the host's opening and the first song are ready, and the rest is made while you listen. When a song passes its middle, the page asks the backend for the next break and the next song. With Demo ticked it asks as soon as the song starts. If the next part is late, the player says so, waits, and goes on by itself when the part arrives. If a part fails, the song keeps playing, the player tries once more when the song ends, and then shows a Try again button.
+
+To stop an endless show, press End after this song. The host says goodbye after the song that is playing, or after the next song if the host is speaking. You can also pause and leave. The show only grows while its page stays open: a reload or a closed tab ends it there, with no goodbye. Either way the show is kept. It is listed in Past shows and replays segment by segment, up to its last song. A show you left may hold one more break and song than you heard, and its replay ends with "The show stopped here."
+
+After an hour without a click or a key press on the page, the player shows a Still listening? button instead of asking for the next part. A pause or a play in the YouTube player counts as a click. The song that is playing finishes, then the show stays silent until you press the button. The host also ends the show by itself when the source has no new song left, when YouTube's daily search quota is used up, or when the show reaches 100 songs (`ENDLESS_MAX_SONGS`). The reason is then shown under the player. The local catalog cannot make an endless show.
 
 The host has two settings. The host style (calm, energetic or witty) is how the host talks. The voice is who it sounds like. The voice list is the list of voices of the ElevenLabs account behind `ELEVENLABS_API_KEY`. Add a voice to the account on elevenlabs.io and it shows up in the list after a page reload, ten minutes later at most: the backend keeps the list for ten minutes and the page loads it once. The app never adds or removes a voice. Each voice has a play button for a short sample, in the show's language when ElevenLabs has one. The samples are hosted by ElevenLabs and the browser loads them from there, so listening to one costs nothing. Each style comes with its own voice, which is used until you pick another one.
 
@@ -185,6 +190,8 @@ After an API change, run `uv run radio-llama export-openapi` and then `npm run g
 - Whether the host repeats itself less is judged by reading scripts, not by a metric yet. The Phase 2 harness will measure it.
 - One show generates at a time. A second request waits. The next part of an endless show waits too, behind a show that is being generated.
 - The paging of the Jamendo search that an endless show uses has been checked against the API documentation and recorded replies, not yet against the live API. The time a step takes has not been measured on a real show; `steps.jsonl` records it.
+- An endless show cannot be picked up again. Once its page is reloaded or closed, it only replays. The page asks for the next part at the middle of a song, so a part that takes longer than half a song leaves a silence before the next break.
+- The endless show's player has been checked by hand in headless Chromium only, with test tones for songs and a stand-in for the YouTube player. It has not been checked in Safari, in a background tab, or with real videos.
 - After a restart of the server, the next step of an endless show asks the LLM again for the Jamendo wish filters or for a YouTube playlist. That is one more LLM call and nothing else.
 - Only seven real shows have been generated so far, all with Claude. The Mistral adapter is tested against recorded responses, not the live API.
 - The energy labels in the catalog are the curator's; all jazz tracks have none.
