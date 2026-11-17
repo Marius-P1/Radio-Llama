@@ -187,6 +187,9 @@ class JamendoSource:
         not played, at most MAX_PAGES pages. The first such page is the answer, so the
         strictest query that still has something new wins. An empty list means the style
         has nothing left for this show.
+
+        A long show reads one more page per SEARCH_LIMIT songs it played, so its steps
+        cost a little more as it goes on.
         """
         if style not in STYLE_TAGS:
             raise JamendoError(f"Unknown Jamendo style {style!r}.")
@@ -199,11 +202,16 @@ class JamendoSource:
         for query in steps:
             for page in range(MAX_PAGES):
                 tracks = self.search(query, style, offset=page * SEARCH_LIMIT)
-                if not tracks:
-                    break  # past the last page of this query
                 fresh = [track for track in tracks if track.id not in exclude]
                 if fresh:
                     return fresh
+                # A page that is not full is the last one of this query. Stopping here
+                # saves asking for the page after it, which would come back empty and be
+                # retried like any empty reply. An empty page stops the query the same way.
+                # A full page that lost a track with no Creative Commons license also
+                # looks short: the query then stops a page early and the next one is tried.
+                if len(tracks) < SEARCH_LIMIT:
+                    break
         return []
 
     def search(self, query: Query, style: str, offset: int = 0) -> list[Track]:
@@ -219,7 +227,7 @@ class JamendoSource:
             "durationbetween": DURATION_RANGE,
             **query.params(),
         }
-        if offset > 0:  # the first page is asked as before, with no offset
+        if offset > 0:  # the first page is asked with no offset parameter
             params["offset"] = str(offset)
         results = self._get("tracks", params)
         for _ in range(EMPTY_RETRIES):

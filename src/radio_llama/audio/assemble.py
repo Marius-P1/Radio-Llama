@@ -185,6 +185,12 @@ def write_speech(show: Show, sources: dict[int, Path], out_dir: Path) -> Show:
     segments have no entry, keep the duration the generator set, and get no file. There
     is no show.mp3, so `show.audio_file` stays None: the player plays the segments in
     order, speech from these files, songs from YouTube.
+
+    Every speech segment must have its source: `write_parts` leaves a segment with no
+    entry alone, and here that would be a show with a silent hole in it.
     """
     check_order(show.segments)
+    for index, segment in enumerate(show.segments):
+        if segment.kind != "song" and index not in sources:
+            raise ValueError(f"no speech audio for segment {index} ({segment.kind})")
     return write_parts(show, sources, out_dir)

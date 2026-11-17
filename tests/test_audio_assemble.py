@@ -17,7 +17,7 @@ from radio_llama.audio import (
     probe_duration,
     write_parts,
 )
-from radio_llama.audio.assemble import DEMO_SONG_LENGTH_S
+from radio_llama.audio.assemble import DEMO_SONG_LENGTH_S, write_speech
 from radio_llama.audio.ffmpeg import run_ffmpeg
 from radio_llama.models import Segment, SegmentKind, Show, ShowConfig
 
@@ -327,6 +327,36 @@ def test_write_parts_treats_a_song_like_assemble_show_does(tmp_path: Path) -> No
     middle = _mean_volume(part, 15.0, 1.0)
     assert _mean_volume(part, 0.0, 0.3) < middle - 10.0
     assert _mean_volume(part, DEMO_SONG_LENGTH_S - 0.5, 0.5) < middle - 10.0
+
+
+def test_write_speech_builds_every_speech_file_and_no_song(tmp_path: Path) -> None:
+    show = _show(["intro", "song", "outro"])
+    speech = tmp_path / "speech.mp3"
+    _tone(speech, 1.0, frequency=220.0, volume="-30dB")
+    out_dir = tmp_path / "out"
+
+    write_speech(show, {0: speech, 2: speech}, out_dir)
+
+    assert sorted(p.name for p in out_dir.iterdir()) == ["00-intro.mp3", "02-outro.mp3"]
+    assert [segment.audio_file for segment in show.segments] == [
+        "00-intro.mp3",
+        None,
+        "02-outro.mp3",
+    ]
+    assert show.audio_file is None
+
+
+def test_write_speech_refuses_a_speech_segment_with_no_source(tmp_path: Path) -> None:
+    """A show of a set length must never be ready with a silent hole in it."""
+    show = _show(["intro", "song", "transition", "song", "outro"])
+    speech = tmp_path / "speech.mp3"
+    _tone(speech, 1.0, frequency=220.0, volume="-30dB")
+    out_dir = tmp_path / "out"
+
+    with pytest.raises(ValueError, match=r"no speech audio for segment 2 \(transition\)"):
+        write_speech(show, {0: speech, 4: speech}, out_dir)
+
+    assert not out_dir.exists()  # refused before any file is built
 
 
 def test_run_ffmpeg_reports_failure(tmp_path: Path) -> None:

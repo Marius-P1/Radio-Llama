@@ -78,11 +78,20 @@ def test_plan_never_starts_on_the_previous_shape() -> None:
             assert shape.id != previous.id
 
 
-def test_plan_without_a_previous_shape_is_unchanged() -> None:
-    first = plan_shapes(SHAPES, [True, False, True], random.Random(7))
-    second = plan_shapes(SHAPES, [True, False, True], random.Random(7), previous=None)
+def test_a_seeded_plan_of_a_whole_show_is_pinned() -> None:
+    """A show of a set length plans every break in one call, with no previous shape. The
+    ids are written out, so a change to that pick shows here. The shapes are made up for
+    the test: an edit of the prompt files must not move the pin."""
+    shapes = [
+        Shape(id="short", seconds=5, instruction="x"),
+        Shape(id="aside", seconds=10, instruction="y"),
+        Shape(id="long", seconds=20, instruction="z"),
+        Shape(id="story", seconds=25, needs_facts=True, instruction="w"),
+    ]
 
-    assert [s.id for s in first] == [s.id for s in second]
+    plan = plan_shapes(shapes, [True, False, True, True, False], random.Random(7))
+
+    assert [shape.id for shape in plan] == ["long", "short", "long", "story", "short"]
 
 
 def test_plan_with_no_breaks() -> None:

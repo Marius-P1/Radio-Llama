@@ -239,24 +239,51 @@ def test_more_tracks_reads_the_next_page_when_a_page_brings_nothing_new(
 
 def test_more_tracks_gives_nothing_once_every_track_was_played(fake_jamendo: FakeJamendo) -> None:
     assert fake_jamendo.source.more_tracks("jazz", exclude=ALL_IDS) == []
-    # The first page, then a second one that is empty and retried twice like any empty
-    # reply (D031), then the search gives up.
+    # Four tracks on a page of fifty: it is the last page, so no second one is asked.
+    assert [params.get("offset") for params in _tracks_requests(fake_jamendo)] == [None]
+
+
+def test_more_tracks_asks_the_page_after_a_full_one(
+    fake_jamendo: FakeJamendo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two full pages of two played tracks: only the next page can tell there is no more.
+    It is empty, and retried twice like any empty reply (D031)."""
+    monkeypatch.setattr(jamendo, "SEARCH_LIMIT", 2)
+
+    assert fake_jamendo.source.more_tracks("jazz", exclude=ALL_IDS) == []
+
     assert [params.get("offset") for params in _tracks_requests(fake_jamendo)] == [
         None,
-        "50",
-        "50",
-        "50",
+        "2",
+        "4",
+        "4",
+        "4",
     ]
 
 
-def test_more_tracks_stops_after_ten_pages_of_a_query(fake_jamendo: FakeJamendo) -> None:
-    """A search that keeps answering played tracks must not hold a step for ever."""
+def test_more_tracks_stops_at_a_short_page(
+    fake_jamendo: FakeJamendo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A page with fewer tracks than the limit is the last one of its query (D044)."""
+    monkeypatch.setattr(jamendo, "SEARCH_LIMIT", 3)  # a page of three, then a page of one
+
+    assert fake_jamendo.source.more_tracks("jazz", exclude=ALL_IDS) == []
+
+    assert [params.get("offset") for params in _tracks_requests(fake_jamendo)] == [None, "3"]
+
+
+def test_more_tracks_stops_after_ten_pages_of_a_query(
+    fake_jamendo: FakeJamendo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A search that keeps answering full pages of played tracks must not hold a step
+    for ever."""
+    monkeypatch.setattr(jamendo, "SEARCH_LIMIT", 4)  # the four tracks fill a page
     fake_jamendo.ignore_offset = True
 
     assert fake_jamendo.source.more_tracks("jazz", exclude=ALL_IDS) == []
 
     offsets = [params.get("offset") for params in _tracks_requests(fake_jamendo)]
-    assert offsets == [None, *(str(page * 50) for page in range(1, 10))]
+    assert offsets == [None, *(str(page * 4) for page in range(1, 10))]
 
 
 def test_more_tracks_relaxes_the_wish_then_the_speed(fake_jamendo: FakeJamendo) -> None:
