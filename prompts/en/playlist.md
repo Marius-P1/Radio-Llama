@@ -6,6 +6,9 @@ The listener's request: $wish
 Language of the show: $language
 Number of songs: $count
 
+Songs this show already played. Never propose one of them again:
+$played
+
 Reply with one JSON object and nothing else, in this shape:
 {"songs": [{"artist": "...", "title": "..."}]}
 

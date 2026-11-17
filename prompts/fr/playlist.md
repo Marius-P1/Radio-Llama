@@ -6,6 +6,9 @@ La demande de l'auditeur : $wish
 Langue de l'émission : $language
 Nombre de chansons : $count
 
+Chansons déjà jouées dans cette émission. Ne propose plus jamais l'une d'elles :
+$played
+
 Réponds avec un seul objet JSON et rien d'autre, de cette forme :
 {"songs": [{"artist": "...", "title": "..."}]}
 

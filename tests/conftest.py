@@ -102,13 +102,16 @@ class FakeJamendo:
     `reject_params` gets an empty result list, which exercises the query relaxation.
     `empty_replies` is how many tracks calls answer an empty list before the real one,
     like the live API does now and then. `api_error` makes every API call answer that
-    Jamendo error code.
+    Jamendo error code. A search is answered one page at a time, by its `limit` and
+    `offset`; `ignore_offset` answers the first page whatever the offset, like a search
+    that never ends.
     """
 
     def __init__(self, cache_dir: Path, tone: bytes) -> None:
         self.requests: list[httpx.Request] = []
         self.reject_params: set[str] = set()
         self.empty_replies = 0
+        self.ignore_offset = False
         self.api_error: tuple[int, str] | None = None
         self._tone = tone
         self._tracks = json.loads((JAMENDO_FIXTURES / "tracks.json").read_text(encoding="utf-8"))
@@ -137,6 +140,13 @@ class FakeJamendo:
             elif "id" in params:
                 wanted = params["id"].split()
                 body = {**body, "results": [r for r in body["results"] if r["id"] in wanted]}
+            elif not self.ignore_offset:
+                # One page of the search: `limit` results from `offset` on. The fixture
+                # holds four tracks, so the second page of a real search (offset 50) is
+                # empty, and a show that asks for more runs out (D044).
+                start = int(params.get("offset", "0"))
+                page = body["results"][start : start + int(params["limit"])]
+                body = {**body, "results": page}
             return httpx.Response(200, json=body)
         if request.url.path == "/v3.0/artists/musicinfo/":
             wanted = params["id"].split()

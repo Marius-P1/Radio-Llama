@@ -29,6 +29,9 @@ API_URL = "https://api.jamendo.com/v3.0"
 ID_PREFIX = "jamendo-"
 TIMEOUT_S = 60.0
 SEARCH_LIMIT = 50  # candidates per search; the pipeline samples a few of them
+# How many pages of one query an endless show reads while looking for a song it has not
+# played (D044): 500 tracks, far more than a show plays, and a bound on the calls of a step.
+MAX_PAGES = 10
 # Songs between one and ten minutes: shorter is a jingle, longer is an ambient piece.
 DURATION_RANGE = "60_600"
 # Jamendo sometimes answers a successful but empty list for a query that has thousands
@@ -169,8 +172,45 @@ class JamendoSource:
                     found.append(track)
         return found
 
-    def search(self, query: Query, style: str) -> list[Track]:
-        """One `tracks` request plus one `artists/musicinfo` request for the facts."""
+    def more_tracks(
+        self,
+        style: str,
+        *,
+        energy: Energy | None = None,
+        filters: WishFilters | None = None,
+        exclude: set[str],
+    ) -> list[Track]:
+        """Tracks whose id is not in `exclude`, for a show that keeps asking for one more (D044).
+
+        The same relaxation as `find_tracks`: every filter, then no wish filters, then no
+        speed. Each query is read page by page until a page brings a track the show has
+        not played, at most MAX_PAGES pages. The first such page is the answer, so the
+        strictest query that still has something new wins. An empty list means the style
+        has nothing left for this show.
+        """
+        if style not in STYLE_TAGS:
+            raise JamendoError(f"Unknown Jamendo style {style!r}.")
+        speed = ENERGY_SPEEDS[energy] if energy is not None else []
+        steps = [Query(tag=STYLE_TAGS[style], speed=speed, filters=filters)]
+        if filters is not None:
+            steps.append(Query(tag=STYLE_TAGS[style], speed=speed))
+        if speed:
+            steps.append(Query(tag=STYLE_TAGS[style]))
+        for query in steps:
+            for page in range(MAX_PAGES):
+                tracks = self.search(query, style, offset=page * SEARCH_LIMIT)
+                if not tracks:
+                    break  # past the last page of this query
+                fresh = [track for track in tracks if track.id not in exclude]
+                if fresh:
+                    return fresh
+        return []
+
+    def search(self, query: Query, style: str, offset: int = 0) -> list[Track]:
+        """One `tracks` request plus one `artists/musicinfo` request for the facts.
+
+        `offset` skips that many results: page two of a search is offset SEARCH_LIMIT.
+        """
         params = {
             "limit": str(SEARCH_LIMIT),
             "include": "musicinfo licenses",
@@ -179,6 +219,8 @@ class JamendoSource:
             "durationbetween": DURATION_RANGE,
             **query.params(),
         }
+        if offset > 0:  # the first page is asked as before, with no offset
+            params["offset"] = str(offset)
         results = self._get("tracks", params)
         for _ in range(EMPTY_RETRIES):
             if results:

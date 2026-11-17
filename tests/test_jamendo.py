@@ -6,7 +6,13 @@ from pathlib import Path
 import httpx
 import pytest
 
-from radio_llama.music import JamendoError, JamendoSource, UnknownTrackError, WishFilters
+from radio_llama.music import (
+    JamendoError,
+    JamendoSource,
+    UnknownTrackError,
+    WishFilters,
+    jamendo,
+)
 from radio_llama.music.jamendo import STYLE_TAGS, description_facts, parse_license
 from tests.conftest import FakeJamendo
 
@@ -196,6 +202,100 @@ def test_find_tracks_stops_relaxing_once_enough(fake_jamendo: FakeJamendo) -> No
 
     assert len(tracks) == 4
     assert len([r for r in fake_jamendo.requests if r.url.path == "/v3.0/tracks/"]) == 1
+
+
+# more_tracks (D044): one more song the show has not played, for an endless show.
+
+ALL_IDS = {"jamendo-1001", "jamendo-1002", "jamendo-1003", "jamendo-1004"}
+
+
+def _tracks_requests(fake: FakeJamendo) -> list[dict[str, str]]:
+    return [_params(r) for r in fake.requests if r.url.path == "/v3.0/tracks/"]
+
+
+def test_more_tracks_leaves_out_what_the_show_played(fake_jamendo: FakeJamendo) -> None:
+    played = {"jamendo-1001", "jamendo-1003"}
+
+    tracks = fake_jamendo.source.more_tracks("jazz", exclude=played)
+
+    assert [track.id for track in tracks] == ["jamendo-1002", "jamendo-1004"]
+    # The first page had something new: one search, asked like any first page.
+    (params,) = _tracks_requests(fake_jamendo)
+    assert "offset" not in params
+    assert params["limit"] == "50"
+
+
+def test_more_tracks_reads_the_next_page_when_a_page_brings_nothing_new(
+    fake_jamendo: FakeJamendo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(jamendo, "SEARCH_LIMIT", 2)  # two pages of two tracks
+    played = {"jamendo-1001", "jamendo-1002"}
+
+    tracks = fake_jamendo.source.more_tracks("jazz", exclude=played)
+
+    assert [track.id for track in tracks] == ["jamendo-1003", "jamendo-1004"]
+    assert [params.get("offset") for params in _tracks_requests(fake_jamendo)] == [None, "2"]
+
+
+def test_more_tracks_gives_nothing_once_every_track_was_played(fake_jamendo: FakeJamendo) -> None:
+    assert fake_jamendo.source.more_tracks("jazz", exclude=ALL_IDS) == []
+    # The first page, then a second one that is empty and retried twice like any empty
+    # reply (D031), then the search gives up.
+    assert [params.get("offset") for params in _tracks_requests(fake_jamendo)] == [
+        None,
+        "50",
+        "50",
+        "50",
+    ]
+
+
+def test_more_tracks_stops_after_ten_pages_of_a_query(fake_jamendo: FakeJamendo) -> None:
+    """A search that keeps answering played tracks must not hold a step for ever."""
+    fake_jamendo.ignore_offset = True
+
+    assert fake_jamendo.source.more_tracks("jazz", exclude=ALL_IDS) == []
+
+    offsets = [params.get("offset") for params in _tracks_requests(fake_jamendo)]
+    assert offsets == [None, *(str(page * 50) for page in range(1, 10))]
+
+
+def test_more_tracks_relaxes_the_wish_then_the_speed(fake_jamendo: FakeJamendo) -> None:
+    """The same steps as find_tracks: every filter, no wish filters, no speed."""
+    fake_jamendo.reject_params = {"fuzzytags", "speed"}
+    filters = WishFilters(tags=["piano"])
+
+    tracks = fake_jamendo.source.more_tracks(
+        "jazz", energy="upbeat", filters=filters, exclude={"jamendo-1001"}
+    )
+
+    assert [track.id for track in tracks] == ["jamendo-1002", "jamendo-1003", "jamendo-1004"]
+    used = [sorted(set(p) & {"fuzzytags", "speed"}) for p in _tracks_requests(fake_jamendo)]
+    assert used == [*([["fuzzytags", "speed"]] * 3), *([["speed"]] * 3), []]
+
+
+def test_more_tracks_keeps_the_strictest_query_that_has_something_new(
+    fake_jamendo: FakeJamendo,
+) -> None:
+    filters = WishFilters(tags=["piano"])
+
+    fake_jamendo.source.more_tracks("jazz", energy="calm", filters=filters, exclude=set())
+
+    (params,) = _tracks_requests(fake_jamendo)
+    assert params["fuzzytags"] == "piano"
+    assert params["speed"] == "verylow low"
+
+
+def test_more_tracks_rejects_an_unknown_style(fake_jamendo: FakeJamendo) -> None:
+    with pytest.raises(JamendoError, match="polka"):
+        fake_jamendo.source.more_tracks("polka", exclude=set())
+
+
+def test_find_tracks_never_sends_an_offset(fake_jamendo: FakeJamendo) -> None:
+    """A show of a set length searches exactly as before the endless show (D044)."""
+    fake_jamendo.source.find_tracks("jazz", energy="calm", minimum=3)
+    fake_jamendo.source.list_tracks("jazz")
+
+    assert all("offset" not in params for params in _tracks_requests(fake_jamendo))
 
 
 def test_source_attributes() -> None:

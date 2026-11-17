@@ -194,6 +194,15 @@ class ScriptWriter:
         values = {"track_list": format_programme(tracks, self._language)}
         return self._write("intro", values, SPEECH_SECONDS["intro"])
 
+    def write_endless_intro(self, first: Track) -> str:
+        """The opening of a show with no set length (D044).
+
+        Its own prompt: the host brings in the first song, the only one known yet, and
+        never says how long the show lasts. It is still the show's "intro" segment.
+        """
+        values = {"first_song": format_programme([first], self._language)}
+        return self._write("intro", values, SPEECH_SECONDS["intro"], template="intro_endless")
+
     def write_transition(self, previous: Track, next_track: Track, shape: Shape) -> str:
         values = {
             "instructions": shape.instruction,
@@ -229,9 +238,17 @@ class ScriptWriter:
         return "\n".join(f"- {strings['kinds'][kind]}: {text}" for kind, text in recent)
 
     def _write(
-        self, kind: str, values: dict[str, str], seconds: float, label: str | None = None
+        self,
+        kind: str,
+        values: dict[str, str],
+        seconds: float,
+        label: str | None = None,
+        template: str | None = None,
     ) -> str:
-        """One LLM call for `kind`. `label` names the call in the trace, `kind` by default."""
+        """One LLM call for `kind`. `label` names the call in the trace, `kind` by default.
+
+        `template` is the prompt file to fill when it is not named after the kind.
+        """
         system = render(
             load_template(self._prompts_dir, self._language, "system"),
             {
@@ -244,7 +261,7 @@ class ScriptWriter:
         )
         budget = word_budget(seconds, self._language)
         user = render(
-            load_template(self._prompts_dir, self._language, kind),
+            load_template(self._prompts_dir, self._language, template or kind),
             {**values, "word_budget": str(budget)},
         )
         response = traced_generate(

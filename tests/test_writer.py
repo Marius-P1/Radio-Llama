@@ -112,6 +112,35 @@ def test_intro_prompt_carries_tracks_budget_persona_and_style() -> None:
     assert str(word_budget(SPEECH_SECONDS["intro"], "en")) in user.content
 
 
+@pytest.mark.parametrize(
+    ("language", "no_length", "never_count"),
+    [
+        ("en", "It has no set length", "Never say how many songs there will be"),
+        ("fr", "Elle n'a pas de durée fixée", "Ne dis jamais combien de morceaux il y aura"),
+    ],
+)
+def test_endless_intro_brings_in_the_first_song_only(
+    language: str, no_length: str, never_count: str
+) -> None:
+    """A show with no set length (D044): one song is known, and no length is promised."""
+    writer, llm = make_writer(language)
+
+    text = writer.write_endless_intro(TRACKS[0])
+
+    assert text == CANNED
+    _, user = llm.calls[0]
+    assert no_length in user.content
+    assert never_count in user.content
+    assert TRACKS[0].title in user.content
+    assert TRACKS[0].artist in user.content
+    assert "Blue Windows, 2019, jazz, late night" in user.content
+    assert TRACKS[1].title not in user.content
+    assert str(word_budget(SPEECH_SECONDS["intro"], language)) in user.content
+    # It is the show's intro all the same: later breaks see it as the opening.
+    assert writer.transcript == [("intro", CANNED)]
+    assert writer.transcript_text().startswith(f"- {UI_STRINGS[language]['kinds']['intro']}: ")
+
+
 def test_transition_prompt_carries_both_tracks_and_next_facts() -> None:
     writer, llm = make_writer()
     writer.write_transition(TRACKS[0], TRACKS[1], STORY)
