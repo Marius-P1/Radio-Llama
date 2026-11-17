@@ -21,7 +21,7 @@ from radio_llama.cli import app as cli_app
 from radio_llama.config import Settings
 from radio_llama.llm import FakeLLM
 from radio_llama.models import Show, ShowConfig
-from radio_llama.music import LocalCatalog
+from radio_llama.music import LocalCatalog, playback_of
 from radio_llama.personas import get_persona, load_personas
 from radio_llama.storage import save_show
 from radio_llama.voice import TTSError
@@ -58,7 +58,13 @@ def test_options_lists_sources_personas_and_languages(client: TestClient) -> Non
     assert response.status_code == 200
     body = response.json()
     assert body["sources"] == [
-        {"id": "catalog", "name": "Local catalog", "styles": ["jazz", "rock"], "wish": False}
+        {
+            "id": "catalog",
+            "name": "Local catalog",
+            "styles": ["jazz", "rock"],
+            "wish": False,
+            "endless": False,
+        }
     ]
     assert body["languages"] == ["en", "fr"]
     assert body["energies"] == ["calm", "medium", "upbeat"]
@@ -320,6 +326,8 @@ def test_options_list_jamendo_when_configured(client_with_jamendo: TestClient) -
     jamendo = body["sources"][1]
     assert jamendo["name"] == "Jamendo"
     assert jamendo["wish"] is True
+    assert jamendo["endless"] is True  # D042: Jamendo and YouTube, not the catalog
+    assert body["sources"][0]["endless"] is False
     assert {"jazz", "rock", "lofi", "hiphop"} <= set(jamendo["styles"])
 
 
@@ -418,7 +426,13 @@ def test_options_list_youtube_when_configured(client_with_youtube: TestClient) -
 
     assert [source["id"] for source in body["sources"]] == ["catalog", "youtube"]
     # No style to pick on YouTube: the wish is the theme (D039).
-    assert body["sources"][1] == {"id": "youtube", "name": "YouTube", "styles": [], "wish": True}
+    assert body["sources"][1] == {
+        "id": "youtube",
+        "name": "YouTube",
+        "styles": [],
+        "wish": True,
+        "endless": True,
+    }
 
 
 def test_create_a_youtube_show_and_fetch_its_segments(client_with_youtube: TestClient) -> None:
@@ -485,6 +499,24 @@ def test_playback_comes_from_the_source_at_any_status() -> None:
     assert playback("jamendo", "failed") == "file"
     assert playback("youtube", "pending") == "segments"
     assert playback("youtube", "ready") == "segments"
+
+
+def test_an_endless_show_plays_by_segments_whatever_its_source() -> None:
+    """A show that grows cannot be one MP3 (D044): `playback` comes from the show."""
+    fixed = ShowConfig(style="jazz", persona="calm", source="jamendo")
+    endless = ShowConfig(style="jazz", persona="calm", source="jamendo", endless=True)
+    youtube = ShowConfig(persona="calm", source="youtube", wish="trains", endless=True)
+
+    assert playback_of(fixed) == "file"
+    assert playback_of(endless) == "segments"
+    assert playback_of(youtube) == "segments"
+    show = Show(
+        id="20261030-120000-abc123",
+        created_at=datetime(2026, 10, 30, 12, 0, tzinfo=UTC),
+        config=endless,
+        status="generating",
+    )
+    assert ShowResponse.from_show(show, None).playback == "segments"
 
 
 def test_segment_audio_of_a_show_that_is_not_ready_is_a_404(client: TestClient) -> None:

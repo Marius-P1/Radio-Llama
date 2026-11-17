@@ -14,7 +14,7 @@ from radio_llama.models import (
     ShowStatus,
     Track,
 )
-from radio_llama.music.factory import delivery_of
+from radio_llama.music.factory import playback_of
 
 WISH_MAX_CHARS = 200
 # Voice ids are about twenty characters. The cap keeps a huge value away from the voice
@@ -41,6 +41,7 @@ class SourceOption(BaseModel):
     name: str  # "Local catalog", "Jamendo", "YouTube"
     styles: list[str]  # the styles this source offers
     wish: bool  # whether a free-text wish refines the song choice on this source (D030)
+    endless: bool  # whether this source can feed an endless show (D042)
 
 
 class OptionsResponse(BaseModel):
@@ -99,7 +100,7 @@ class ShowResponse(ShowSummary):
     @classmethod
     def from_show(cls, show: Show, progress: Progress | None) -> "ShowResponse":
         ready = show.status == "ready"
-        playback = "segments" if delivery_of(show.config.source) == "embed" else "file"
+        playback = playback_of(show.config)
         return cls(
             id=show.id,
             status=show.status,

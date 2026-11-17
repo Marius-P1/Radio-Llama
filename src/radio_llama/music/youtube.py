@@ -97,6 +97,7 @@ class YouTubeSource:
     delivery = "embed"
     accepts_wish = True
     needs_facts_lookup = True
+    endless = True  # the model proposes more songs, told which ones were played (D044)
 
     def __init__(
         self, api_key: str, cache_dir: Path, region: str, http: httpx.Client | None = None

@@ -91,6 +91,29 @@ def test_env_example_lists_every_setting() -> None:
     assert names == expected
 
 
+def test_endless_max_songs_defaults_to_100_and_zero_means_no_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert load_settings().endless_max_songs == 100
+    monkeypatch.setenv("ENDLESS_MAX_SONGS", "25")
+    assert load_settings().endless_max_songs == 25
+    monkeypatch.setenv("ENDLESS_MAX_SONGS", "0")
+    assert load_settings().endless_max_songs == 0
+
+
+@pytest.mark.parametrize("value", ["-1", "many"])
+def test_a_bad_endless_max_songs_names_the_variable(
+    monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("ENDLESS_MAX_SONGS", value)
+    with pytest.raises(ConfigError) as info:
+        load_settings()
+    message = str(info.value)
+    assert "ENDLESS_MAX_SONGS" in message
+    assert repr(value) in message
+    assert len(message.splitlines()) == 1
+
+
 def test_youtube_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = load_settings()
     assert settings.youtube_api_key is None

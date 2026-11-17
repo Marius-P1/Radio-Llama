@@ -3,7 +3,7 @@
 from typing import Literal
 
 from radio_llama.config import Settings
-from radio_llama.models import MusicSourceName
+from radio_llama.models import MusicSourceName, ShowConfig
 from radio_llama.music.base import MusicSource
 from radio_llama.music.jamendo import JamendoSource
 from radio_llama.music.local_catalog import LocalCatalog
@@ -36,6 +36,18 @@ def delivery_of(name: MusicSourceName) -> Literal["file", "embed"]:
     for a source that is not configured on this server.
     """
     return SOURCE_CLASSES[name].delivery
+
+
+def playback_of(config: ShowConfig) -> Literal["file", "segments"]:
+    """How a show plays: one joined MP3, or its segments one after the other (D044).
+
+    A show plays by segments when its songs are embedded videos (D038) or when it is
+    endless: a show that grows cannot be one file. Read from the config alone, so it is
+    known before the show is ready.
+    """
+    if config.endless or delivery_of(config.source) == "embed":
+        return "segments"
+    return "file"
 
 
 def missing_source_message(name: str) -> str:

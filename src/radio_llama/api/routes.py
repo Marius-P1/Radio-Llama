@@ -98,6 +98,7 @@ def get_options(settings: SettingsDep, sources: SourcesDep) -> OptionsResponse:
                 name=SOURCE_NAMES[name],
                 styles=music.list_styles(),
                 wish=music.accepts_wish,
+                endless=music.endless,
             )
             for name, music in sources.items()
         ],

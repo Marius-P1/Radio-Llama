@@ -198,6 +198,13 @@ def test_find_tracks_stops_relaxing_once_enough(fake_jamendo: FakeJamendo) -> No
     assert len([r for r in fake_jamendo.requests if r.url.path == "/v3.0/tracks/"]) == 1
 
 
+def test_source_attributes() -> None:
+    assert JamendoSource.delivery == "file"
+    assert JamendoSource.accepts_wish is True
+    assert JamendoSource.needs_facts_lookup is True
+    assert JamendoSource.endless is True  # D042
+
+
 def test_find_tracks_rejects_an_unknown_style(fake_jamendo: FakeJamendo) -> None:
     with pytest.raises(JamendoError, match="polka"):
         fake_jamendo.source.find_tracks("polka", minimum=1)

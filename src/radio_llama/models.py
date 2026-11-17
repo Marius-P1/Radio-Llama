@@ -75,8 +75,13 @@ class ShowConfig(BaseModel):
     energy: Energy | None = None  # the listener's choice; None means any (D020)
     source: MusicSourceName = "catalog"  # where the songs come from (D029)
     wish: str | None = None  # free text that refines the song choice; Jamendo and YouTube (D030)
+    # The number of songs. On an endless show it is not a target: the generator keeps it
+    # equal to the songs the show has so far, so a label that reads it stays true (D044).
     track_count: int = 3
     demo: bool = False  # cut each song to a 30 s excerpt, for a fast short show
+    # A show with no set length (D042): it opens with one song and grows one break and one
+    # song at a time while someone listens. Jamendo and YouTube only.
+    endless: bool = False
     seed: int | None = None  # fixes the random track pick, for reproducible runs (D017)
 
 
@@ -104,5 +109,21 @@ class Show(BaseModel):
     segments: list[Segment] = Field(default_factory=list)
     tracks: list[Track] = Field(default_factory=list)  # the tracks used, in order, for credits
     # The assembled MP3 file name, set when status is "ready". None on a ready YouTube show:
-    # its speech segments have files and its songs play in the embedded player (D038).
+    # its speech segments have files and its songs play in the embedded player (D038). None
+    # on an endless show too, which is never joined: every segment has its own file (D044).
     audio_file: str | None = None
+    # Why an endless show closed by itself: the source had no more songs, YouTube's quota
+    # ran out, or the show reached ENDLESS_MAX_SONGS. A sentence for the listener. None
+    # when the listener ended it, and on every other show (D044).
+    end_note: str | None = None
+
+    @property
+    def is_open(self) -> bool:
+        """Whether this is an endless show the host has not closed yet (D044).
+
+        There is no status for it: an open show is an endless show whose last segment is
+        not an outro. A show the listener walked away from stays open for good, and
+        nobody has to tell the server.
+        """
+        closed = bool(self.segments) and self.segments[-1].kind == "outro"
+        return self.config.endless and not closed

@@ -118,6 +118,7 @@ class JamendoSource:
     delivery = "file"
     accepts_wish = True
     needs_facts_lookup = True
+    endless = True  # `more_tracks` pages through the search for songs not played yet (D044)
 
     def __init__(self, client_id: str, cache_dir: Path, http: httpx.Client | None = None) -> None:
         self._client_id = client_id

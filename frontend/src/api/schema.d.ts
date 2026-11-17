@@ -244,6 +244,11 @@ export interface components {
              * @default false
              */
             demo: boolean;
+            /**
+             * Endless
+             * @default false
+             */
+            endless: boolean;
             /** Energy */
             energy?: ("calm" | "medium" | "upbeat") | null;
             /**
@@ -332,6 +337,8 @@ export interface components {
         };
         /** SourceOption */
         SourceOption: {
+            /** Endless */
+            endless: boolean;
             /**
              * Id
              * @enum {string}

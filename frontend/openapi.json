@@ -343,6 +343,11 @@
             "title": "Demo",
             "type": "boolean"
           },
+          "endless": {
+            "default": false,
+            "title": "Endless",
+            "type": "boolean"
+          },
           "energy": {
             "anyOf": [
               {
@@ -593,6 +598,10 @@
       },
       "SourceOption": {
         "properties": {
+          "endless": {
+            "title": "Endless",
+            "type": "boolean"
+          },
           "id": {
             "enum": [
               "catalog",
@@ -622,7 +631,8 @@
           "id",
           "name",
           "styles",
-          "wish"
+          "wish",
+          "endless"
         ],
         "title": "SourceOption",
         "type": "object"

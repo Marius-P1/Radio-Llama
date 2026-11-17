@@ -24,6 +24,10 @@ class MusicSource(Protocol):
     # Whether the pipeline looks the artists up on MusicBrainz and Wikipedia (D036). The
     # catalog is hand-written with its own sourced facts; the online sources are not.
     needs_facts_lookup: bool
+    # Whether the source can feed an endless show (D042): it must be able to give one more
+    # song the show has not played, again and again. The local catalog has a dozen tracks
+    # per style, so it keeps shows of a set length.
+    endless: bool
 
     def list_styles(self) -> list[str]:
         """Return the styles the source offers, sorted and unique."""
