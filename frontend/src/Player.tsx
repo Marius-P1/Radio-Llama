@@ -63,7 +63,8 @@ export function Player({ id, onBack }: Props) {
       <h2>
         {/* A YouTube show has no style (D039): its wish is shown on the line below. */}
         {show.config.style && <>{styleLabel(show.config.style)} show, </>}
-        {/* A show file written by hand may have no count: the songs part is then left out. */}
+        {/* On the replay page, a hand-written show.json may have no track_count. The generated
+            type says it is always a number, which holds for every file the backend writes. */}
         {typeof show.config.track_count === 'number' && (
           <>{songsLabel(show.config.track_count)}, </>
         )}
