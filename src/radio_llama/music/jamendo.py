@@ -35,6 +35,10 @@ DURATION_RANGE = "60_600"
 # of matches (seen live on 2026-11-08, about one call in three). A second try works.
 EMPTY_RETRIES = 2
 RETRY_PAUSE_S = 0.5
+# Jamendo answers "Internal Error" (code 1) for `artists/musicinfo` about one call in two
+# when certain artists are in the list (seen live on 2026-11-17). The artist lookup retries
+# it like an empty search, then goes on without facts for those artists (D045).
+INTERNAL_ERROR = 1
 
 # Jamendo's featured genres (from its API docs) plus lofi, each with the tag searched for it.
 STYLE_TAGS = {
@@ -73,7 +77,12 @@ _TAGS = re.compile(r"<[^>]+>")
 
 
 class JamendoError(MusicSourceError):
-    """A Jamendo call failed. The message names the cause."""
+    """A Jamendo call failed. The message names the cause. `code` is Jamendo's API error
+    code when the reply carried one, else None."""
+
+    def __init__(self, message: str, code: int | None = None) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 class WishFilters(BaseModel):
@@ -231,7 +240,22 @@ class JamendoSource:
     def _artist_infos(self, artist_ids: set[str]) -> dict[str, ArtistInfo]:
         if not artist_ids:
             return {}
-        results = self._get("artists/musicinfo", {"id": " ".join(sorted(artist_ids))})
+        params = {"id": " ".join(sorted(artist_ids))}
+        for attempt in range(1 + EMPTY_RETRIES):
+            if attempt:
+                time.sleep(RETRY_PAUSE_S)
+            try:
+                results = self._get("artists/musicinfo", params)
+                break
+            except JamendoError as exc:
+                if exc.code != INTERNAL_ERROR:
+                    raise
+        else:
+            log.warning(
+                "Jamendo kept answering Internal Error for %d artists; no facts for them",
+                len(artist_ids),
+            )
+            return {}
         infos = {}
         for raw in results:
             url = raw.get("shareurl") or f"https://www.jamendo.com/artist/{raw['id']}"
@@ -254,9 +278,10 @@ class JamendoSource:
         status = response.status_code
         body = trace.response_body(response)
         error = _reply_error(method, status, body)
-        trace.record("jamendo", started, error=error, **sent, status=status, body=body)
+        message = str(error) if error is not None else None
+        trace.record("jamendo", started, error=message, **sent, status=status, body=body)
         if error is not None:
-            raise JamendoError(error)
+            raise error
         return body.get("results", []) if isinstance(body, dict) else []
 
     def _download(self, url: str, path: Path) -> None:
@@ -296,16 +321,16 @@ def _style_of(raw: dict) -> str:
     return genres[0] if genres else ""
 
 
-def _reply_error(method: str, status: int, body: object) -> str | None:
+def _reply_error(method: str, status: int, body: object) -> JamendoError | None:
     """Why a `method` reply is unusable, or None: a bad status, no JSON object, an API error."""
     if status != 200:
-        return f"Jamendo answered HTTP {status} for {method}."
+        return JamendoError(f"Jamendo answered HTTP {status} for {method}.")
     if not isinstance(body, dict):
-        return f"Jamendo answered something other than JSON for {method}."
+        return JamendoError(f"Jamendo answered something other than JSON for {method}.")
     headers = body.get("headers", {})
     code = headers.get("code", 0)
     if code != 0:
-        return error_message(code, headers.get("error_message", ""))
+        return JamendoError(error_message(code, headers.get("error_message", "")), code=code)
     return None
 
 
