@@ -8,6 +8,11 @@
             "title": "Demo",
             "type": "boolean"
           },
+          "endless": {
+            "default": false,
+            "title": "Endless",
+            "type": "boolean"
+          },
           "energy": {
             "anyOf": [
               {
@@ -100,6 +105,21 @@
         "title": "CreateShowRequest",
         "type": "object"
       },
+      "EndShowRequest": {
+        "description": "Body of POST /shows/{id}/end (D044).",
+        "properties": {
+          "after": {
+            "minimum": 0.0,
+            "title": "After",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "after"
+        ],
+        "title": "EndShowRequest",
+        "type": "object"
+      },
       "Fact": {
         "properties": {
           "about": {
@@ -160,6 +180,21 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "NextPartRequest": {
+        "description": "Body of POST /shows/{id}/next (D044).",
+        "properties": {
+          "known": {
+            "minimum": 0.0,
+            "title": "Known",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "known"
+        ],
+        "title": "NextPartRequest",
         "type": "object"
       },
       "OptionsResponse": {
@@ -480,6 +515,17 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "end_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Note"
           },
           "error": {
             "anyOf": [
@@ -1079,9 +1125,109 @@
         "summary": "Get Show Audio"
       }
     },
+    "/api/v1/shows/{show_id}/end": {
+      "post": {
+        "description": "Close an endless show after the song at segment `after`, and return the show (D044).\n\nSegments made past that song are dropped and the host's goodbye takes their place.\nA show that is already closed is returned as it is. The errors are those of\n`next_part`; the 409 also covers an `after` that is not a song of the show.",
+        "operationId": "end_show_api_v1_shows__show_id__end_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "show_id",
+            "required": true,
+            "schema": {
+              "title": "Show Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndShowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "End Show"
+      }
+    },
+    "/api/v1/shows/{show_id}/next": {
+      "post": {
+        "description": "Add the next break and song to an endless show, and return the whole show (D044).\n\nThe player asks at the middle of the current song. The request blocks until the part\nis made, about as long as one song of a show takes to generate. The reply is the\nshow with two more segments, or with the host's goodbye when the show had to end by\nitself (`end_note` says why). Asking again with the same `known` makes nothing new.\n\n404: no such show. 409: the show cannot take a step (not endless, not ready, `known`\nlarger than the show). 502: the step failed for a reason the pipeline expects (a\nprovider, the network, ffmpeg). show.json was not touched, so the same request can\nbe sent again.",
+        "operationId": "next_part_api_v1_shows__show_id__next_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "show_id",
+            "required": true,
+            "schema": {
+              "title": "Show Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NextPartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Next Part"
+      }
+    },
     "/api/v1/shows/{show_id}/segments/{index}/audio": {
       "get": {
-        "description": "One speech file of a ready show, for per-segment playback (D038).",
+        "description": "One segment's audio file of a ready show, for per-segment playback (D038, D044).",
         "operationId": "get_segment_audio_api_v1_shows__show_id__segments__index__audio_get",
         "parameters": [
           {

@@ -147,6 +147,8 @@ export function CreateShow({ onCreated }: Props) {
         wish: selectedSource?.wish && wish.trim() !== '' ? wish.trim() : null,
         track_count: trackCount,
         demo,
+        // The create screen has no "Endless" choice yet (D044): every show has a set length.
+        endless: false,
       }
       // The style goes only when one is chosen: a source without styles refuses one (D039).
       if (style !== '') body.style = style

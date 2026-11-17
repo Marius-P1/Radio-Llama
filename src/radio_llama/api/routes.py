@@ -1,4 +1,5 @@
-"""The `/api/v1` routes: options, voices, create a show, read shows, fetch the audio."""
+"""The `/api/v1` routes: options, voices, create a show, read shows, fetch the audio, and
+the two steps of an endless show (D044): its next part and its end."""
 
 import logging
 import re
@@ -9,18 +10,22 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
-from radio_llama.api.jobs import Jobs
+from radio_llama.api.jobs import Jobs, StepRefused
 from radio_llama.api.schemas import (
     CreateShowRequest,
+    EndShowRequest,
+    NextPartRequest,
     OptionsResponse,
     PersonaOption,
     ShowResponse,
     ShowSummary,
     SourceOption,
+    has_own_audio,
 )
 from radio_llama.config import Settings
+from radio_llama.generator.lifecycle import EXPECTED_ERRORS
 from radio_llama.models import ENERGIES, Show, ShowConfig
-from radio_llama.music import SOURCE_NAMES, MusicSource, missing_source_message
+from radio_llama.music import SOURCE_NAMES, MusicSource, missing_source_message, playback_of
 from radio_llama.personas import load_personas
 from radio_llama.storage import SHOW_FILE, load_show, new_show_id, save_show
 from radio_llama.voice import TTSError, UnknownVoiceError, VoiceList, VoiceOption, find_voice
@@ -164,6 +169,12 @@ def create_show(
             status_code=400,
             detail=f"A {SOURCE_NAMES[body.source]} show needs a wish: say what you want to hear.",
         )
+    # A show with no set length needs a source that can always give one more song (D042).
+    if body.endless and not music.endless:
+        raise HTTPException(
+            status_code=400,
+            detail="An endless show needs the 'jamendo' or 'youtube' music source.",
+        )
     persona_ids = [persona.id for persona in load_personas(settings.prompts_dir, body.language)]
     if body.persona not in persona_ids:
         raise HTTPException(
@@ -196,8 +207,10 @@ def create_show(
             energy=body.energy,
             source=body.source,
             wish=wish,
-            track_count=body.track_count,
+            # An endless show counts the songs it has so far: none yet (D044).
+            track_count=0 if body.endless else body.track_count,
             demo=body.demo,
+            endless=body.endless,
         ),
     )
     save_show(show, settings.output_dir / show.id)
@@ -238,7 +251,7 @@ def get_show_audio(show_id: str, settings: SettingsDep) -> FileResponse:
 
 @router.get("/shows/{show_id}/segments/{index}/audio")
 def get_segment_audio(show_id: str, index: int, settings: SettingsDep) -> FileResponse:
-    """One speech file of a ready show, for per-segment playback (D038)."""
+    """One segment's audio file of a ready show, for per-segment playback (D038, D044)."""
     show = load_show_or_404(settings.output_dir, show_id)
     not_found = HTTPException(
         status_code=404, detail=f"Segment {index} of show {show_id!r} has no audio."
@@ -246,11 +259,60 @@ def get_segment_audio(show_id: str, index: int, settings: SettingsDep) -> FileRe
     if show.status != "ready" or not 0 <= index < len(show.segments):
         raise not_found
     segment = show.segments[index]
-    # A song is never served here: a file show keeps its songs inside show.mp3, an embed
-    # show plays them in the YouTube player. Only the host's speech files are.
-    if segment.kind == "song" or segment.audio_file is None:
+    # The host's speech files, and the songs of a show that plays by segments from files
+    # (an endless Jamendo show, D044). A song of a file show is never served here: it is
+    # inside show.mp3. A YouTube song has no file at all.
+    if segment.audio_file is None or not has_own_audio(segment, playback_of(show.config)):
         raise not_found
     path = settings.output_dir / show_id / segment.audio_file
     if not path.is_file():
         raise not_found
     return FileResponse(path, media_type="audio/mpeg")
+
+
+@router.post("/shows/{show_id}/next")
+def next_part(
+    show_id: str, body: NextPartRequest, settings: SettingsDep, jobs: JobsDep
+) -> ShowResponse:
+    """Add the next break and song to an endless show, and return the whole show (D044).
+
+    The player asks at the middle of the current song. The request blocks until the part
+    is made, about as long as one song of a show takes to generate. The reply is the
+    show with two more segments, or with the host's goodbye when the show had to end by
+    itself (`end_note` says why). Asking again with the same `known` makes nothing new.
+
+    404: no such show. 409: the show cannot take a step (not endless, not ready, `known`
+    larger than the show). 502: the step failed for a reason the pipeline expects (a
+    provider, the network, ffmpeg). show.json was not touched, so the same request can
+    be sent again.
+    """
+    load_show_or_404(settings.output_dir, show_id)
+    try:
+        show = jobs.extend(show_id, body.known)
+    except StepRefused as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except EXPECTED_ERRORS as exc:
+        log.exception("The next part of show %s failed", show_id)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return ShowResponse.from_show(show, None)
+
+
+@router.post("/shows/{show_id}/end")
+def end_show(
+    show_id: str, body: EndShowRequest, settings: SettingsDep, jobs: JobsDep
+) -> ShowResponse:
+    """Close an endless show after the song at segment `after`, and return the show (D044).
+
+    Segments made past that song are dropped and the host's goodbye takes their place.
+    A show that is already closed is returned as it is. The errors are those of
+    `next_part`; the 409 also covers an `after` that is not a song of the show.
+    """
+    load_show_or_404(settings.output_dir, show_id)
+    try:
+        show = jobs.end(show_id, body.after)
+    except StepRefused as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except EXPECTED_ERRORS as exc:
+        log.exception("The closing of show %s failed", show_id)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return ShowResponse.from_show(show, None)

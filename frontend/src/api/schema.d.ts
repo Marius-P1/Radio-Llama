@@ -73,6 +73,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shows/{show_id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End Show
+         * @description Close an endless show after the song at segment `after`, and return the show (D044).
+         *
+         *     Segments made past that song are dropped and the host's goodbye takes their place.
+         *     A show that is already closed is returned as it is. The errors are those of
+         *     `next_part`; the 409 also covers an `after` that is not a song of the show.
+         */
+        post: operations["end_show_api_v1_shows__show_id__end_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shows/{show_id}/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Next Part
+         * @description Add the next break and song to an endless show, and return the whole show (D044).
+         *
+         *     The player asks at the middle of the current song. The request blocks until the part
+         *     is made, about as long as one song of a show takes to generate. The reply is the
+         *     show with two more segments, or with the host's goodbye when the show had to end by
+         *     itself (`end_note` says why). Asking again with the same `known` makes nothing new.
+         *
+         *     404: no such show. 409: the show cannot take a step (not endless, not ready, `known`
+         *     larger than the show). 502: the step failed for a reason the pipeline expects (a
+         *     provider, the network, ffmpeg). show.json was not touched, so the same request can
+         *     be sent again.
+         */
+        post: operations["next_part_api_v1_shows__show_id__next_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shows/{show_id}/segments/{index}/audio": {
         parameters: {
             query?: never;
@@ -82,7 +136,7 @@ export interface paths {
         };
         /**
          * Get Segment Audio
-         * @description One speech file of a ready show, for per-segment playback (D038).
+         * @description One segment's audio file of a ready show, for per-segment playback (D038, D044).
          */
         get: operations["get_segment_audio_api_v1_shows__show_id__segments__index__audio_get"];
         put?: never;
@@ -127,6 +181,11 @@ export interface components {
              * @default false
              */
             demo: boolean;
+            /**
+             * Endless
+             * @default false
+             */
+            endless: boolean;
             /** Energy */
             energy?: ("calm" | "medium" | "upbeat") | null;
             /**
@@ -164,6 +223,14 @@ export interface components {
             /** Wish */
             wish?: string | null;
         };
+        /**
+         * EndShowRequest
+         * @description Body of POST /shows/{id}/end (D044).
+         */
+        EndShowRequest: {
+            /** After */
+            after: number;
+        };
         /** Fact */
         Fact: {
             /**
@@ -185,6 +252,14 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * NextPartRequest
+         * @description Body of POST /shows/{id}/next (D044).
+         */
+        NextPartRequest: {
+            /** Known */
+            known: number;
         };
         /** OptionsResponse */
         OptionsResponse: {
@@ -297,6 +372,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** End Note */
+            end_note?: string | null;
             /** Error */
             error?: string | null;
             /** Id */
@@ -562,6 +639,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    end_show_api_v1_shows__show_id__end_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                show_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndShowRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShowResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    next_part_api_v1_shows__show_id__next_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                show_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NextPartRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShowResponse"];
                 };
             };
             /** @description Validation Error */
