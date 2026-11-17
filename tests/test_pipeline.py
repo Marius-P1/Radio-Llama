@@ -1,3 +1,4 @@
+import json
 import random
 import shutil
 from datetime import UTC, datetime
@@ -6,15 +7,22 @@ from pathlib import Path
 import pytest
 
 from radio_llama.config import Settings
-from radio_llama.generator import GenerationError, PipelineGenerator, run_generation
-from radio_llama.generator.pipeline import MAX_TRACK_FACTS, merge_facts, pick_tracks
+from radio_llama.generator import GenerationError, PipelineGenerator, pipeline, run_generation
+from radio_llama.generator.pipeline import (
+    END_NOTE_NO_SONGS,
+    END_NOTE_QUOTA,
+    MAX_TRACK_FACTS,
+    merge_facts,
+    pick_tracks,
+)
 from radio_llama.llm import FakeLLM
 from radio_llama.models import Fact, Show, ShowConfig, Track
 from radio_llama.music import LocalCatalog
 from radio_llama.personas import get_persona
-from radio_llama.storage import load_show
+from radio_llama.script import plan_shapes, writer
+from radio_llama.storage import load_show, save_show
 from radio_llama.voice import CachedTextToSpeech, FakeTTS, TextToSpeech, TTSError, Voice
-from tests.conftest import FakeFactServices, FakeJamendo, FakeYouTube
+from tests.conftest import TONE_SECONDS, FakeFactServices, FakeJamendo, FakeYouTube
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -800,3 +808,650 @@ def test_unconfigured_youtube_fails_with_the_variable_name(
     assert show.status == "failed"
     assert show.error is not None
     assert "YOUTUBE_API_KEY" in show.error
+
+
+# The endless show (D042, D044): `generate` makes the opening, the intro and the first
+# song, and each `extend` call adds one break and one song, or the closing. The catalog is
+# excluded, so these run on the fake Jamendo and YouTube transports.
+
+
+def _endless_show(**config) -> Show:
+    return _show(**{"source": "jamendo", "endless": True, "seed": 1, **config})
+
+
+def _step(generator: PipelineGenerator, out_dir: Path, *, end: bool = False) -> Show:
+    """One step the way the API runs it: read show.json, extend the show, save it."""
+    show = generator.extend(load_show(out_dir), out_dir, end=end)
+    save_show(show, out_dir)
+    return show
+
+
+def _kinds(show: Show) -> list[str]:
+    return [segment.kind for segment in show.segments]
+
+
+def _audio_files(out_dir: Path) -> list[str]:
+    return sorted(path.name for path in out_dir.iterdir() if path.suffix == ".mp3")
+
+
+def _trace(out_dir: Path, service: str) -> list[dict]:
+    lines = (out_dir / "trace" / f"{service}.jsonl").read_text(encoding="utf-8").splitlines()
+    return [json.loads(line) for line in lines]
+
+
+def test_an_endless_show_opens_with_an_intro_and_one_song(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    llm = FakeLLM([CANNED])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm)
+    progress: list[tuple[int, int]] = []
+    out_dir = tmp_path / "out"
+
+    show = run_generation(generator, _endless_show(), out_dir, lambda d, t: progress.append((d, t)))
+
+    assert show.status == "ready", show.error
+    assert _kinds(show) == ["intro", "song"]
+    assert show.is_open
+    assert show.end_note is None
+    # No show.mp3: a show that grows plays segment by segment, the songs from files too.
+    assert show.audio_file is None
+    assert _audio_files(out_dir) == ["00-intro.mp3", "01-song.mp3"]
+    intro, song = show.segments
+    assert intro.text == CANNED and intro.audio_file == "00-intro.mp3"
+    assert song.audio_file == "01-song.mp3" and song.track_id == show.tracks[0].id
+    assert song.duration_s is not None and abs(song.duration_s - TONE_SECONDS) <= 0.3
+    # The count is the songs so far, not the three a show has by default.
+    assert len(show.tracks) == 1
+    assert show.config.track_count == 1
+    assert progress == [(0, 2), (1, 2), (2, 2)]
+    assert len(generator.last_responses) == 1
+    downloads = [r for r in fake_jamendo.requests if r.url.host == "prod-1.storage.jamendo.com"]
+    assert len(downloads) == 1
+    # The intro of a show with no set length, about its first song only.
+    _, user = llm.calls[0]
+    assert "It has no set length" in user.content
+    assert show.tracks[0].title in user.content
+    assert load_show(out_dir).model_dump() == show.model_dump()
+
+
+def test_extend_adds_a_break_and_a_song_and_leaves_the_rest_alone(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    llm = FakeLLM([CANNED])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm)
+    out_dir = tmp_path / "out"
+    opened = run_generation(generator, _endless_show(), out_dir).model_copy(deep=True)
+    earlier = {name: (out_dir / name).read_bytes() for name in _audio_files(out_dir)}
+
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "transition", "song"]
+    assert show.status == "ready" and show.is_open
+    assert show.segments[:2] == opened.segments
+    assert show.tracks[:1] == opened.tracks
+    assert _audio_files(out_dir) == [
+        "00-intro.mp3",
+        "01-song.mp3",
+        "02-transition.mp3",
+        "03-song.mp3",
+    ]
+    for name, content in earlier.items():
+        assert (out_dir / name).read_bytes() == content
+    transition, song = show.segments[2:]
+    assert transition.text == CANNED and transition.shape
+    assert transition.audio_file == "02-transition.mp3"
+    assert transition.track_id == song.track_id == show.tracks[1].id
+    assert song.audio_file == "03-song.mp3"
+    assert show.tracks[1].id != show.tracks[0].id
+    assert show.config.track_count == 2
+    assert show.audio_file is None and not (out_dir / "show.mp3").exists()
+    # The break hands over from the song that played to the new one.
+    _, user = llm.calls[-1]
+    assert f"Previous song: {show.tracks[0].display_title}" in user.content
+    assert f"Next song: {show.tracks[1].display_title}" in user.content
+    assert len(generator.last_responses) == 1  # the responses of this step only
+    # The step traces into the show's own folder (D037).
+    assert [record["label"] for record in _trace(out_dir, "llm")] == [
+        "intro",
+        f"transition before {show.tracks[1].display_title} ({transition.shape})",
+    ]
+
+
+def test_an_endless_show_never_repeats_a_song_and_closes_when_the_source_is_empty(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    """The Jamendo fixture has four jazz tracks: the fifth request gets the goodbye."""
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+
+    for _ in range(3):
+        show = _step(generator, out_dir)
+
+    assert sorted(track.id for track in show.tracks) == [
+        "jamendo-1001",
+        "jamendo-1002",
+        "jamendo-1003",
+        "jamendo-1004",
+    ]
+    assert show.is_open and show.end_note is None
+
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", *(["transition", "song"] * 3), "outro"]
+    assert not show.is_open
+    assert show.end_note == END_NOTE_NO_SONGS
+    assert show.status == "ready"
+    assert show.config.track_count == 4
+    outro = show.segments[-1]
+    assert outro.text == CANNED and outro.audio_file == "08-outro.mp3"
+    assert (out_dir / "08-outro.mp3").exists()
+    # A closed show takes no more steps.
+    with pytest.raises(GenerationError, match="not an endless show that is still open"):
+        generator.extend(load_show(out_dir), out_dir)
+
+
+def test_the_listener_can_end_an_endless_show(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    llm = FakeLLM(["Opening words.", "Goodbye words."])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm)
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+
+    show = _step(generator, out_dir, end=True)
+
+    assert _kinds(show) == ["intro", "song", "outro"]
+    assert not show.is_open
+    assert show.end_note is None  # the listener ended it: nothing to explain
+    assert show.segments[-1].text == "Goodbye words."
+    assert show.config.track_count == 1
+    _, user = llm.calls[-1]
+    assert "The show is over." in user.content
+    assert show.tracks[0].display_title in user.content
+    assert "- Opening: Opening words." in user.content
+
+
+def test_a_new_generator_goes_on_from_show_json(
+    fake_settings: Settings,
+    tiny_catalog: LocalCatalog,
+    fake_jamendo: FakeJamendo,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """After a restart nothing is in memory: the songs played, the scripts and the last
+    shape all come back from show.json."""
+    previous_shapes: list[str | None] = []
+
+    def recording_plan_shapes(shapes, facts_available, rng, previous=None):
+        previous_shapes.append(previous)
+        return plan_shapes(shapes, facts_available, rng, previous)
+
+    monkeypatch.setattr(pipeline, "plan_shapes", recording_plan_shapes)
+    first_llm = FakeLLM(["Opening words.", "First break."])
+    out_dir = tmp_path / "out"
+    first = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, first_llm)
+    run_generation(first, _endless_show(), out_dir)
+    _step(first, out_dir)
+
+    # The restart: another generator, another Jamendo source, another LLM client.
+    tone = (tmp_path / "jamendo-tone.mp3").read_bytes()
+    second_llm = FakeLLM(["Second break."])
+    second = _jamendo_generator(
+        fake_settings, tiny_catalog, FakeJamendo(tmp_path / "cache", tone), second_llm
+    )
+    show = _step(second, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "transition", "song", "transition", "song"]
+    assert len({track.id for track in show.tracks}) == 3
+    assert [s.text for s in show.segments if s.kind != "song"] == [
+        "Opening words.",
+        "First break.",
+        "Second break.",
+    ]
+    _, user = second_llm.calls[0]
+    assert "- Opening: Opening words." in user.content
+    assert "- Break: First break." in user.content
+    assert f"Previous song: {show.tracks[1].display_title}" in user.content
+    first_break, second_break = (s for s in show.segments if s.kind == "transition")
+    assert previous_shapes == [None, first_break.shape]
+    assert second_break.shape != first_break.shape
+
+
+def test_a_break_of_a_long_show_gets_the_last_scripts_and_songs_only(
+    fake_settings: Settings,
+    tiny_catalog: LocalCatalog,
+    fake_jamendo: FakeJamendo,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The show memory is capped (D044). With a memory of two scripts the cap shows on
+    a show of four songs."""
+    monkeypatch.setattr(writer, "TRANSCRIPT_MEMORY", 2)
+    monkeypatch.setattr(pipeline, "TRANSCRIPT_MEMORY", 2)
+    llm = FakeLLM(["Script 0.", "Script 1.", "Script 2.", "Script 3.", "Goodbye."])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm)
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+    for _ in range(3):
+        _step(generator, out_dir)
+
+    show = _step(generator, out_dir, end=True)
+
+    assert len(llm.calls) == 5
+    third_break = llm.calls[3][1].content
+    assert "Script 0." not in third_break
+    assert "- Break: Script 1." in third_break
+    assert "- Break: Script 2." in third_break
+    outro = llm.calls[4][1].content
+    assert "Script 1." not in outro
+    assert "- Break: Script 2." in outro
+    assert "- Break: Script 3." in outro
+    # The programme of the outro is cut the same way.
+    first, second, third, fourth = show.tracks
+    assert first.title not in outro and second.title not in outro
+    assert third.title in outro and fourth.title in outro
+
+
+def test_the_song_limit_closes_an_endless_show(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    settings = fake_settings.model_copy(update={"endless_max_songs": 2})
+    generator = _jamendo_generator(settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+    show = _step(generator, out_dir)
+    assert _kinds(show) == ["intro", "song", "transition", "song"]
+    requests_before = len(fake_jamendo.requests)
+
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "transition", "song", "outro"]
+    assert show.end_note == "The show ended by itself: it reached the limit of 2 songs."
+    assert len(show.tracks) == 2
+    assert len(fake_jamendo.requests) == requests_before  # no search for a song it cannot play
+
+
+def test_a_song_limit_of_zero_is_no_limit(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    settings = fake_settings.model_copy(update={"endless_max_songs": 0})
+    generator = _jamendo_generator(settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+
+    for _ in range(3):
+        show = _step(generator, out_dir)
+
+    assert len(show.tracks) == 4
+    assert show.is_open and show.end_note is None
+
+
+def test_a_failed_step_leaves_the_show_as_it_was_and_can_be_asked_again(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+    saved = (out_dir / "show.json").read_bytes()
+    failing = PipelineGenerator(
+        FakeLLM([CANNED]),
+        FailingTTS(),
+        {"catalog": tiny_catalog, "jamendo": fake_jamendo.source},
+        fake_settings,
+    )
+
+    with pytest.raises(TTSError, match="voice is out"):
+        failing.extend(load_show(out_dir), out_dir)
+
+    assert (out_dir / "show.json").read_bytes() == saved
+    assert _audio_files(out_dir) == ["00-intro.mp3", "01-song.mp3"]
+
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "transition", "song"]
+    # steps.jsonl holds one line per step, the failed one included: its only record.
+    steps = _trace(out_dir, "steps")
+    assert [
+        (step["kind"], step["segments_before"], step["segments_after"], step["error"])
+        for step in steps
+    ] == [
+        ("opening", 0, 2, None),
+        ("next", 2, 2, "Fake TTS: the voice is out today"),
+        ("next", 2, 4, None),
+    ]
+    assert [step["track_id"] for step in steps] == [show.tracks[0].id, None, show.tracks[1].id]
+    assert all(step["end_note"] is None for step in steps)
+    assert all(step["latency_s"] >= 0 and step["ts"] for step in steps)
+
+
+def test_the_closing_step_is_recorded_with_its_end_note(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    settings = fake_settings.model_copy(update={"endless_max_songs": 1})
+    generator = _jamendo_generator(settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "outro"]
+    closing = _trace(out_dir, "steps")[-1]
+    assert closing["kind"] == "next"  # asked for a song, got the goodbye
+    assert closing["track_id"] is None
+    assert closing["end_note"] == show.end_note
+    assert (closing["segments_before"], closing["segments_after"]) == (2, 3)
+
+
+class SteppingClock:
+    """Stands in for `datetime` in the pipeline: each `now()` gives the next time."""
+
+    def __init__(self, times: list[datetime]) -> None:
+        self._times = iter(times)
+
+    def now(self, tz: object = None) -> datetime:
+        return next(self._times)
+
+
+def test_the_host_reads_the_clock_at_each_step(
+    fake_settings: Settings,
+    tiny_catalog: LocalCatalog,
+    fake_jamendo: FakeJamendo,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A show can run for hours, so the part of the day may change on the way (D044)."""
+    morning = datetime(2026, 11, 16, 11, 30, tzinfo=UTC)
+    evening = datetime(2026, 11, 16, 19, 0, tzinfo=UTC)
+    monkeypatch.setattr(pipeline, "datetime", SteppingClock([morning, evening]))
+    llm = FakeLLM([CANNED])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm)
+    out_dir = tmp_path / "out"
+
+    run_generation(generator, _endless_show(), out_dir)
+    _step(generator, out_dir)
+
+    opening_system, step_system = (call[0].content for call in llm.calls)
+    assert "in the morning" in opening_system
+    assert "in the evening" in step_system and "in the morning" not in step_system
+
+
+def test_an_endless_jamendo_show_maps_the_wish_once(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    """The filters stay in memory between two steps. A restart loses them, which costs
+    one more mapping call and nothing else."""
+    llm = FakeLLM([FILTERS_JSON, CANNED, CANNED])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm)
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(wish="piano for a rainy sunday"), out_dir)
+
+    _step(generator, out_dir)
+
+    labels = [record["label"].split(" ")[0] for record in _trace(out_dir, "llm")]
+    assert labels == ["wish", "intro", "transition"]
+    searches = [r for r in fake_jamendo.requests if r.url.path == "/v3.0/tracks/"]
+    assert [r.url.params["fuzzytags"] for r in searches] == ["piano rainy", "piano rainy"]
+
+    restarted = _jamendo_generator(
+        fake_settings, tiny_catalog, fake_jamendo, FakeLLM([FILTERS_JSON, CANNED])
+    )
+    show = _step(restarted, out_dir)
+
+    assert len(show.tracks) == 3
+    labels = [record["label"].split(" ")[0] for record in _trace(out_dir, "llm")]
+    assert labels == ["wish", "intro", "transition", "wish", "transition"]
+
+
+def test_each_new_song_of_an_endless_show_gets_its_facts(
+    fake_settings: Settings,
+    tiny_catalog: LocalCatalog,
+    fake_jamendo: FakeJamendo,
+    fake_facts: FakeFactServices,
+    tmp_path: Path,
+) -> None:
+    _match_every_jamendo_artist(fake_facts)
+    llm = FakeLLM([CANNED])
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, llm, fake_facts)
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+
+    show = _step(generator, out_dir)
+
+    for track in show.tracks:
+        assert any(fact.source_type == "wikipedia" for fact in track.facts)
+    # The break before the new song is written from them.
+    _, user = llm.calls[-1]
+    assert WIKIPEDIA_FIRST in user.content
+
+
+def test_an_endless_show_on_the_catalog_fails_readably(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, tmp_path: Path
+) -> None:
+    """The API refuses it first (D042); a show built in code gets the same answer."""
+    generator = _generator(fake_settings, tiny_catalog)
+
+    show = run_generation(generator, _show(endless=True), tmp_path)
+
+    assert show.status == "failed"
+    assert show.error == "An endless show needs the 'jamendo' or 'youtube' music source."
+    assert generator.last_responses == []
+
+
+def test_a_show_of_a_set_length_cannot_be_extended(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    out_dir = tmp_path / "out"
+    show = run_generation(generator, _show(source="jamendo", seed=1), out_dir)
+    assert show.status == "ready", show.error
+
+    with pytest.raises(GenerationError, match="not an endless show that is still open"):
+        generator.extend(load_show(out_dir), out_dir)
+
+    assert load_show(out_dir).model_dump() == show.model_dump()
+
+
+# The endless show on YouTube: the model proposes eight songs at a time, each one is
+# searched when its turn comes, and the next playlist is told what was played.
+
+
+def _playlist(*songs: tuple[str, str]) -> str:
+    return json.dumps({"songs": [{"artist": artist, "title": title} for artist, title in songs]})
+
+
+BLUE_WINDOW = ("Example Artist", "Blue Window")
+MONTREAL = ("Lea Example", "Montreal Streets")
+NIGHT_TRAIN = ("We Are FM", "Night Train")
+RED_LIGHTS = ("Example Records", "Red Lights")
+SLOW_RIVER = ("River Uploads", "Slow River")
+
+
+def _playlist_prompts(llm: FakeLLM) -> list[str]:
+    """The playlist calls: one user message, no system prompt."""
+    return [call[0].content for call in llm.calls if len(call) == 1]
+
+
+def test_an_endless_youtube_show_opens_and_uses_its_proposals_one_at_a_time(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    llm = FakeLLM([_playlist(BLUE_WINDOW, MONTREAL, NIGHT_TRAIN), CANNED, CANNED, CANNED])
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+    out_dir = tmp_path / "out"
+
+    show = run_generation(generator, _youtube_show(endless=True), out_dir)
+
+    assert show.status == "ready", show.error
+    assert _kinds(show) == ["intro", "song"]
+    assert [track.video_id for track in show.tracks] == ["okTopic0001"]
+    song = show.segments[1]
+    assert song.audio_file is None and song.duration_s == show.tracks[0].duration_s
+    assert _audio_files(out_dir) == ["00-intro.mp3"]
+    assert show.config.track_count == 1
+    # Eight songs asked, one searched: the others wait for their turn.
+    assert "Number of songs: 8" in llm.calls[0][0].content
+    assert "Never propose one of them again:\n(nothing yet)" in llm.calls[0][0].content
+    assert len(fake_youtube.searches()) == 1
+
+    show = _step(generator, out_dir)
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "transition", "song", "transition", "song"]
+    assert [track.video_id for track in show.tracks] == [
+        "okTopic0001",
+        "montreal001",
+        "nightTrn001",
+    ]
+    assert _audio_files(out_dir) == ["00-intro.mp3", "02-transition.mp3", "04-transition.mp3"]
+    assert len(fake_youtube.searches()) == 3  # one per song
+    assert len(_playlist_prompts(llm)) == 1  # the proposals of the opening were enough
+    assert show.config.track_count == 3
+
+
+def test_the_next_playlist_is_told_what_was_played_and_a_repeat_costs_no_search(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    again = ("example artist", "Blue  WINDOW")  # the same song, typed another way
+    llm = FakeLLM(
+        [_playlist(BLUE_WINDOW, MONTREAL), CANNED, CANNED, _playlist(again, NIGHT_TRAIN), CANNED]
+    )
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+    out_dir = tmp_path / "out"
+    run_generation(generator, _youtube_show(endless=True, demo=True), out_dir)
+    _step(generator, out_dir)
+    assert len(fake_youtube.searches()) == 2
+
+    show = _step(generator, out_dir)  # the first playlist is used up: a second one is asked
+
+    assert [track.video_id for track in show.tracks] == [
+        "okTopic0001",
+        "montreal001",
+        "nightTrn001",
+    ]
+    first, second = _playlist_prompts(llm)
+    assert "(nothing yet)" in first
+    assert (
+        "Never propose one of them again:\n"
+        "Blue Window by Example Artist\n"
+        "Montreal Streets by Lea Example\n"
+    ) in second
+    # Blue Window was proposed again: skipped by its name, with no search.
+    assert len(fake_youtube.searches()) == 3
+    # A demo show plays thirty seconds of each video.
+    assert [s.duration_s for s in show.segments if s.kind == "song"] == [30.0, 30.0, 30.0]
+
+
+def test_a_proposal_that_leads_to_a_played_video_is_skipped(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    """Another name for a song the show played: only the search can tell (D044)."""
+    river_again = ("Someone Else", "Slow River")
+    llm = FakeLLM([_playlist(SLOW_RIVER, river_again, MONTREAL), CANNED, CANNED])
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+    out_dir = tmp_path / "out"
+    run_generation(generator, _youtube_show(endless=True), out_dir)
+
+    show = _step(generator, out_dir)
+
+    assert [track.video_id for track in show.tracks] == ["slowRivr001", "montreal001"]
+    assert len(fake_youtube.searches()) == 3
+
+
+def test_two_playlists_with_nothing_new_close_an_endless_youtube_show(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    llm = FakeLLM(
+        [
+            _playlist(BLUE_WINDOW),
+            "Opening words.",
+            _playlist(BLUE_WINDOW),  # played already
+            _playlist(("Nobody", "Broken Song")),  # no playable video
+            "Goodbye words.",
+        ]
+    )
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+    out_dir = tmp_path / "out"
+    run_generation(generator, _youtube_show(endless=True), out_dir)
+
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "outro"]
+    assert show.end_note == END_NOTE_NO_SONGS
+    assert show.segments[-1].text == "Goodbye words."
+    assert len(_playlist_prompts(llm)) == 3  # the opening's, then two with nothing new
+    assert len(llm.calls) == 5
+
+
+def test_the_youtube_quota_closes_an_endless_show_in_a_later_step(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    llm = FakeLLM([_playlist(BLUE_WINDOW, MONTREAL), CANNED, CANNED])
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+    out_dir = tmp_path / "out"
+    run_generation(generator, _youtube_show(endless=True), out_dir)
+    fake_youtube.quota_exceeded = True
+
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "outro"]
+    assert show.status == "ready" and not show.is_open
+    assert show.end_note == END_NOTE_QUOTA
+    assert _audio_files(out_dir) == ["00-intro.mp3", "02-outro.mp3"]
+
+
+def test_the_youtube_quota_fails_an_endless_show_in_its_opening(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    fake_youtube.quota_exceeded = True
+    llm = FakeLLM([_playlist(BLUE_WINDOW, MONTREAL)])
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+
+    show = run_generation(generator, _youtube_show(endless=True), tmp_path / "out")
+
+    assert show.status == "failed"
+    assert show.error is not None and "100 searches a day" in show.error
+    assert show.segments == [] and show.end_note is None
+    opening = _trace(tmp_path / "out", "steps")[0]
+    assert opening["kind"] == "opening" and "100 searches a day" in opening["error"]
+
+
+def test_an_endless_youtube_show_with_no_playable_song_fails_in_its_opening(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    llm = FakeLLM([_playlist(("Nobody", "Broken Song"))])
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+
+    show = run_generation(generator, _youtube_show(endless=True), tmp_path / "out")
+
+    assert show.status == "failed"
+    assert show.error == "Source 'youtube' has 0 tracks, 1 needed."
+    assert len(_playlist_prompts(llm)) == 2  # two playlists with nothing playable
+
+
+def test_the_proposals_in_memory_belong_to_one_show(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    """Two endless shows open at once still work: the one that did not ask last gets a
+    new playlist, at the cost of one LLM call (D044)."""
+    llm = FakeLLM(
+        [
+            _playlist(BLUE_WINDOW, MONTREAL),  # show A
+            CANNED,
+            _playlist(RED_LIGHTS, SLOW_RIVER),  # show B
+            CANNED,
+            _playlist(NIGHT_TRAIN),  # show A again
+            CANNED,
+        ]
+    )
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+    show_a = _youtube_show(endless=True)
+    show_b = _youtube_show(endless=True).model_copy(update={"id": "other-show"})
+    run_generation(generator, show_a, tmp_path / "a")
+    run_generation(generator, show_b, tmp_path / "b")
+
+    show = _step(generator, tmp_path / "a")
+
+    assert [track.video_id for track in show.tracks] == ["okTopic0001", "nightTrn001"]
+    third = _playlist_prompts(llm)[2]
+    assert "Blue Window by Example Artist" in third
+    assert "Red Lights" not in third

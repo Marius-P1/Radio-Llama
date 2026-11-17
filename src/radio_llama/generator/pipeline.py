@@ -1,10 +1,23 @@
-"""The Phase 1 generator: a fixed template of intro, songs, transitions and outro."""
+"""The Phase 1 generator: a fixed template of intro, songs, transitions and outro.
+
+Two flows live here. A show of a set length is made whole by `generate`: every track is
+picked first, then every script is written, then the audio is assembled. An endless show
+(D042, D044) is made in steps: `generate` makes its opening only, the intro and the first
+song, and each `extend` call adds one break and one song, or the closing. Both flows use
+the same writer, the same shapes, the same facts lookup and the same audio treatment. A
+step keeps almost nothing in memory: what it needs to go on is read back from the show.
+"""
 
 import random
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from radio_llama.audio.assemble import DEMO_SONG_LENGTH_S, assemble_show, write_speech
+from radio_llama import trace
+from radio_llama.audio.assemble import DEMO_SONG_LENGTH_S, assemble_show, write_parts, write_speech
 from radio_llama.config import Settings
 from radio_llama.facts import FactLookup
 from radio_llama.generator.base import GenerationError, ProgressCallback
@@ -13,6 +26,8 @@ from radio_llama.models import ENERGIES, Energy, Fact, Segment, Show, ShowConfig
 from radio_llama.music import (
     JamendoSource,
     MusicSource,
+    SongProposal,
+    WishFilters,
     YouTubeQuotaError,
     YouTubeSource,
     missing_source_message,
@@ -21,13 +36,42 @@ from radio_llama.personas import get_persona
 from radio_llama.script.playlist import propose_playlist
 from radio_llama.script.shapes import Shape, load_shapes, plan_shapes
 from radio_llama.script.wish import map_wish
-from radio_llama.script.writer import ScriptWriter
+from radio_llama.script.writer import TRANSCRIPT_MEMORY, ScriptWriter
 from radio_llama.trace import TRACE_DIR, script_trace_dir, tracing
 from radio_llama.voice.base import TextToSpeech
 from radio_llama.voice.factory import voice_for
 
 # Facts kept per track once the looked-up ones are added. The host uses at most two.
 MAX_TRACK_FACTS = 5
+
+# An endless show (D044).
+OPENING_LENGTH = 2  # the segments of the opening: the intro and the first song
+# Songs the model proposes at a time for an endless YouTube show. Each one costs a search
+# only when its turn comes, so a batch lasts eight steps.
+PLAYLIST_BATCH = 8
+# An endless YouTube show has nothing left when this many playlists in a row bring no new
+# song with a playable video. It bounds what a narrow wish can cost in one step.
+MAX_DRY_PLAYLISTS = 2
+ENDLESS_SOURCE_ERROR = "An endless show needs the 'jamendo' or 'youtube' music source."
+# Why a show closed by itself, for `Show.end_note`. The player shows the sentence.
+END_NOTE_NO_SONGS = "The show ended by itself: the music source had no more new songs for it."
+END_NOTE_QUOTA = "The show ended by itself: YouTube's search quota for today is used up."
+END_NOTE_CAP = "The show ended by itself: it reached the limit of {count} songs."
+
+
+@dataclass
+class _Upcoming:
+    """What an endless show keeps in memory between two steps (D044).
+
+    Everything else a step needs is read back from the show. These two only save an LLM
+    call: after a restart they are gone and the next step asks again. The generator
+    holds one of these, for the show that asked last, so it cannot grow with the server.
+    """
+
+    show_id: str
+    filters: WishFilters | None = None  # Jamendo: the listener's wish, mapped once
+    # YouTube: songs the model proposed that were not looked up yet, in order.
+    proposals: list[SongProposal] = field(default_factory=list)
 
 
 class PipelineGenerator:
@@ -47,13 +91,27 @@ class PipelineGenerator:
         self._facts = facts
         # Every LLM response of the last run, so the CLI can print token totals (D004).
         self.last_responses: list[LLMResponse] = []
+        # The little an endless show keeps between two steps (D044).
+        self._upcoming: _Upcoming | None = None
 
     def generate(
         self, show: Show, out_dir: Path, on_progress: ProgressCallback | None = None
     ) -> Show:
         # Every API call of the run is recorded under the show folder (D037).
         with tracing(out_dir / TRACE_DIR):
+            if show.config.endless:
+                # Only the opening: the rest is made while the show plays (D044).
+                with _recorded_step("opening", show):
+                    return self._open(show, out_dir, on_progress)
             return self._generate(show, out_dir, on_progress)
+
+    def extend(self, show: Show, out_dir: Path, *, end: bool = False) -> Show:
+        """One more step of an endless show: a break and a song, or the closing (D044).
+
+        Each step traces into the show's own trace folder, like the opening did (D037).
+        """
+        with tracing(out_dir / TRACE_DIR), _recorded_step("end" if end else "next", show):
+            return self._extend(show, out_dir, end)
 
     def _generate(self, show: Show, out_dir: Path, on_progress: ProgressCallback | None) -> Show:
         music, tracks, plan, shapes, writer = self._prepare(show, on_progress)
@@ -183,14 +241,7 @@ class PipelineGenerator:
         songs, two more than needed, and keeps those with a playable video (D038). The
         catalog lists its tracks.
         """
-        if config.wish and not music.accepts_wish:
-            raise GenerationError("A wish needs the 'jamendo' or 'youtube' music source.")
-        # A source without styles takes the wish as its theme (D039), so it needs one. The
-        # API and the CLI check it too; a show built in code must not slip through.
-        if not music.list_styles() and music.accepts_wish and not config.wish:
-            raise GenerationError(
-                f"Source {config.source!r} needs a wish: say what you want to hear."
-            )
+        _check_wish(config, music)
         if isinstance(music, YouTubeSource):
             # No style on YouTube (D039): the wish is the theme, and the prompt says so.
             proposals, response = propose_playlist(
@@ -226,6 +277,291 @@ class PipelineGenerator:
                 config.style, energy=config.energy, filters=filters, minimum=config.track_count
             )
         return music.list_tracks(config.style)
+
+    # The endless show (D042, D044): an opening, then one step at a time.
+
+    def _open(self, show: Show, out_dir: Path, on_progress: ProgressCallback | None) -> Show:
+        """The opening of an endless show: the intro and the first song.
+
+        A failure here fails the show, like any show that cannot start: no first song,
+        the YouTube quota used up, a script or a voice that cannot be made.
+        """
+        config = show.config
+        music = self._music(config)
+        if not music.endless:
+            raise GenerationError(ENDLESS_SOURCE_ERROR)
+        _check_wish(config, music)
+        self.last_responses = []
+        try:
+            track = self._next_track(show, music, _step_rng(show))
+        except YouTubeQuotaError as exc:
+            raise GenerationError(str(exc)) from exc
+        if track is None:
+            # A YouTube show has no style (D039): name the source instead.
+            what = f"Style {config.style!r}" if config.style else f"Source {config.source!r}"
+            raise GenerationError(f"{what} has 0 tracks, 1 needed.")
+        if on_progress is not None:
+            on_progress(0, OPENING_LENGTH)
+        track = self._with_facts([track], music, config.language)[0]
+        # The song is fetched before any script is paid for, as for a show of a set length.
+        song_audio = _song_audio(music, track)
+        writer = self._writer(config)
+        voice = voice_for(writer.persona, self._settings, config.voice_id)
+
+        intro = Segment(kind="intro", text=writer.write_endless_intro(track))
+        intro_audio = self._tts.synthesize(intro.text or "", voice)
+        if on_progress is not None:
+            on_progress(1, OPENING_LENGTH)
+        self._append(show, out_dir, intro, intro_audio, track, song_audio)
+        if on_progress is not None:
+            on_progress(OPENING_LENGTH, OPENING_LENGTH)
+        self.last_responses.extend(writer.responses)
+        return show
+
+    def _extend(self, show: Show, out_dir: Path, end: bool) -> Show:
+        """Add a break and a song to an open show, or its closing.
+
+        The closing is written when the listener asked for the end (`end`), or when the
+        show cannot go on: `end_note` then says why. Any other failure (network, LLM,
+        TTS, ffmpeg) fails this step only: nothing is saved and the step can be asked
+        again.
+        """
+        config = show.config
+        if not show.is_open or not show.tracks:
+            raise GenerationError(f"Show {show.id} is not an endless show that is still open.")
+        music = self._music(config)
+        self.last_responses = []
+        rng = _step_rng(show)
+        track, end_note = (None, None) if end else self._next_or_end_note(show, music, rng)
+
+        # A new writer at each step: the clock is read again, so the part of the day can
+        # change during a long show (D044, where D031 read it once per show). What the
+        # host said so far comes back from the show, which is why a restart loses nothing.
+        writer = self._writer(config)
+        writer.transcript = [(s.kind, s.text or "") for s in show.segments if s.kind != "song"]
+        voice = voice_for(writer.persona, self._settings, config.voice_id)
+
+        if track is None:
+            # The closing. The outro gets the last songs only, like it gets the last scripts.
+            text = writer.write_outro(show.tracks[-TRANSCRIPT_MEMORY:])
+            outro = Segment(kind="outro", text=text)
+            self._append(show, out_dir, outro, self._tts.synthesize(text, voice))
+            show.end_note = end_note
+        else:
+            track = self._with_facts([track], music, config.language)[0]
+            song_audio = _song_audio(music, track)
+            # One shape, never the one of the break before (D033).
+            shapes = load_shapes(self._settings.prompts_dir, config.language)
+            (shape,) = plan_shapes(shapes, [bool(track.facts)], rng, previous=_last_shape(show))
+            text = writer.write_transition(show.tracks[-1], track, shape)
+            transition = Segment(kind="transition", track_id=track.id, shape=shape.id, text=text)
+            speech_audio = self._tts.synthesize(text, voice)
+            self._append(show, out_dir, transition, speech_audio, track, song_audio)
+        self.last_responses.extend(writer.responses)
+        return show
+
+    def _next_or_end_note(
+        self, show: Show, music: MusicSource, rng: random.Random
+    ) -> tuple[Track | None, str | None]:
+        """The next song, or None with the sentence that says why the show ends by itself."""
+        cap = self._settings.endless_max_songs  # 0 means no limit
+        if cap and len(show.tracks) >= cap:
+            return None, END_NOTE_CAP.format(count=cap)
+        try:
+            track = self._next_track(show, music, rng)
+        except YouTubeQuotaError:
+            return None, END_NOTE_QUOTA
+        if track is None:
+            return None, END_NOTE_NO_SONGS
+        return track, None
+
+    def _next_track(self, show: Show, music: MusicSource, rng: random.Random) -> Track | None:
+        """One more song the show has not played, or None when the source has none left.
+
+        The guard against a repeat is the show itself: a track whose id is in
+        `show.tracks` is never picked. That list is in show.json, so the guard holds
+        after a restart too. The search differs per source, as in `_candidates`.
+        """
+        if self._upcoming is None or self._upcoming.show_id != show.id:
+            self._upcoming = _Upcoming(show.id)  # another show asked last: start again
+        if isinstance(music, YouTubeSource):
+            return self._next_youtube_track(show, music, self._upcoming)
+        if isinstance(music, JamendoSource):
+            return self._next_jamendo_track(show, music, self._upcoming, rng)
+        raise GenerationError(ENDLESS_SOURCE_ERROR)
+
+    def _next_jamendo_track(
+        self, show: Show, music: JamendoSource, upcoming: _Upcoming, rng: random.Random
+    ) -> Track | None:
+        """Search Jamendo past the played songs, then pick one like a show of a set length."""
+        config = show.config
+        if config.style is None:
+            raise GenerationError(f"Source {config.source!r} needs a style.")
+        # The wish is mapped to filters once per show, by one LLM call (D030).
+        if config.wish and upcoming.filters is None:
+            upcoming.filters, response = map_wish(
+                self._llm,
+                self._settings.prompts_dir,
+                config.language,
+                wish=config.wish,
+                style=config.style,
+                energy=config.energy,
+            )
+            self.last_responses.append(response)
+        fresh = music.more_tracks(
+            config.style,
+            energy=config.energy,
+            filters=upcoming.filters,
+            exclude={track.id for track in show.tracks},
+        )
+        if not fresh:
+            return None
+        return pick_tracks(fresh, 1, config.energy, rng)[0]
+
+    def _next_youtube_track(
+        self, show: Show, music: YouTubeSource, upcoming: _Upcoming
+    ) -> Track | None:
+        """Take the model's proposals one at a time until one has a playable, new video.
+
+        One search per proposal, and none for a song the show already played. When the
+        proposals run out the model is asked for more, told what was played. After
+        MAX_DRY_PLAYLISTS playlists in a row with nothing new, the show has nothing left.
+        """
+        config = show.config
+        played_ids = {track.id for track in show.tracks}
+        played_songs = {_song_key(track.artist, track.title) for track in show.tracks}
+        asked = 0
+        while True:
+            while upcoming.proposals:
+                proposal = upcoming.proposals.pop(0)
+                if _song_key(proposal.artist, proposal.title) in played_songs:
+                    continue  # proposed again in spite of the prompt: not worth a search
+                found = music.find_tracks([proposal], minimum=1)
+                # Two proposals can lead to the same video: the id decides.
+                if found and found[0].id not in played_ids:
+                    return found[0]
+            if asked == MAX_DRY_PLAYLISTS:
+                return None
+            upcoming.proposals, response = propose_playlist(
+                self._llm,
+                self._settings.prompts_dir,
+                config.language,
+                style=config.style,
+                energy=config.energy,
+                wish=config.wish,
+                count=PLAYLIST_BATCH,
+                played=show.tracks,
+            )
+            self.last_responses.append(response)
+            asked += 1
+
+    def _append(
+        self,
+        show: Show,
+        out_dir: Path,
+        speech: Segment,
+        speech_audio: Path,
+        track: Track | None = None,
+        song_audio: Path | None = None,
+    ) -> None:
+        """Add a spoken segment and, with a track, its song to the show, and build their files.
+
+        The last thing a step does. By now the script is written, the voice is made and
+        the song is fetched, so only ffmpeg can still fail. Earlier segments and their
+        files are left alone.
+        """
+        index = len(show.segments)
+        sources = {index: speech_audio}
+        show.segments.append(speech)
+        if track is not None:
+            song = Segment(kind="song", track_id=track.id)
+            if song_audio is None:
+                # An embedded video has no file: the segment says how long it plays (D038).
+                song.duration_s = DEMO_SONG_LENGTH_S if show.config.demo else track.duration_s
+            else:
+                sources[index + 1] = song_audio
+            show.segments.append(song)
+            show.tracks.append(track)
+        write_parts(show, sources, out_dir)
+        # On an endless show this is not a target: it counts the songs so far (D044).
+        show.config.track_count = len(show.tracks)
+
+
+def _check_wish(config: ShowConfig, music: MusicSource) -> None:
+    """Refuse a wish the source cannot use, and a source without styles that got no wish."""
+    if config.wish and not music.accepts_wish:
+        raise GenerationError("A wish needs the 'jamendo' or 'youtube' music source.")
+    # A source without styles takes the wish as its theme (D039), so it needs one. The
+    # API and the CLI check it too; a show built in code must not slip through.
+    if not music.list_styles() and music.accepts_wish and not config.wish:
+        raise GenerationError(f"Source {config.source!r} needs a wish: say what you want to hear.")
+
+
+@contextmanager
+def _recorded_step(kind: str, show: Show) -> Iterator[None]:
+    """Write one line to `steps.jsonl` in the trace for a step of an endless show (D044).
+
+    `kind` is what was asked: "opening", "next" or "end". The line holds how many
+    segments the show had before and after, the song the step added, the `end_note`,
+    the time the step took and its error. A failed step leaves no mark in show.json, so
+    this line is its only record.
+    """
+    started = time.perf_counter()
+    before = len(show.segments)
+    try:
+        yield
+    except Exception as exc:
+        trace.record(
+            "steps",
+            started,
+            error=str(exc),
+            kind=kind,
+            segments_before=before,
+            segments_after=before,  # nothing is kept of a failed step
+            track_id=None,
+            end_note=None,
+        )
+        raise
+    last = show.segments[-1]
+    trace.record(
+        "steps",
+        started,
+        kind=kind,
+        segments_before=before,
+        segments_after=len(show.segments),
+        track_id=last.track_id if last.kind == "song" else None,
+        end_note=show.end_note,
+    )
+
+
+def _step_rng(show: Show) -> random.Random:
+    """The random generator of one step of an endless show (D044).
+
+    Seeded with the show's seed plus the number of songs so far: each step picks
+    differently, a seeded show is reproducible, and nothing has to be carried from one
+    step to the next. With no seed, a different pick every time.
+    """
+    if show.config.seed is None:
+        return random.Random()
+    return random.Random(show.config.seed + len(show.tracks))
+
+
+def _last_shape(show: Show) -> str | None:
+    """The shape of the show's last break, or None before the first one."""
+    shapes = [segment.shape for segment in show.segments if segment.kind == "transition"]
+    return shapes[-1] if shapes else None
+
+
+def _song_audio(music: MusicSource, track: Track) -> Path | None:
+    """The song's audio file, fetched now from a remote source. None for an embedded video."""
+    if music.delivery == "embed":
+        return None
+    return music.audio_path(track)
+
+
+def _song_key(artist: str, title: str) -> tuple[str, str]:
+    """An artist and a title to compare two songs by, whatever the case and the spacing."""
+    return " ".join(artist.casefold().split()), " ".join(title.casefold().split())
 
 
 def pick_tracks(
