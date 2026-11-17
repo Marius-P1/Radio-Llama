@@ -70,9 +70,13 @@ class Jobs:
         with self._lock:
             show_dir = self._output_dir / show_id
             show = self._ready_endless_show(show_dir)
+            # Before the check of `known`: an `end` can make the show shorter than what a
+            # late request knows, and a closed show is returned whatever is asked.
+            if not show.is_open:
+                return show
             if known > len(show.segments):
                 raise StepRefused(f"Show {show_id} has {len(show.segments)} segments, not {known}.")
-            if known < len(show.segments) or not show.is_open:
+            if known < len(show.segments):
                 return show
             self._generator.extend(show, show_dir)
             save_show(show, show_dir)
@@ -84,6 +88,10 @@ class Jobs:
         What was made past that song is dropped, since the listener will not hear it,
         and the host's goodbye is written in its place. A show that is already closed is
         returned as it is.
+
+        This is the only request that deletes a part of a show, so it is bounded (D044):
+        it drops one break and one song at most. The player is never more than one part
+        ahead of the listener, so a larger drop can only come from a bug.
         """
         with self._lock:
             show_dir = self._output_dir / show_id
@@ -93,6 +101,12 @@ class Jobs:
             if after >= len(show.segments) or show.segments[after].kind != "song":
                 raise StepRefused(f"Segment {after} of show {show_id} is not a song.")
             dropped = show.segments[after + 1 :]
+            songs_dropped = len([segment for segment in dropped if segment.kind == "song"])
+            if songs_dropped > 1:
+                raise StepRefused(
+                    f"Show {show_id} has {songs_dropped} songs after segment {after}: "
+                    "only the part made ahead can be dropped."
+                )
             show.segments = show.segments[: after + 1]
             kept = {segment.track_id for segment in show.segments if segment.kind == "song"}
             show.tracks = [track for track in show.tracks if track.id in kept]
@@ -113,10 +127,16 @@ class Jobs:
             return show
 
     def _ready_endless_show(self, show_dir: Path) -> Show:
-        """Read show.json, or refuse: only a ready endless show takes a step."""
+        """Read show.json, or refuse: only a ready endless show takes a step.
+
+        The callers hold the lock. A show is saved under that lock while it is generated
+        or extended, so this read waits for the save and never meets a half-written file.
+        """
         show = load_show(show_dir)
         if not show.config.endless:
             raise StepRefused(f"Show {show.id} is not an endless show.")
+        if show.status == "failed":
+            raise StepRefused(f"Show {show.id} is failed, not ready.")
         if show.status != "ready":
             raise StepRefused(f"Show {show.id} is {show.status}, not ready yet.")
         return show

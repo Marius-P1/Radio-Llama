@@ -16,9 +16,11 @@ import pytest
 from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
+from radio_llama.api import jobs as jobs_module
 from radio_llama.api.app import create_app
 from radio_llama.api.jobs import Jobs
-from radio_llama.api.schemas import ShowResponse
+from radio_llama.api.routes import next_part
+from radio_llama.api.schemas import NextPartRequest, ShowResponse
 from radio_llama.cli import app as cli_app
 from radio_llama.config import Settings
 from radio_llama.generator.pipeline import END_NOTE_NO_SONGS
@@ -964,8 +966,10 @@ def test_an_endless_show_grows_part_by_part_and_ends_on_request(
     ]
     assert len(llm.calls) == 4
 
-    # A closed show is returned as it is, whatever is asked.
+    # A closed show is returned as it is, whatever is asked. A late request may still
+    # know the six segments the show had before the end dropped a part.
     assert _end(client, show_id, after=1).json() == ended
+    assert _next(client, show_id, known=6).json() == ended
     assert _next(client, show_id, known=5).json() == ended
     assert _next(client, show_id, known=2).json() == ended
     assert client.get(f"/api/v1/shows/{show_id}").json() == ended
@@ -993,6 +997,67 @@ def test_a_dropped_file_that_cannot_be_deleted_does_not_fail_the_end(
     assert client.get(f"/api/v1/shows/{show_id}").json() == response.json()
     show_dir = fake_settings.output_dir / show_id
     assert (show_dir / "02-transition.mp3").exists() and (show_dir / "03-song.mp3").exists()
+
+
+def test_end_never_drops_more_than_the_part_made_ahead(
+    client_with_jamendo: TestClient, fake_settings: Settings
+) -> None:
+    """`end` is the only request that deletes a part of a show, so it is bounded (D044):
+    one break and one song at most, which is all a player can be ahead."""
+    client = client_with_jamendo
+    llm = _count_llm_calls(client)
+    show_id = _create(client, source="jamendo", endless=True)["id"]
+    show_dir = fake_settings.output_dir / show_id
+    for known in (2, 4):
+        assert _next(client, show_id, known).status_code == 200
+    saved = (show_dir / "show.json").read_bytes()
+    files = sorted(path.name for path in show_dir.iterdir() if path.suffix == ".mp3")
+    calls = len(llm.calls)
+
+    # After the first song there are two songs: refused, and nothing is touched.
+    response = _end(client, show_id, after=1)
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": (
+            f"Show {show_id} has 2 songs after segment 1: only the part made ahead can be dropped."
+        )
+    }
+    assert (show_dir / "show.json").read_bytes() == saved
+    assert sorted(path.name for path in show_dir.iterdir() if path.suffix == ".mp3") == files
+    assert len(llm.calls) == calls
+
+    # After the second song there is one: dropped, as the player asks.
+    response = _end(client, show_id, after=3)
+
+    assert response.status_code == 200, response.text
+    assert _kinds(response.json()) == ["intro", "song", "transition", "song", "outro"]
+
+
+def test_end_after_the_last_song_drops_nothing(
+    client_with_jamendo: TestClient, fake_settings: Settings
+) -> None:
+    client = client_with_jamendo
+    show_id = _create(client, source="jamendo", endless=True)["id"]
+    grown = _next(client, show_id, known=2).json()
+
+    response = _end(client, show_id, after=3)
+
+    assert response.status_code == 200, response.text
+    ended = response.json()
+    assert _kinds(ended) == ["intro", "song", "transition", "song", "outro"]
+    assert ended["segments"][:4] == grown["segments"]
+    assert ended["tracks"] == grown["tracks"]
+    assert ended["config"]["track_count"] == 2
+    assert ended["end_note"] is None
+    show_dir = fake_settings.output_dir / show_id
+    assert sorted(path.name for path in show_dir.iterdir() if path.suffix == ".mp3") == [
+        "00-intro.mp3",
+        "01-song.mp3",
+        "02-transition.mp3",
+        "03-song.mp3",
+        "04-outro.mp3",
+    ]
 
 
 def test_an_endless_show_closes_by_itself_when_the_source_is_empty(
@@ -1088,6 +1153,26 @@ def test_steps_a_show_cannot_take_are_a_409(
     assert (fake_settings.output_dir / endless / "show.json").read_bytes() == saved
 
 
+def test_a_failed_endless_show_takes_no_step(
+    client_with_jamendo: TestClient, fake_settings: Settings
+) -> None:
+    failed = Show(
+        id="20261030-120000-abcdef",
+        created_at=datetime(2026, 10, 30, 12, 0, tzinfo=UTC),
+        config=ShowConfig(style="jazz", persona="calm", source="jamendo", endless=True),
+        status="failed",
+        error="Style 'jazz' has 0 tracks, 1 needed.",
+    )
+    save_show(failed, fake_settings.output_dir / failed.id)
+
+    for response in (
+        _next(client_with_jamendo, failed.id, known=0),
+        _end(client_with_jamendo, failed.id, after=1),
+    ):
+        assert response.status_code == 409
+        assert response.json() == {"detail": f"Show {failed.id} is failed, not ready."}
+
+
 def test_a_step_needs_a_valid_body(client_with_jamendo: TestClient) -> None:
     show_id = _create(client_with_jamendo, source="jamendo", endless=True)["id"]
 
@@ -1119,6 +1204,61 @@ def test_a_failed_step_is_a_502_and_keeps_the_show(
     assert client.get("/api/v1/options").status_code == 200
     # The same request works once the provider answers again.
     _count_llm_calls(client)
+    assert _kinds(_next(client, show_id, known=2).json()) == [
+        "intro",
+        "song",
+        "transition",
+        "song",
+    ]
+
+
+def test_a_failed_end_keeps_the_part_it_meant_to_drop(
+    client_with_jamendo: TestClient, fake_settings: Settings
+) -> None:
+    """The goodbye is written and the show saved before anything is deleted. When the
+    goodbye fails, the listener's show still has the part made ahead."""
+    client = client_with_jamendo
+    show_id = _create(client, source="jamendo", endless=True)["id"]
+    show_dir = fake_settings.output_dir / show_id
+    before = _next(client, show_id, known=2).json()
+    assert _kinds(before) == ["intro", "song", "transition", "song"]
+    saved = (show_dir / "show.json").read_bytes()
+    client.app.state.jobs._generator._llm = FakeLLM([""])  # an empty script: an LLMError
+
+    response = _end(client, show_id, after=1)
+
+    assert response.status_code == 502
+    assert "returned an empty" in response.json()["detail"]
+    assert (show_dir / "show.json").read_bytes() == saved
+    assert client.get(f"/api/v1/shows/{show_id}").json() == before
+    for index, name in ((2, "02-transition.mp3"), (3, "03-song.mp3")):
+        assert (show_dir / name).is_file()
+        assert client.get(before["segments"][index]["audio_url"]).status_code == 200
+    assert not (show_dir / "02-outro.mp3").exists()
+
+
+def test_a_step_that_cannot_be_saved_is_a_502_and_keeps_the_show(
+    client_with_jamendo: TestClient, fake_settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """show.json is written last. When that fails, the file on disk is the show as it
+    was, and the same request works once the disk does."""
+    client = client_with_jamendo
+    show_id = _create(client, source="jamendo", endless=True)["id"]
+    show_dir = fake_settings.output_dir / show_id
+    before = client.get(f"/api/v1/shows/{show_id}").json()
+    saved = (show_dir / "show.json").read_bytes()
+
+    def disk_full(show: Show, out_dir: Path) -> Path:
+        raise OSError("No space left on device")
+
+    monkeypatch.setattr(jobs_module, "save_show", disk_full)
+    response = _next(client, show_id, known=2)
+    monkeypatch.undo()
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "No space left on device"}
+    assert (show_dir / "show.json").read_bytes() == saved
+    assert client.get(f"/api/v1/shows/{show_id}").json() == before
     assert _kinds(_next(client, show_id, known=2).json()) == [
         "intro",
         "song",
@@ -1214,6 +1354,58 @@ def test_two_requests_for_the_same_part_make_it_once(tmp_path: Path) -> None:
     assert generator.calls == 1
     assert [len(results[name].segments) for name in ("first", "second")] == [4, 4]
     assert len(load_show(tmp_path / show.id).segments) == 4
+
+
+def test_a_step_reads_show_json_under_the_lock_only(
+    client_with_jamendo: TestClient, fake_settings: Settings
+) -> None:
+    """A request that arrives while another one saves the show waits for the lock. It
+    must not read the file before: at that instant the file is half-written."""
+    client = client_with_jamendo
+    show_id = _create(client, source="jamendo", endless=True)["id"]
+    show_file = fake_settings.output_dir / show_id / "show.json"
+    whole = show_file.read_bytes()
+    app_jobs = client.app.state.jobs
+    lock = WatchedLock()
+    app_jobs._lock = lock
+    replies: list[ShowResponse] = []
+
+    def ask() -> None:
+        replies.append(next_part(show_id, NextPartRequest(known=2), fake_settings, app_jobs))
+
+    with lock:  # another request is in the middle of its save
+        show_file.write_bytes(whole[: len(whole) // 2])
+        request = threading.Thread(target=ask)
+        request.start()
+        assert lock.contended.wait(timeout=10)  # the new request is waiting, not reading
+        show_file.write_bytes(whole)
+    request.join(timeout=30)
+
+    assert [len(reply.segments) for reply in replies] == [4]
+
+
+def test_segment_audio_is_never_reused_without_asking_the_server(
+    client_with_jamendo: TestClient, fake_settings: Settings
+) -> None:
+    """After an `end`, the URL of the dropped break is the URL of the goodbye (D044)."""
+    client = client_with_jamendo
+    show_id = _create(client, source="jamendo", endless=True)["id"]
+    assert _next(client, show_id, known=2).status_code == 200
+    url = f"/api/v1/shows/{show_id}/segments/2/audio"
+    dropped_break = client.get(url)
+    assert dropped_break.headers["cache-control"] == "no-cache"
+
+    assert _end(client, show_id, after=1).status_code == 200
+    goodbye = client.get(url)
+
+    assert goodbye.status_code == 200
+    assert goodbye.headers["cache-control"] == "no-cache"
+    show_dir = fake_settings.output_dir / show_id
+    assert goodbye.content == (show_dir / "02-outro.mp3").read_bytes()
+    # Songs are served by the same route, with the same header.
+    assert client.get(f"/api/v1/shows/{show_id}/segments/1/audio").headers["cache-control"] == (
+        "no-cache"
+    )
 
 
 def test_the_schema_describes_the_endless_show(fake_settings: Settings) -> None:

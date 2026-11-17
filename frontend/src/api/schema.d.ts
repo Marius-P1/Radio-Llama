@@ -86,9 +86,12 @@ export interface paths {
          * End Show
          * @description Close an endless show after the song at segment `after`, and return the show (D044).
          *
-         *     Segments made past that song are dropped and the host's goodbye takes their place.
-         *     A show that is already closed is returned as it is. The errors are those of
-         *     `next_part`; the 409 also covers an `after` that is not a song of the show.
+         *     The part made past that song, one break and one song at most, is dropped and the
+         *     host's goodbye takes its place. A show that is already closed is returned as it is.
+         *
+         *     The errors are those of `next_part`. The 409 also covers an `after` that is not a
+         *     song of the show, and an `after` with more than one song behind it: the player is
+         *     never more than one part ahead, and this request never deletes more than that.
          */
         post: operations["end_show_api_v1_shows__show_id__end_post"];
         delete?: never;
