@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ShowResponse } from './api'
+import type { Segment, ShowResponse } from './api'
 import { Script } from './Script'
 
-// The player of a YouTube show (D038): the host's segments play from their own files in
-// one <audio> element, the songs in one embedded YouTube player, in script order.
-// Both are created once, when this view mounts, and reused for the whole show. Safari
-// misses the user's gesture for an iframe created inside the click, so the click on
-// Play only starts the first medium.
+// The player of a show that plays segment by segment (D038, D044). A segment with a file
+// plays in one <audio> element: the host's speech, and the songs of an endless Jamendo
+// show. A song without a file is a YouTube video and plays in one embedded YouTube
+// player. Both are created once, when this view mounts, and reused for the whole show.
+// Safari misses the user's gesture for an iframe created inside the click, so the click
+// on Play only starts the first medium.
 
 type Props = {
   show: ShowResponse
@@ -71,10 +72,15 @@ function playAudio(audio: HTMLAudioElement, onBlocked: () => void) {
   })
 }
 
+/** Whether the segment plays in the YouTube player: a song that has no file of its own. */
+function isVideo(segment: Segment | undefined): boolean {
+  return segment !== undefined && segment.kind === 'song' && !segment.audio_url
+}
+
 /** The YouTube video of segment `i`, null unless it is a song with a video. */
 function videoIdOf(show: ShowResponse, i: number): string | null {
   const segment = show.segments[i]
-  if (segment === undefined || segment.kind !== 'song' || !segment.track_id) return null
+  if (segment === undefined || !isVideo(segment) || !segment.track_id) return null
   return show.tracks.find((track) => track.id === segment.track_id)?.video_id ?? null
 }
 
@@ -92,9 +98,12 @@ export function SegmentPlayer({ show }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const playerRef = useRef<YT.Player | null>(null)
   const timerRef = useRef<number | null>(null)
+  // The YouTube player and its box exist only for a show that has a video (D044): a
+  // Jamendo show plays every segment from a file and never talks to YouTube.
+  const hasVideos = show.tracks.some((track) => track.video_id)
   // True once the YouTube player is usable, or once it is known not to load: then the
-  // songs are skipped and only the host plays.
-  const [playerReady, setPlayerReady] = useState(false)
+  // songs are skipped and only the host plays. A show without videos is ready at once.
+  const [playerReady, setPlayerReady] = useState(!hasVideos)
   const [phase, setPhaseState] = useState<Phase>('idle')
   const [index, setIndexState] = useState(0)
   // The media events fire between renders: cueing the next song inside startSegment
@@ -147,7 +156,7 @@ export function SegmentPlayer({ show }: Props) {
     const segment = segments[i]
     const audio = audioRef.current
     const player = playerRef.current
-    if (segment.kind === 'song') {
+    if (isVideo(segment)) {
       audio?.pause()
       const videoId = videoIdOf(show, i)
       if (player === null || videoId === null) {
@@ -164,7 +173,7 @@ export function SegmentPlayer({ show }: Props) {
       startSegment(i + 1)
       return
     }
-    // While the host speaks, the box shows the next song, cued. Cueing also stops a
+    // While a file plays, the box shows the next video, cued. Cueing also stops a
     // video that was still playing when Next was pressed.
     const upcoming = nextVideoId(show, i)
     if (upcoming !== null) player?.cueVideoById(upcoming)
@@ -188,7 +197,7 @@ export function SegmentPlayer({ show }: Props) {
     }
     setPhase('playing')
     const audio = audioRef.current
-    if (segments[index]?.kind === 'song') playerRef.current?.playVideo()
+    if (isVideo(segments[index])) playerRef.current?.playVideo()
     else if (audio !== null) playAudio(audio, () => setPhase('blocked'))
   }
 
@@ -210,13 +219,13 @@ export function SegmentPlayer({ show }: Props) {
     startSegment,
     onAudioEnded: () => {
       const i = indexRef.current
-      if (phaseRef.current === 'playing' && segments[i]?.kind !== 'song') startSegment(i + 1)
+      if (phaseRef.current === 'playing' && !isVideo(segments[i])) startSegment(i + 1)
     },
     onStateChange: (state: number) => {
       const i = indexRef.current
       const now = phaseRef.current
-      // Cueing the next song while the host speaks raises states too: not this segment's.
-      if (segments[i]?.kind !== 'song') return
+      // Cueing the next song while a file plays raises states too: not this segment's.
+      if (!isVideo(segments[i])) return
       if (state === YT.PlayerState.ENDED && now === 'playing') startSegment(i + 1)
       // The listener may also use the player's own controls.
       else if (state === YT.PlayerState.PLAYING && (now === 'paused' || now === 'blocked')) {
@@ -226,7 +235,7 @@ export function SegmentPlayer({ show }: Props) {
     onError: () => {
       const i = indexRef.current
       // The player can report the same video twice: one mark per song.
-      if (failedRef.current.has(i) || segments[i]?.kind !== 'song') return
+      if (failedRef.current.has(i) || !isVideo(segments[i])) return
       // While paused the mark is enough: resume() then goes to the next segment.
       if (phaseRef.current === 'paused') markFailed(i)
       else skip(i)
@@ -247,8 +256,10 @@ export function SegmentPlayer({ show }: Props) {
     const box = boxRef.current
     let cancelled = false
     let player: YT.Player | null = null
-    loadYouTubeApi()
-      .then((api) => {
+    // Without a video the IFrame API is never loaded and there is no box to fill.
+    const loading = hasVideos ? loadYouTubeApi() : null
+    loading
+      ?.then((api) => {
         if (cancelled || box === null) return
         // The API replaces this element with its iframe, inside the box React owns.
         const target = document.createElement('div')
@@ -283,7 +294,7 @@ export function SegmentPlayer({ show }: Props) {
       box?.replaceChildren()
     }
     // Created once per show: the handlers read the latest render through the actions ref.
-  }, [show])
+  }, [show, hasVideos])
 
   const current = segments[index]
   let status: string
@@ -291,13 +302,14 @@ export function SegmentPlayer({ show }: Props) {
   else if (phase === 'idle') status = 'Press Play to start the show.'
   else if (phase === 'ended') status = 'The show has ended. Press Play to hear it again.'
   else if (phase === 'blocked') status = 'The browser did not start the sound. Press Continue.'
-  else if (current?.kind === 'song') status = 'The song plays in the YouTube player.'
+  else if (isVideo(current)) status = 'The song plays in the YouTube player.'
+  else if (current?.kind === 'song') status = 'A song is playing.'
   else status = 'The host speaks.'
 
   return (
     <>
       {/* The YouTube player stays visible while the show plays: a policy of the embed. */}
-      <div className="video-box" ref={boxRef} />
+      {hasVideos && <div className="video-box" ref={boxRef} />}
       <div className="player-controls">
         <button type="button" className="primary" disabled={!playerReady} onClick={togglePlay}>
           {phase === 'playing' ? 'Pause' : 'Play'}
