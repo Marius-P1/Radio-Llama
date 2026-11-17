@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { nextPart, type Segment, type ShowResponse } from './api'
+import { endShow, nextPart, type Segment, type ShowResponse } from './api'
 import { Script } from './Script'
 
 // The player of a show that plays segment by segment (D038, D044). A segment with a file
@@ -12,7 +12,9 @@ import { Script } from './Script'
 // An endless show grows while it plays (D042, D044). In live mode the player asks the
 // backend for the next break and song when the last song it knows passes its middle,
 // and the reply replaces the show. Segment indexes never change, so the new part is
-// simply there when the song ends.
+// simply there when the song ends. The listener stops the show with "End after this
+// song", and after an hour without a click the player asks "Still listening?" before
+// it asks the backend for anything more.
 
 type Props = {
   show: ShowResponse
@@ -34,10 +36,18 @@ type Phase = 'idle' | 'playing' | 'paused' | 'blocked' | 'waiting' | 'ended'
 // one is, or the last one failed and its message is shown.
 type Ask = { state: 'none' } | { state: 'pending' } | { state: 'failed'; message: string }
 
+// "End after this song" (D042): the song the listener chose, and whether the backend's
+// reply is still awaited. Null when it was not asked, or when the request failed.
+type Ending = { after: number; pending: boolean }
+
 // A song that cannot play is marked in the script, then the show goes on after this pause.
 const SKIP_PAUSE_MS = 1500
 // How often a live show looks at the position of its song, to ask for the next part.
 const TICK_MS = 1000
+// "Still listening?" (D042): after this long without a click the player stops asking
+// for the next part until the listener presses the button, so an empty room spends
+// nothing. An hour, or VITE_CHECK_IN_MINUTES at build time, to test it in seconds.
+const CHECK_IN_MS = (Number(import.meta.env.VITE_CHECK_IN_MINUTES) || 60) * 60_000
 // How long the IFrame API gets to call back. A privacy extension can serve a stub that
 // never does: the show then plays without the songs instead of staying disabled.
 const API_TIMEOUT_MS = 10_000
@@ -176,6 +186,16 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
   const retriedRef = useRef(false)
   // False once the view is gone: a reply that arrives later must not start anything.
   const aliveRef = useRef(false)
+  const [ending, setEndingState] = useState<Ending | null>(null)
+  const endingRef = useRef<Ending | null>(null)
+  const setEnding = (next: Ending | null) => {
+    endingRef.current = next
+    setEndingState(next)
+  }
+  const [endError, setEndError] = useState<string | null>(null)
+  // When the listener last clicked, as Date.now(), and whether "Still listening?" shows.
+  const lastClickRef = useRef(0)
+  const [checkIn, setCheckIn] = useState(false)
 
   const segments = show.segments
   const tracksById = new Map(show.tracks.map((track) => [track.id, track]))
@@ -196,6 +216,16 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
   const askNext = () => {
     const current = showRef.current
     if (!live || !isOpen(current) || askRef.current.state === 'pending') return
+    // The listener chose to end: nothing more is made.
+    if (endingRef.current !== null) return
+    // D042: no click for an hour, so maybe nobody listens. The button shows instead of
+    // the request going, and the song that plays finishes. A click on anything gives
+    // the next attempt its hour back.
+    if (Date.now() - lastClickRef.current > CHECK_IN_MS) {
+      setCheckIn(true)
+      return
+    }
+    setCheckIn(false)
     const known = current.segments.length
     setAsk({ state: 'pending' })
     // The reply comes seconds later: it goes through the handlers of the latest render.
@@ -205,12 +235,42 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
     )
   }
 
-  /** The last song is over, or was skipped, and the next part is not there yet. */
+  /** The "Still listening?" button: the listener is there, so the show may go on. */
+  const stillListening = () => {
+    lastClickRef.current = Date.now()
+    askNext()
+  }
+
+  /** "End after this song" (D042): the host says goodbye after the song the show reached. */
+  const endAfterSong = () => {
+    // Pressed twice: the first request stands.
+    if (endingRef.current !== null) return
+    const current = showRef.current
+    const i = indexRef.current
+    // The song that plays, or the one the host is introducing: a break always comes
+    // with its song. On an open show the index only moves forward, so this is never an
+    // earlier song, and the backend drops at most the one part made ahead.
+    const after = current.segments[i]?.kind === 'song' ? i : i + 1
+    if (current.segments[after]?.kind !== 'song') return
+    setEnding({ after, pending: true })
+    setEndError(null)
+    endShow(current.id, after).then(
+      (reply) => actions.current.endArrived(reply, after),
+      (error: Error) => actions.current.endFailed(error.message),
+    )
+  }
+
+  /**
+   * Nothing can start yet: the last song is over, or was skipped, and the next part is
+   * not there, or the goodbye of "End after this song" is still being written.
+   */
   const wait = () => {
     // Next can be pressed in the middle of the last song: the song stops here.
     audioRef.current?.pause()
     playerRef.current?.pauseVideo()
     setPhase('waiting')
+    // The reply of the end request moves the show on.
+    if (endingRef.current?.pending) return
     // A step that failed while the song played gets its one automatic retry now. After
     // that only the Try again button asks: every request can cost an LLM call (D044).
     if (askRef.current.state === 'failed') {
@@ -223,6 +283,14 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
   const startSegment = (i: number) => {
     clearTimer()
     const current = showRef.current
+    // D044: while the end request is pending, nothing past the chosen song starts. The
+    // backend is replacing what follows that song with the goodbye, under the same
+    // segment index, so its audio is only loaded once the reply is in.
+    const chosen = endingRef.current
+    if (chosen?.pending && i > chosen.after) {
+      wait()
+      return
+    }
     if (i >= current.segments.length) {
       // A live show that is still open has more to come. The index stays on the last
       // segment, so the show goes on from the one after it.
@@ -318,6 +386,11 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
   /** The step failed. The song keeps playing and the message is shown (D044). */
   const nextFailed = (message: string) => {
     if (!aliveRef.current) return
+    // The show was closed in the meantime: there is no next part to miss.
+    if (!isOpen(showRef.current)) {
+      setAsk({ state: 'none' })
+      return
+    }
     setAsk({ state: 'failed', message })
     // Nothing is playing any more, so the one automatic retry goes now.
     if (phaseRef.current === 'waiting' && !retriedRef.current) {
@@ -329,6 +402,12 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
   /** The reply of a `next` request sent when the show had `known` segments. */
   const nextArrived = (reply: ShowResponse, known: number) => {
     if (!aliveRef.current) return
+    // A closed show never changes: a reply that comes in after the end reply would
+    // put back the part the backend dropped.
+    if (!isOpen(showRef.current)) {
+      setAsk({ state: 'none' })
+      return
+    }
     // The backend answers with a longer show, or with one the host closed. Anything
     // else would make a waiting player ask again in a loop, so it counts as a failure.
     if (isOpen(reply) && reply.segments.length <= known) {
@@ -342,6 +421,26 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
     if (phaseRef.current === 'waiting') startSegment(indexRef.current + 1)
   }
 
+  /** The show came back closed: the goodbye sits right after the chosen song. */
+  const endArrived = (reply: ShowResponse, after: number) => {
+    if (!aliveRef.current) return
+    setEnding({ after, pending: false })
+    // A step that failed before the end no longer matters: its message goes.
+    setAsk({ state: 'none' })
+    setShow(reply)
+    // The song ended while the goodbye was being written: it plays now.
+    if (phaseRef.current === 'waiting') startSegment(indexRef.current + 1)
+  }
+
+  /** The show could not be closed: the button comes back with the message (D044). */
+  const endFailed = (message: string) => {
+    if (!aliveRef.current) return
+    setEnding(null)
+    setEndError(message)
+    // The player was holding the show back for the goodbye: it goes on as before.
+    if (phaseRef.current === 'waiting') startSegment(indexRef.current + 1)
+  }
+
   // The media events are bound once, when the elements are created, so they go through
   // this ref to reach the handlers of the latest render. The index, the phase and the
   // show come from the refs: a state change raised while a segment starts must see that
@@ -351,6 +450,8 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
     tick,
     nextArrived,
     nextFailed,
+    endArrived,
+    endFailed,
     onAudioEnded: () => {
       const i = indexRef.current
       const segment = showRef.current.segments[i]
@@ -362,10 +463,15 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
       // Cueing the next song while a file plays raises states too: not this segment's.
       if (!isVideo(showRef.current.segments[i])) return
       if (state === YT.PlayerState.ENDED && now === 'playing') startSegment(i + 1)
-      // The listener may also use the player's own controls.
+      // The listener may also use the player's own controls. The page never sees a
+      // click made inside the iframe, so these two count as one for the check-in (D044).
       else if (state === YT.PlayerState.PLAYING && (now === 'paused' || now === 'blocked')) {
+        lastClickRef.current = Date.now()
         setPhase('playing')
-      } else if (state === YT.PlayerState.PAUSED && now === 'playing') setPhase('paused')
+      } else if (state === YT.PlayerState.PAUSED && now === 'playing') {
+        lastClickRef.current = Date.now()
+        setPhase('paused')
+      }
     },
     onError: () => {
       const i = indexRef.current
@@ -435,27 +541,48 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
     // song (D044). The handlers read the latest render through the actions ref.
   }, [show.id, hasVideos])
 
-  // The clock of a live show. A replay has none, so it never asks for anything.
+  // The clock of a live show, and its record of the listener's clicks (D042): any press
+  // of a pointer or of a key on the page. A replay has neither, so it never asks for
+  // anything.
   useEffect(() => {
     if (!live) return
+    const markClick = () => {
+      lastClickRef.current = Date.now()
+    }
+    // The listener just pressed the button that made this show.
+    markClick()
+    document.addEventListener('pointerdown', markClick)
+    document.addEventListener('keydown', markClick)
     const timer = window.setInterval(() => actions.current.tick(), TICK_MS)
-    return () => window.clearInterval(timer)
+    return () => {
+      document.removeEventListener('pointerdown', markClick)
+      document.removeEventListener('keydown', markClick)
+      window.clearInterval(timer)
+    }
   }, [live])
 
   const current = segments[index]
   // A segment is on: playing, paused or refused by the browser.
   const started = phase === 'playing' || phase === 'paused' || phase === 'blocked'
+  const open = isOpen(show)
+  // "End after this song" is offered once a live show plays and while it is open. Once
+  // chosen it stays, disabled, until the goodbye starts.
+  const endChosen = ending !== null && index <= ending.after && phase !== 'ended'
+  const endOffered = live && open && phase !== 'idle'
+  const checkInShown = checkIn && live && open && ending === null
+  // Why a live show is silent, for the status line.
+  let waitingLine = 'The host is getting the next song ready...'
+  if (ending?.pending) waitingLine = 'The host is getting the goodbye ready...'
+  else if (checkInShown) waitingLine = 'The show waits for you. Press "Still listening?" to go on.'
+  else if (ask.state === 'failed') waitingLine = 'The next song is not ready.'
   let status: string
   if (!playerReady) status = 'Loading the YouTube player...'
   else if (phase === 'idle') status = 'Press Play to start the show.'
+  // An endless show the listener left has no goodbye: it stops after its last song.
+  else if (phase === 'ended' && open) status = 'The show stopped here. Press Play to hear it again.'
   else if (phase === 'ended') status = 'The show has ended. Press Play to hear it again.'
   else if (phase === 'blocked') status = 'The browser did not start the sound. Press Continue.'
-  else if (phase === 'waiting') {
-    status =
-      ask.state === 'failed'
-        ? 'The next song is not ready.'
-        : 'The host is getting the next song ready...'
-  }
+  else if (phase === 'waiting') status = waitingLine
   else if (isVideo(current)) status = 'The song plays in the YouTube player.'
   else if (current?.kind === 'song') status = 'A song is playing.'
   else status = 'The host speaks.'
@@ -483,19 +610,39 @@ export function SegmentPlayer({ show, live, onShowChange }: Props) {
           </button>
         )}
         {/* Shown once the automatic retry has failed too: the listener decides (D044). */}
-        {phase === 'waiting' && ask.state === 'failed' && (
+        {phase === 'waiting' && ask.state === 'failed' && !checkInShown && !endChosen && (
           <button type="button" className="choice" onClick={askNext}>
             Try again
+          </button>
+        )}
+        {checkInShown && (
+          <button type="button" className="choice" onClick={stillListening}>
+            Still listening?
+          </button>
+        )}
+        {(endOffered || endChosen) && (
+          <button type="button" className="choice" disabled={endChosen} onClick={endAfterSong}>
+            {endChosen ? 'Ending after this song' : 'End after this song'}
           </button>
         )}
       </div>
       <p className="muted player-status" aria-live="polite">
         {status}
       </p>
-      {ask.state === 'failed' && (
+      {/* Once the listener chose to end, a missing next part no longer matters. */}
+      {ask.state === 'failed' && ending === null && (
         <p className="error player-note">
           The next part could not be made: {ask.message}
           {phase !== 'waiting' && <> The player tries again when this song ends.</>}
+        </p>
+      )}
+      {endError !== null && (
+        <p className="error player-note">The show could not be ended: {endError}</p>
+      )}
+      {checkInShown && phase !== 'waiting' && (
+        <p className="muted player-note">
+          Nobody has clicked for a while. The show stops after this song unless you press
+          "Still listening?".
         </p>
       )}
       {/* Why the host closed the show by itself (D044). It is in show.json, so a replay

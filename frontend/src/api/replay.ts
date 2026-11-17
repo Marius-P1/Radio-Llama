@@ -90,7 +90,12 @@ export async function createShow(_body: CreateShowRequest): Promise<ShowSummary>
   throw new Error('Not available on the replay page.')
 }
 
-// A replayed show never grows: the player only asks for more on a show it saw created.
+// A replayed show never grows and is never ended from here: the player only does
+// that on a show it saw created.
 export async function nextPart(_id: string, _known: number): Promise<ShowResponse> {
+  throw new Error('Not available on the replay page.')
+}
+
+export async function endShow(_id: string, _after: number): Promise<ShowResponse> {
   throw new Error('Not available on the replay page.')
 }

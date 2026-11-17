@@ -60,6 +60,19 @@ export async function nextPart(id: string, known: number): Promise<ShowResponse>
   return data
 }
 
+/**
+ * Close an endless show after the song at segment `after` (D044). The backend drops the
+ * part made past that song, writes the host's goodbye and returns the whole show.
+ */
+export async function endShow(id: string, after: number): Promise<ShowResponse> {
+  const { data, error, response } = await api.POST('/api/v1/shows/{show_id}/end', {
+    params: { path: { show_id: id } },
+    body: { after },
+  })
+  if (data === undefined) throw toError(error, response)
+  return data
+}
+
 export async function listShows(): Promise<ShowSummary[]> {
   const { data, error, response } = await api.GET('/api/v1/shows')
   if (data === undefined) throw toError(error, response)
