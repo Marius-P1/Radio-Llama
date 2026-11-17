@@ -7,7 +7,12 @@ import httpx
 import pytest
 
 from radio_llama.music import JamendoError, JamendoSource, UnknownTrackError, WishFilters
-from radio_llama.music.jamendo import STYLE_TAGS, description_facts, parse_license
+from radio_llama.music.jamendo import (
+    EMPTY_RETRIES,
+    STYLE_TAGS,
+    description_facts,
+    parse_license,
+)
 from tests.conftest import FakeJamendo
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
@@ -289,3 +294,102 @@ def test_http_errors_become_jamendo_errors(tmp_path: Path) -> None:
 
     with pytest.raises(JamendoError, match="HTTP 503"):
         source.list_tracks("jazz")
+
+
+# Jamendo answers this now and then for `artists/musicinfo`, with HTTP 200.
+INTERNAL_ERROR = {
+    "headers": {
+        "status": "failed",
+        "code": 1,
+        "error_message": "Internal Error",
+        "warnings": "",
+        "results_count": 0,
+    },
+    "results": [],
+}
+
+
+def _script_artist_replies(
+    fake_jamendo: FakeJamendo, replies: list[httpx.Response | None]
+) -> list[httpx.Request]:
+    """Answer `artists/musicinfo` with `replies` in order, None meaning the recorded reply.
+
+    Every other request is served by the fake as usual. Returns the artist calls seen.
+    """
+    artist_calls: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v3.0/artists/musicinfo/":
+            artist_calls.append(request)
+            reply = replies.pop(0) if replies else None
+            if reply is not None:
+                return reply
+        return fake_jamendo._handle(request)
+
+    fake_jamendo.source._http = httpx.Client(transport=httpx.MockTransport(handle))
+    return artist_calls
+
+
+@pytest.fixture
+def sleeps(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    """The pauses asked for, none of them waited."""
+    pauses: list[float] = []
+    monkeypatch.setattr("radio_llama.music.jamendo.time.sleep", pauses.append)
+    return pauses
+
+
+def test_an_artist_internal_error_is_retried(
+    fake_jamendo: FakeJamendo, sleeps: list[float]
+) -> None:
+    calls = _script_artist_replies(fake_jamendo, [httpx.Response(200, json=INTERNAL_ERROR), None])
+
+    tracks = {track.id: track for track in fake_jamendo.source.list_tracks("jazz")}
+
+    assert len(calls) == 2
+    assert len(sleeps) == 1
+    assert tracks["jamendo-1001"].facts[0].text == (
+        "Formed in Lyon in 2009, Example Band plays jazz with a hip hop pulse."
+    )
+
+
+def test_artist_internal_errors_give_tracks_without_facts(
+    fake_jamendo: FakeJamendo, sleeps: list[float], caplog: pytest.LogCaptureFixture
+) -> None:
+    error = httpx.Response(200, json=INTERNAL_ERROR)
+    calls = _script_artist_replies(fake_jamendo, [error] * (1 + EMPTY_RETRIES))
+
+    with caplog.at_level("WARNING", logger="radio_llama.music.jamendo"):
+        tracks = fake_jamendo.source.list_tracks("jazz")
+
+    assert len(tracks) == 4
+    assert all(track.facts == [] for track in tracks)
+    assert len(calls) == 1 + EMPTY_RETRIES
+    assert len(sleeps) == EMPTY_RETRIES
+    warnings = [r for r in caplog.records if r.name == "radio_llama.music.jamendo"]
+    assert [r.levelname for r in warnings] == ["WARNING"]
+
+
+def test_other_artist_api_errors_are_not_retried(
+    fake_jamendo: FakeJamendo, sleeps: list[float]
+) -> None:
+    headers = {"status": "failed", "code": 5, "error_message": "Invalid Client Id"}
+    reply = httpx.Response(200, json={"headers": headers, "results": []})
+    calls = _script_artist_replies(fake_jamendo, [reply])
+
+    with pytest.raises(JamendoError, match="JAMENDO_CLIENT_ID") as caught:
+        fake_jamendo.source.list_tracks("jazz")
+
+    assert caught.value.code == 5
+    assert len(calls) == 1
+    assert sleeps == []
+
+
+def test_artist_http_errors_are_not_retried(fake_jamendo: FakeJamendo, sleeps: list[float]) -> None:
+    calls = _script_artist_replies(fake_jamendo, [httpx.Response(500)])
+
+    with pytest.raises(JamendoError, match="HTTP 500") as caught:
+        fake_jamendo.source.list_tracks("jazz")
+
+    assert caught.value.code is None
+    assert len(calls) == 1
+    assert sleeps == []
