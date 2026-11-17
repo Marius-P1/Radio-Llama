@@ -13,6 +13,7 @@ from radio_llama.script import (
     word_budget,
 )
 from radio_llama.script.writer import (
+    TRANSCRIPT_MEMORY,
     UI_STRINGS,
     energy_line,
     format_facts,
@@ -165,6 +166,36 @@ def test_transcript_text_before_anything_was_said() -> None:
     writer, _ = make_writer()
     assert writer.transcript_text() == "(nothing yet)"
     assert make_writer("fr")[0].transcript_text() == "(rien encore)"
+
+
+def test_transcript_text_keeps_the_last_scripts_only() -> None:
+    """A show that never ends must not send a longer prompt at every break (D044)."""
+    writer, _ = make_writer()
+    writer.transcript = [("intro", "Script 0.")] + [
+        ("transition", f"Script {number}.") for number in range(1, TRANSCRIPT_MEMORY + 3)
+    ]
+
+    lines = writer.transcript_text().splitlines()
+
+    assert len(lines) == TRANSCRIPT_MEMORY
+    assert lines[0] == "- Break: Script 3."
+    assert lines[-1] == f"- Break: Script {TRANSCRIPT_MEMORY + 2}."
+    assert "Opening" not in writer.transcript_text()
+    # The writer still remembers everything: only the prompt is cut.
+    assert len(writer.transcript) == TRANSCRIPT_MEMORY + 3
+
+
+def test_a_show_of_ten_songs_still_gets_every_script() -> None:
+    """The longest show the API makes (D041): an intro and nine breaks before the outro."""
+    writer, _ = make_writer()
+    writer.transcript = [("intro", "Script 0.")] + [
+        ("transition", f"Script {number}.") for number in range(1, 10)
+    ]
+
+    lines = writer.transcript_text().splitlines()
+
+    assert len(lines) == 10
+    assert lines[0] == "- Opening: Script 0."
 
 
 def test_transition_prompt_carries_details_labelled_facts_and_host_notes() -> None:

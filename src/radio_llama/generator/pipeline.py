@@ -125,9 +125,7 @@ class PipelineGenerator:
         lookups, so the page shows the total while the network is slow.
         """
         config = show.config
-        music = self._sources.get(config.source)
-        if music is None:
-            raise GenerationError(missing_source_message(config.source))
+        music = self._music(config)
 
         # A seeded random sample of the candidates (D017), the listener's energy first
         # (D020); the same generator then picks the break shapes (D033).
@@ -144,19 +142,30 @@ class PipelineGenerator:
         if on_progress is not None:
             on_progress(0, plan_length(len(tracks)))
         # Before the shapes: a track that gains facts can get the story break.
-        lookup = self._facts
-        if lookup is not None and music.needs_facts_lookup:
-            tracks = [
-                _add_facts(track, lookup.artist_facts(track.artist, config.language))
-                for track in tracks
-            ]
+        tracks = self._with_facts(tracks, music, config.language)
         shapes = load_shapes(self._settings.prompts_dir, config.language)
         breaks = plan_shapes(shapes, [bool(track.facts) for track in tracks[1:]], rng)
         plan = _plan(tracks, breaks)
+        return music, tracks, plan, {shape.id: shape for shape in shapes}, self._writer(config)
 
-        # The host: persona text for the prompts, voice for the TTS.
+    def _music(self, config: ShowConfig) -> MusicSource:
+        """The show's music source, or a readable error when this server has none by that name."""
+        music = self._sources.get(config.source)
+        if music is None:
+            raise GenerationError(missing_source_message(config.source))
+        return music
+
+    def _with_facts(self, tracks: list[Track], music: MusicSource, language: str) -> list[Track]:
+        """The tracks with their artists' looked-up facts, on a source that needs them (D036)."""
+        lookup = self._facts
+        if lookup is None or not music.needs_facts_lookup:
+            return tracks
+        return [_add_facts(track, lookup.artist_facts(track.artist, language)) for track in tracks]
+
+    def _writer(self, config: ShowConfig) -> ScriptWriter:
+        """The host: persona text for the prompts, and the clock read now (D031)."""
         persona = get_persona(self._settings.prompts_dir, config.language, config.persona)
-        writer = ScriptWriter(
+        return ScriptWriter(
             self._llm,
             self._settings.prompts_dir,
             config.language,
@@ -166,7 +175,6 @@ class PipelineGenerator:
             wish=config.wish,
             now=datetime.now(self._settings.tzinfo),
         )
-        return music, tracks, plan, {shape.id: shape for shape in shapes}, writer
 
     def _candidates(self, config: ShowConfig, music: MusicSource) -> list[Track]:
         """The tracks to sample from, one search per source.

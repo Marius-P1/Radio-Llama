@@ -69,6 +69,11 @@ UI_STRINGS = {
     },
 }
 
+# How many of its last scripts the host is shown in a prompt (D044). Ten is the longest
+# show the API makes with a set length (D041): an intro and nine breaks before the outro,
+# so such a show still gets every script, as D033 asked.
+TRANSCRIPT_MEMORY = 10
+
 # A whole text wrapped in ``` fences, with or without a language tag after the opening fence.
 _FENCE = re.compile(r"\A```[^\n]*\n(.*?)\n?```\Z", re.DOTALL)
 # Straight and curly double quotes, as (opening, closing) pairs.
@@ -182,6 +187,7 @@ class ScriptWriter:
         # Every response, in order, for token accounting (D004).
         self.responses: list[LLMResponse] = []
         # Every script written so far, in order, so later breaks know what was said (D033).
+        # The prompts get the end of it, see `transcript_text`.
         self.transcript: list[tuple[str, str]] = []  # (kind, text)
 
     def write_intro(self, tracks: list[Track]) -> str:
@@ -211,11 +217,16 @@ class ScriptWriter:
         return self._write("outro", values, SPEECH_SECONDS["outro"])
 
     def transcript_text(self) -> str:
-        """What the host already said, one line per segment, for the prompts."""
+        """What the host said last, one line per segment, for the prompts.
+
+        Only the last TRANSCRIPT_MEMORY scripts: a show that never ends would otherwise
+        send a longer prompt at every break (D044).
+        """
         strings = UI_STRINGS[self._language]
         if not self.transcript:
             return strings["nothing_yet"]
-        return "\n".join(f"- {strings['kinds'][kind]}: {text}" for kind, text in self.transcript)
+        recent = self.transcript[-TRANSCRIPT_MEMORY:]
+        return "\n".join(f"- {strings['kinds'][kind]}: {text}" for kind, text in recent)
 
     def _write(
         self, kind: str, values: dict[str, str], seconds: float, label: str | None = None

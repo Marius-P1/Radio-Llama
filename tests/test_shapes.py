@@ -70,6 +70,21 @@ def test_plan_with_one_option_left_still_works() -> None:
     assert [s.id for s in plan] in (["a", "b", "a", "b", "a"], ["b", "a", "b", "a", "b"])
 
 
+def test_plan_never_starts_on_the_previous_shape() -> None:
+    """A show that grows one break at a time passes the shape of its last break (D044)."""
+    for previous in SHAPES:
+        for seed in range(30):
+            (shape,) = plan_shapes(SHAPES, [True], random.Random(seed), previous=previous.id)
+            assert shape.id != previous.id
+
+
+def test_plan_without_a_previous_shape_is_unchanged() -> None:
+    first = plan_shapes(SHAPES, [True, False, True], random.Random(7))
+    second = plan_shapes(SHAPES, [True, False, True], random.Random(7), previous=None)
+
+    assert [s.id for s in first] == [s.id for s in second]
+
+
 def test_plan_with_no_breaks() -> None:
     assert plan_shapes(SHAPES, [], random.Random(1)) == []
 

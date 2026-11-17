@@ -28,11 +28,18 @@ def load_shapes(prompts_dir: Path, language: str) -> list[Shape]:
 
 
 def plan_shapes(
-    shapes: list[Shape], facts_available: list[bool], rng: random.Random
+    shapes: list[Shape],
+    facts_available: list[bool],
+    rng: random.Random,
+    previous: str | None = None,
 ) -> list[Shape]:
-    """One shape per break, given whether each break's next track has facts."""
+    """One shape per break, given whether each break's next track has facts.
+
+    `previous` is the id of the shape of the break before the first one planned here. A
+    show that grows one break at a time passes its last shape, so the rule "never the
+    same twice in a row" also holds from one step to the next (D044).
+    """
     plan: list[Shape] = []
-    previous: str | None = None
     for has_facts in facts_available:
         options = [
             shape
