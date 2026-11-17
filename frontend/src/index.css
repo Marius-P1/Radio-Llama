@@ -538,6 +538,11 @@ audio {
   font-size: 0.9rem;
 }
 
+/* A line under the status of a live show: why a step failed, why the show closed. */
+.player-note {
+  font-size: 0.9rem;
+}
+
 /* A song the YouTube player refused, noted under its line in the script. */
 .segment-note {
   display: block;

@@ -46,6 +46,20 @@ export async function getShow(id: string): Promise<ShowResponse> {
   return data
 }
 
+/**
+ * Ask for the next break and song of an endless show (D044). `known` is the number of
+ * segments the player has. The request waits until the part is made and returns the
+ * whole show: longer, or closed by the host when it has nothing left to play.
+ */
+export async function nextPart(id: string, known: number): Promise<ShowResponse> {
+  const { data, error, response } = await api.POST('/api/v1/shows/{show_id}/next', {
+    params: { path: { show_id: id } },
+    body: { known },
+  })
+  if (data === undefined) throw toError(error, response)
+  return data
+}
+
 export async function listShows(): Promise<ShowSummary[]> {
   const { data, error, response } = await api.GET('/api/v1/shows')
   if (data === undefined) throw toError(error, response)

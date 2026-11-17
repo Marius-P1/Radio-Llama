@@ -1,6 +1,7 @@
 // The parts of the YouTube IFrame Player API that the sequenced player uses (D038).
 // Typed here instead of adding @types/youtube: the app only loads a video, plays,
-// pauses and listens for three events. https://developers.google.com/youtube/iframe_api_reference
+// pauses, reads the position and listens for three events.
+// https://developers.google.com/youtube/iframe_api_reference
 
 declare namespace YT {
   const PlayerState: {
@@ -55,6 +56,9 @@ declare namespace YT {
     cueVideoById(video: string | VideoSpec): void
     playVideo(): void
     pauseVideo(): void
+    // Seconds played since the start of the video. The live player reads it to know
+    // when a song passes its middle (D044).
+    getCurrentTime(): number
     destroy(): void
   }
 }

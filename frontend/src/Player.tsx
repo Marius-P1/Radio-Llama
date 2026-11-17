@@ -14,10 +14,15 @@ import { SegmentPlayer } from './SegmentPlayer'
 
 type Props = {
   id: string
+  // True when the listener comes from the create flow: an endless show then grows
+  // while it plays. From Past shows it is a replay (D044).
+  live: boolean
   onBack: () => void
 }
 
-export function Player({ id, onBack }: Props) {
+export function Player({ id, live, onBack }: Props) {
+  // The show lives here, not in the segment player: a live endless show is replaced by
+  // each new part, and the title and the credits below follow it.
   const [show, setShow] = useState<ShowResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -84,9 +89,10 @@ export function Player({ id, onBack }: Props) {
       </h2>
       {show.config.wish && <p className="muted">You asked for: {show.config.wish}</p>}
 
-      {/* A ready show plays as one MP3, or segment by segment with YouTube (D038). */}
+      {/* A ready show plays as one MP3, or segment by segment: a YouTube show (D038)
+          and every endless show (D044). */}
       {show.status === 'ready' && show.playback === 'segments' ? (
-        <SegmentPlayer key={show.id} show={show} />
+        <SegmentPlayer key={show.id} show={show} live={live} onShowChange={setShow} />
       ) : (
         <FilePlayer show={show} />
       )}

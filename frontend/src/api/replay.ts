@@ -89,3 +89,8 @@ export async function getVoices(): Promise<VoiceOption[]> {
 export async function createShow(_body: CreateShowRequest): Promise<ShowSummary> {
   throw new Error('Not available on the replay page.')
 }
+
+// A replayed show never grows: the player only asks for more on a show it saw created.
+export async function nextPart(_id: string, _known: number): Promise<ShowResponse> {
+  throw new Error('Not available on the replay page.')
+}
