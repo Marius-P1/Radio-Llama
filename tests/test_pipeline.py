@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from radio_llama.audio import AudioError, assemble
 from radio_llama.config import Settings
 from radio_llama.generator import GenerationError, PipelineGenerator, pipeline, run_generation
 from radio_llama.generator.pipeline import (
@@ -15,7 +16,7 @@ from radio_llama.generator.pipeline import (
     merge_facts,
     pick_tracks,
 )
-from radio_llama.llm import FakeLLM
+from radio_llama.llm import FakeLLM, LLMError
 from radio_llama.models import Fact, Show, ShowConfig, Track
 from radio_llama.music import LocalCatalog
 from radio_llama.personas import get_persona
@@ -1455,3 +1456,139 @@ def test_the_proposals_in_memory_belong_to_one_show(
     third = _playlist_prompts(llm)[2]
     assert "Blue Window by Example Artist" in third
     assert "Red Lights" not in third
+
+
+def test_a_failed_youtube_step_keeps_its_song_and_asking_again_costs_no_search(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    """The proposal a step used stays first in the list until the step has succeeded
+    (D044). The second try gets the same song, answered by the search cache."""
+    llm = FakeLLM([_playlist(BLUE_WINDOW, MONTREAL, NIGHT_TRAIN), "Opening words.", "", "A break."])
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+    out_dir = tmp_path / "out"
+    run_generation(generator, _youtube_show(endless=True), out_dir)
+    saved = (out_dir / "show.json").read_bytes()
+
+    # The search finds Montreal Streets, then the model returns an empty script.
+    with pytest.raises(LLMError, match="empty transition script"):
+        generator.extend(load_show(out_dir), out_dir)
+
+    assert len(fake_youtube.searches()) == 2
+    assert (out_dir / "show.json").read_bytes() == saved
+
+    show = _step(generator, out_dir)
+
+    assert [track.video_id for track in show.tracks] == ["okTopic0001", "montreal001"]
+    assert len(fake_youtube.searches()) == 2  # no new search
+    assert len(_playlist_prompts(llm)) == 1  # and no new playlist
+    choices = [(r["method"], r["title"]) for r in _trace(out_dir, "youtube") if "title" in r]
+    assert choices[-2:] == [("pick", "Montreal Streets"), ("cache", "Montreal Streets")]
+
+    # The step after it drops the used proposal for free and moves on to the next one.
+    show = _step(generator, out_dir)
+
+    assert [track.video_id for track in show.tracks][2:] == ["nightTrn001"]
+    assert len(fake_youtube.searches()) == 3
+
+
+def test_a_playlist_longer_than_asked_is_cut_to_the_batch(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_youtube: FakeYouTube, tmp_path: Path
+) -> None:
+    """The model decides how many songs it writes. Only eight are kept, so what one step
+    can spend on searches does not depend on the model (D044)."""
+    no_video = [(f"Nobody {number}", "Broken Song") for number in range(1, 9)]
+    llm = FakeLLM([_playlist(*no_video, MONTREAL), _playlist(BLUE_WINDOW), CANNED])
+    generator = _youtube_generator(fake_settings, tiny_catalog, fake_youtube, llm)
+
+    show = run_generation(generator, _youtube_show(endless=True), tmp_path / "out")
+
+    assert show.status == "ready", show.error
+    # Montreal Streets was the ninth song of the first playlist: never looked up.
+    assert [track.video_id for track in show.tracks] == ["okTopic0001"]
+    queries = [request.url.params["q"].casefold() for request in fake_youtube.searches()]
+    assert len(queries) == 9  # eight songs with no video, then Blue Window
+    assert not any("montreal" in query for query in queries)
+    assert len(_playlist_prompts(llm)) == 2
+
+
+# More about one step, on Jamendo: a seeded show, a failure in ffmpeg, a lowered limit.
+
+
+def test_a_seeded_endless_show_is_the_same_show_step_by_step(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    """Each step seeds its own random generator from the show's seed and the number of
+    songs so far (D044), so the same seed gives the same songs and the same shapes."""
+    shows = []
+    for name in ("a", "b"):
+        generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+        out_dir = tmp_path / name
+        run_generation(generator, _endless_show(seed=5), out_dir)
+        _step(generator, out_dir)
+        shows.append(_step(generator, out_dir))
+
+    first, second = shows
+    assert len(first.tracks) == 3
+    assert [track.id for track in first.tracks] == [track.id for track in second.tracks]
+    assert [segment.shape for segment in first.segments] == [s.shape for s in second.segments]
+    assert _kinds(first) == _kinds(second)
+
+
+def test_a_step_that_fails_in_ffmpeg_leaves_the_show_as_it_was(
+    fake_settings: Settings,
+    tiny_catalog: LocalCatalog,
+    fake_jamendo: FakeJamendo,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ffmpeg is the last thing a step does. When it fails on the song, the break's file
+    is already there: show.json does not name it, and the next try writes over it."""
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+    saved = (out_dir / "show.json").read_bytes()
+
+    def broken_song(src: Path, dst: Path, demo: bool) -> None:
+        raise AudioError("ffmpeg failed: fake")
+
+    monkeypatch.setattr(assemble, "prepare_song", broken_song)
+    with pytest.raises(AudioError, match="ffmpeg failed"):
+        generator.extend(load_show(out_dir), out_dir)
+    monkeypatch.undo()
+
+    assert (out_dir / "show.json").read_bytes() == saved
+    assert _kinds(load_show(out_dir)) == ["intro", "song"]
+    assert _audio_files(out_dir) == ["00-intro.mp3", "01-song.mp3", "02-transition.mp3"]
+
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "transition", "song"]
+    assert _audio_files(out_dir) == [
+        "00-intro.mp3",
+        "01-song.mp3",
+        "02-transition.mp3",
+        "03-song.mp3",
+    ]
+    errors = [step["error"] for step in _trace(out_dir, "steps")]
+    assert errors == [None, "ffmpeg failed: fake", None]
+
+
+def test_a_show_already_past_a_lowered_song_limit_closes_at_its_next_step(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    """ENDLESS_MAX_SONGS can be lowered between two runs of the server."""
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+    _step(generator, out_dir)
+    assert len(_step(generator, out_dir).tracks) == 3
+    lowered = fake_settings.model_copy(update={"endless_max_songs": 2})
+    restarted = _jamendo_generator(lowered, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    requests_before = len(fake_jamendo.requests)
+
+    show = _step(restarted, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "transition", "song", "transition", "song", "outro"]
+    assert show.end_note == "The show ended by itself: it reached the limit of 2 songs."
+    assert len(show.tracks) == 3  # nothing is taken back
+    assert len(fake_jamendo.requests) == requests_before

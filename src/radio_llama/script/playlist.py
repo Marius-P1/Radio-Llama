@@ -45,7 +45,10 @@ def propose_playlist(
 
     With no style (D039) the prompt says so and the wish alone sets the theme. `played`
     is what an endless show already played, so the model proposes other songs (D044); a
-    show of a set length asks once and passes nothing.
+    show of a set length asks once and passes nothing. Every played song is listed, so
+    this prompt grows by one line per song of the show. A shorter list would let the
+    model propose old songs again. The model may return more or fewer songs than
+    `count`: the caller decides what to do with them.
     """
     strings = UI_STRINGS[language]
     user = render(
