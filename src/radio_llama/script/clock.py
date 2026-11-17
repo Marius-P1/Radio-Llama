@@ -2,8 +2,8 @@
 
 The model has no clock. Without this line every show was an evening show, because the
 old prompts said "tonight". The pipeline computes `now` once per show in the configured
-timezone; the names are written out here per language instead of relying on the
-machine's locale.
+timezone, and again at each step of an endless show, which can run for hours (D044); the
+names are written out here per language instead of relying on the machine's locale.
 
 The line gives the date and the part of the day, not the hour. A show is written once
 and heard later, after the listener has pressed play and the songs before the break

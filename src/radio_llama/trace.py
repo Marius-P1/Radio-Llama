@@ -5,7 +5,9 @@ folder of JSON Lines files, one per remote service: `llm.jsonl`, `tts.jsonl`,
 `jamendo.jsonl`, `youtube.jsonl`, `musicbrainz.jsonl`, `wikidata.jsonl`, `wikipedia.jsonl`,
 plus `facts.jsonl` for facts answers served from a cache. One JSON object per line per call,
 with the UTC timestamp, the latency, the error text when the call failed, what was sent
-and what came back in full. Audio is never recorded, only its path and byte count.
+and what came back in full. Audio is never recorded, only its path and byte count. An
+endless show also gets `steps.jsonl`, one line per step it took, written by the pipeline
+(D044).
 
 The current trace folder lives in a context variable. The pipeline sets it for one run;
 a record made with no current trace is dropped, so a client called on its own stays
