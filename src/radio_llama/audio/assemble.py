@@ -3,7 +3,9 @@
 The input is a `Show` whose segments are in final order plus one raw audio file per
 segment: the TTS output for speech, the catalog file for a song. The output folder gets
 one normalised MP3 per segment (`00-intro.mp3`, `01-song.mp3`, ...) and the joined
-`show.mp3`; the segments get their file names and durations filled in. The generator,
+`show.mp3`; the segments get their file names and durations filled in. A show that plays
+segment by segment (a YouTube show, an endless show) gets the per-segment files only,
+from `write_parts`, and no `show.mp3`. The generator,
 not this module, writes `show.json`. Three ffmpeg steps do the work (D014): songs are
 faded in and out (and cut to `DEMO_SONG_LENGTH_S` with `-t` in demo mode, D023), every
 piece is loudness-normalised with `loudnorm` and resampled to 44.1 kHz stereo, then the
@@ -153,6 +155,29 @@ def assemble_show(show: Show, sources: list[Path], out_dir: Path) -> Show:
     return show
 
 
+def write_parts(show: Show, sources: dict[int, Path], out_dir: Path) -> Show:
+    """Build the files of some segments only, with no show.mp3 (D038, D044).
+
+    `sources[i]` is the raw audio of `show.segments[i]`: the TTS output for speech, the
+    source's file for a song. Each one gets the same treatment as in `assemble_show`
+    (speech normalised; a song faded, normalised and cut in demo mode) and the same
+    `NN-kind.mp3` name. A segment with no entry is left as it is: a song that plays in
+    the embedded player, or a segment an earlier call already built. That is what lets
+    an endless show add two files at each step without touching the others.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for index, source in sorted(sources.items()):
+        segment = show.segments[index]
+        part = out_dir / f"{index:02d}-{segment.kind}.mp3"
+        if segment.kind == "song":
+            prepare_song(source, part, show.config.demo)
+        else:
+            normalize_voice(source, part)
+        segment.audio_file = part.name
+        segment.duration_s = probe_duration(part)
+    return show
+
+
 def write_speech(show: Show, sources: dict[int, Path], out_dir: Path) -> Show:
     """Build the speech files only, for a show whose songs play in an embedded player (D038).
 
@@ -160,14 +185,12 @@ def write_speech(show: Show, sources: dict[int, Path], out_dir: Path) -> Show:
     segments have no entry, keep the duration the generator set, and get no file. There
     is no show.mp3, so `show.audio_file` stays None: the player plays the segments in
     order, speech from these files, songs from YouTube.
+
+    Every speech segment must have its source: `write_parts` leaves a segment with no
+    entry alone, and here that would be a show with a silent hole in it.
     """
     check_order(show.segments)
-    out_dir.mkdir(parents=True, exist_ok=True)
     for index, segment in enumerate(show.segments):
-        if segment.kind == "song":
-            continue
-        part = out_dir / f"{index:02d}-{segment.kind}.mp3"
-        normalize_voice(sources[index], part)
-        segment.audio_file = part.name
-        segment.duration_s = probe_duration(part)
-    return show
+        if segment.kind != "song" and index not in sources:
+            raise ValueError(f"no speech audio for segment {index} ({segment.kind})")
+    return write_parts(show, sources, out_dir)

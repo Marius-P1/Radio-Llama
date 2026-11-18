@@ -61,6 +61,43 @@ def test_a_show_file_written_before_the_voice_picker_still_loads() -> None:
     assert ShowConfig.model_validate_json(picked.model_dump_json()) == picked
 
 
+def test_a_show_file_written_before_the_endless_show_still_loads() -> None:
+    """Old show.json files have no `endless` and no `end_note` (D044)."""
+    show = Show.model_validate_json(
+        '{"id": "show-1", "created_at": "2026-10-30T12:00:00Z", "status": "ready", '
+        '"config": {"style": "jazz", "persona": "calm"}, "audio_file": "show.mp3"}'
+    )
+
+    assert show.config.endless is False
+    assert show.end_note is None
+    assert show.is_open is False
+    closed = show.model_copy(update={"end_note": "The show ended by itself."})
+    assert Show.model_validate_json(closed.model_dump_json()) == closed
+
+
+def test_an_endless_show_is_open_until_its_outro() -> None:
+    """No status says it: an open show is an endless one whose last segment is no outro."""
+
+    def show(endless: bool, kinds: list[str]) -> Show:
+        return Show(
+            id="show-1",
+            created_at=datetime(2026, 10, 30, 12, 0, tzinfo=UTC),
+            config=ShowConfig(style="jazz", persona="calm", source="jamendo", endless=endless),
+            status="ready",
+            segments=[Segment(kind=kind) for kind in kinds],  # type: ignore[arg-type]
+        )
+
+    assert show(True, ["intro", "song"]).is_open is True
+    assert show(True, ["intro", "song", "transition", "song"]).is_open is True
+    assert show(True, ["intro", "song", "outro"]).is_open is False
+    assert show(True, []).is_open is True  # not started yet
+    # A show of a set length is never open, whatever it holds.
+    assert show(False, ["intro", "song"]).is_open is False
+    assert show(False, ["intro", "song", "outro"]).is_open is False
+    # A derived value, not a field: it never reaches show.json.
+    assert "is_open" not in show(True, ["intro", "song"]).model_dump()
+
+
 def test_track_notes_never_leave_the_model() -> None:
     track = Track(
         id="t1",

@@ -69,6 +69,11 @@ UI_STRINGS = {
     },
 }
 
+# How many of its last scripts the host is shown in a prompt (D044). Ten is the longest
+# show the API makes with a set length (D041): an intro and nine breaks before the outro,
+# so such a show still gets every script, as D033 asked.
+TRANSCRIPT_MEMORY = 10
+
 # A whole text wrapped in ``` fences, with or without a language tag after the opening fence.
 _FENCE = re.compile(r"\A```[^\n]*\n(.*?)\n?```\Z", re.DOTALL)
 # Straight and curly double quotes, as (opening, closing) pairs.
@@ -182,11 +187,21 @@ class ScriptWriter:
         # Every response, in order, for token accounting (D004).
         self.responses: list[LLMResponse] = []
         # Every script written so far, in order, so later breaks know what was said (D033).
+        # The prompts get the end of it, see `transcript_text`.
         self.transcript: list[tuple[str, str]] = []  # (kind, text)
 
     def write_intro(self, tracks: list[Track]) -> str:
         values = {"track_list": format_programme(tracks, self._language)}
         return self._write("intro", values, SPEECH_SECONDS["intro"])
+
+    def write_endless_intro(self, first: Track) -> str:
+        """The opening of a show with no set length (D044).
+
+        Its own prompt: the host brings in the first song, the only one known yet, and
+        never says how long the show lasts. It is still the show's "intro" segment.
+        """
+        values = {"first_song": format_programme([first], self._language)}
+        return self._write("intro", values, SPEECH_SECONDS["intro"], template="intro_endless")
 
     def write_transition(self, previous: Track, next_track: Track, shape: Shape) -> str:
         values = {
@@ -211,16 +226,29 @@ class ScriptWriter:
         return self._write("outro", values, SPEECH_SECONDS["outro"])
 
     def transcript_text(self) -> str:
-        """What the host already said, one line per segment, for the prompts."""
+        """What the host said last, one line per segment, for the prompts.
+
+        Only the last TRANSCRIPT_MEMORY scripts: a show that never ends would otherwise
+        send a longer prompt at every break (D044).
+        """
         strings = UI_STRINGS[self._language]
         if not self.transcript:
             return strings["nothing_yet"]
-        return "\n".join(f"- {strings['kinds'][kind]}: {text}" for kind, text in self.transcript)
+        recent = self.transcript[-TRANSCRIPT_MEMORY:]
+        return "\n".join(f"- {strings['kinds'][kind]}: {text}" for kind, text in recent)
 
     def _write(
-        self, kind: str, values: dict[str, str], seconds: float, label: str | None = None
+        self,
+        kind: str,
+        values: dict[str, str],
+        seconds: float,
+        label: str | None = None,
+        template: str | None = None,
     ) -> str:
-        """One LLM call for `kind`. `label` names the call in the trace, `kind` by default."""
+        """One LLM call for `kind`. `label` names the call in the trace, `kind` by default.
+
+        `template` is the prompt file to fill when it is not named after the kind.
+        """
         system = render(
             load_template(self._prompts_dir, self._language, "system"),
             {
@@ -233,7 +261,7 @@ class ScriptWriter:
         )
         budget = word_budget(seconds, self._language)
         user = render(
-            load_template(self._prompts_dir, self._language, kind),
+            load_template(self._prompts_dir, self._language, template or kind),
             {**values, "word_budget": str(budget)},
         )
         response = traced_generate(

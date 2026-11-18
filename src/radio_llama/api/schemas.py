@@ -14,7 +14,7 @@ from radio_llama.models import (
     ShowStatus,
     Track,
 )
-from radio_llama.music.factory import delivery_of
+from radio_llama.music.factory import playback_of
 
 WISH_MAX_CHARS = 200
 # Voice ids are about twenty characters. The cap keeps a huge value away from the voice
@@ -41,6 +41,7 @@ class SourceOption(BaseModel):
     name: str  # "Local catalog", "Jamendo", "YouTube"
     styles: list[str]  # the styles this source offers
     wish: bool  # whether a free-text wish refines the song choice on this source (D030)
+    endless: bool  # whether this source can feed an endless show (D042)
 
 
 class OptionsResponse(BaseModel):
@@ -64,6 +65,26 @@ class CreateShowRequest(BaseModel):
     # The number of songs (D041). A count the source cannot fill gives a failed show.
     track_count: int = Field(default=3, ge=TRACK_COUNT_MIN, le=TRACK_COUNT_MAX)
     demo: bool = False  # True: 30 s excerpts instead of full songs (D023)
+    # True: a show with no set length, on a source whose `endless` is true (D042). It is
+    # ready once its first song is, then grows through POST /shows/{id}/next. The
+    # track_count of the request is ignored.
+    endless: bool = False
+
+
+class NextPartRequest(BaseModel):
+    """Body of POST /shows/{id}/next (D044)."""
+
+    # How many segments of the show the player has. The next part is made only when the
+    # show has no more than that, so asking twice for the same part makes it once.
+    known: int = Field(ge=0)
+
+
+class EndShowRequest(BaseModel):
+    """Body of POST /shows/{id}/end (D044)."""
+
+    # The index of the song segment after which the show ends: the song that is playing,
+    # or the next one when the host is speaking. Segments after it are dropped.
+    after: int = Field(ge=0)
 
 
 class Progress(BaseModel):
@@ -80,26 +101,31 @@ class ShowSummary(BaseModel):
 
 
 class SegmentResponse(Segment):
-    # "/api/v1/shows/{id}/segments/{index}/audio" for a speech segment of a ready show,
-    # None for a song and before the show is ready (D038).
+    # "/api/v1/shows/{id}/segments/{index}/audio" once the show is ready, for a speech
+    # segment (D038) and for a song that has its own file, which only the songs of an
+    # endless Jamendo show do (D044). None for every other song: it is inside show.mp3,
+    # or it plays in the embedded YouTube player.
     audio_url: str | None = None
 
 
 class ShowResponse(ShowSummary):
     progress: Progress | None = None  # set while generating
-    # How the show plays once ready (D038), known from its source at any status. "file":
-    # one MP3 at audio_url. "segments": the player runs the segments in order, speech from
-    # each segment's audio_url, songs in the embedded YouTube player by the track's
-    # video_id for duration_s seconds.
+    # How the show plays once ready, known from its config at any status (D038, D044).
+    # "file": one MP3 at audio_url. "segments": the player runs the segments in order. A
+    # segment with an audio_url plays from it, speech or song. A song without one plays in
+    # the embedded YouTube player by the track's video_id for duration_s seconds.
     playback: Literal["file", "segments"]
     segments: list[SegmentResponse]
     tracks: list[Track]  # credits: artist, title, license and the links are all in Track
     audio_url: str | None = None  # "/api/v1/shows/{id}/audio" once ready, None for segments
+    # Why an endless show closed by itself, as a sentence for the listener. None when the
+    # listener ended it, while it is open, and on every other show (D044).
+    end_note: str | None = None
 
     @classmethod
     def from_show(cls, show: Show, progress: Progress | None) -> "ShowResponse":
         ready = show.status == "ready"
-        playback = "segments" if delivery_of(show.config.source) == "embed" else "file"
+        playback = playback_of(show.config)
         return cls(
             id=show.id,
             status=show.status,
@@ -113,7 +139,7 @@ class ShowResponse(ShowSummary):
                     **segment.model_dump(),
                     audio_url=(
                         f"/api/v1/shows/{show.id}/segments/{index}/audio"
-                        if ready and segment.kind != "song" and segment.audio_file is not None
+                        if ready and has_own_audio(segment, playback)
                         else None
                     ),
                 )
@@ -121,4 +147,17 @@ class ShowResponse(ShowSummary):
             ],
             tracks=show.tracks,
             audio_url=f"/api/v1/shows/{show.id}/audio" if ready and playback == "file" else None,
+            end_note=show.end_note,
         )
+
+
+def has_own_audio(segment: Segment, playback: Literal["file", "segments"]) -> bool:
+    """Whether the segment audio route serves this segment's file.
+
+    Speech always, when it has a file. A song only in a show that plays by segments: the
+    songs of a file show have files too, but they are the pieces of show.mp3 and are
+    never served on their own (D038, D044).
+    """
+    if segment.audio_file is None:
+        return False
+    return segment.kind != "song" or playback == "segments"

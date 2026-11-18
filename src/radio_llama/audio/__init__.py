@@ -6,6 +6,7 @@ from radio_llama.audio.assemble import (
     concat_parts,
     normalize_voice,
     prepare_song,
+    write_parts,
 )
 from radio_llama.audio.ffmpeg import AudioError, probe_duration
 
@@ -17,4 +18,5 @@ __all__ = [
     "normalize_voice",
     "prepare_song",
     "probe_duration",
+    "write_parts",
 ]

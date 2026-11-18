@@ -476,3 +476,4 @@ def test_source_attributes() -> None:
     assert YouTubeSource.delivery == "embed"
     assert YouTubeSource.accepts_wish is True
     assert YouTubeSource.needs_facts_lookup is True
+    assert YouTubeSource.endless is True  # D042

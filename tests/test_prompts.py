@@ -10,6 +10,7 @@ PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 EXPECTED_PLACEHOLDERS = {
     "system": {"persona_description", "theme_line", "time_line", "energy_line", "wish_line"},
     "intro": {"track_list", "word_budget"},
+    "intro_endless": {"first_song", "word_budget"},  # D044
     "transition": {
         "instructions",
         "previous_title",
@@ -24,7 +25,7 @@ EXPECTED_PLACEHOLDERS = {
     },
     "outro": {"track_list", "transcript", "word_budget"},
     "wish": {"wish", "style", "energy"},
-    "playlist": {"style", "energy", "wish", "language", "count"},
+    "playlist": {"style", "energy", "wish", "language", "count", "played"},
 }
 
 

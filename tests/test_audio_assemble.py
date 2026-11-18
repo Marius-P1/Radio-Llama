@@ -15,8 +15,9 @@ from radio_llama.audio import (
     normalize_voice,
     prepare_song,
     probe_duration,
+    write_parts,
 )
-from radio_llama.audio.assemble import DEMO_SONG_LENGTH_S
+from radio_llama.audio.assemble import DEMO_SONG_LENGTH_S, write_speech
 from radio_llama.audio.ffmpeg import run_ffmpeg
 from radio_llama.models import Segment, SegmentKind, Show, ShowConfig
 
@@ -271,6 +272,91 @@ def test_assemble_show_in_demo_mode_cuts_the_song(tmp_path: Path) -> None:
     assert song.duration_s is not None and abs(song.duration_s - DEMO_SONG_LENGTH_S) <= 0.3
     for voice in (intro, outro):
         assert voice.duration_s is not None and abs(voice.duration_s - 1.0) <= 0.3
+
+
+def test_write_parts_builds_the_given_segments_only(tmp_path: Path) -> None:
+    """An endless show adds two files at each step and leaves the others alone (D044)."""
+    kinds: list[SegmentKind] = ["intro", "song", "transition", "song"]
+    show = _show(kinds)
+    speech = tmp_path / "speech.mp3"
+    song = tmp_path / "song.mp3"
+    _tone(speech, 1.0, frequency=220.0, volume="-30dB")
+    _tone(song, 5.0)
+    out_dir = tmp_path / "out"
+
+    write_parts(show, {0: speech, 1: song}, out_dir)
+
+    assert sorted(p.name for p in out_dir.iterdir()) == ["00-intro.mp3", "01-song.mp3"]
+    assert [segment.audio_file for segment in show.segments] == [
+        "00-intro.mp3",
+        "01-song.mp3",
+        None,
+        None,
+    ]
+    assert show.audio_file is None  # no show.mp3
+    first_bytes = (out_dir / "00-intro.mp3").read_bytes()
+
+    result = write_parts(show, {2: speech, 3: song}, out_dir)
+
+    assert result is show
+    expected = ["00-intro.mp3", "01-song.mp3", "02-transition.mp3", "03-song.mp3"]
+    assert sorted(p.name for p in out_dir.iterdir()) == expected
+    assert [segment.audio_file for segment in show.segments] == expected
+    assert (out_dir / "00-intro.mp3").read_bytes() == first_bytes
+    for segment in show.segments:
+        assert segment.duration_s is not None
+        length = 5.0 if segment.kind == "song" else 1.0
+        assert abs(segment.duration_s - length) <= 0.3
+    assert show.audio_file is None
+
+
+def test_write_parts_treats_a_song_like_assemble_show_does(tmp_path: Path) -> None:
+    """Same fades, same loudness, same demo cut as a song inside show.mp3."""
+    show = _show(["intro", "song"], demo=True)
+    song = tmp_path / "song.mp3"
+    _tone(song, DEMO_SONG_LENGTH_S + 5.0)
+    out_dir = tmp_path / "out"
+
+    write_parts(show, {1: song}, out_dir)
+
+    part = out_dir / "01-song.mp3"
+    assert abs(probe_duration(part) - DEMO_SONG_LENGTH_S) <= 0.3
+    assert show.segments[1].duration_s == probe_duration(part)
+    assert abs(_loudness(part) - TARGET_LUFS) <= LOUDNESS_TOLERANCE_LU
+    # The tone is constant, so a quieter start and end can only come from the fades.
+    middle = _mean_volume(part, 15.0, 1.0)
+    assert _mean_volume(part, 0.0, 0.3) < middle - 10.0
+    assert _mean_volume(part, DEMO_SONG_LENGTH_S - 0.5, 0.5) < middle - 10.0
+
+
+def test_write_speech_builds_every_speech_file_and_no_song(tmp_path: Path) -> None:
+    show = _show(["intro", "song", "outro"])
+    speech = tmp_path / "speech.mp3"
+    _tone(speech, 1.0, frequency=220.0, volume="-30dB")
+    out_dir = tmp_path / "out"
+
+    write_speech(show, {0: speech, 2: speech}, out_dir)
+
+    assert sorted(p.name for p in out_dir.iterdir()) == ["00-intro.mp3", "02-outro.mp3"]
+    assert [segment.audio_file for segment in show.segments] == [
+        "00-intro.mp3",
+        None,
+        "02-outro.mp3",
+    ]
+    assert show.audio_file is None
+
+
+def test_write_speech_refuses_a_speech_segment_with_no_source(tmp_path: Path) -> None:
+    """A show of a set length must never be ready with a silent hole in it."""
+    show = _show(["intro", "song", "transition", "song", "outro"])
+    speech = tmp_path / "speech.mp3"
+    _tone(speech, 1.0, frequency=220.0, volume="-30dB")
+    out_dir = tmp_path / "out"
+
+    with pytest.raises(ValueError, match=r"no speech audio for segment 2 \(transition\)"):
+        write_speech(show, {0: speech, 4: speech}, out_dir)
+
+    assert not out_dir.exists()  # refused before any file is built
 
 
 def test_run_ffmpeg_reports_failure(tmp_path: Path) -> None:

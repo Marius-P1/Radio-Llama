@@ -205,8 +205,9 @@ button:focus-visible {
 }
 
 /* A show length button has two lines: the number of songs, then the estimated
-   length in smaller muted text. Four of them fit one row on a wide screen;
-   a phone gets two rows of two (see Phones below). */
+   length in smaller muted text. The fifth, "Endless", is there on a source
+   that can make an endless show. All fit one row on a wide screen; a phone
+   gets rows of two, and a fifth button fills its own row (see Phones below). */
 .choice.length {
   display: flex;
   flex-direction: column;
@@ -534,7 +535,10 @@ audio {
   margin-bottom: 10px;
 }
 
-.player-status {
+/* The status of the player, and the lines under it on a live show: why a step
+   failed, why the show closed. */
+.player-status,
+.player-note {
   font-size: 0.9rem;
 }
 

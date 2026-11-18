@@ -24,6 +24,7 @@ class LocalCatalog:
     delivery = "file"
     accepts_wish = False
     needs_facts_lookup = False  # the catalog is hand-written with its own sourced facts
+    endless = False  # too few tracks per style for a show that never ends (D042)
 
     def __init__(self, catalog_path: Path, audio_dir: Path | None = None) -> None:
         self.catalog_path = catalog_path

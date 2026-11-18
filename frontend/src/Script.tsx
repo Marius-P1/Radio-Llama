@@ -8,7 +8,8 @@ type Props = {
   tracks: ReadonlyMap<string, Track>
   // The segment to highlight, -1 for none.
   currentIndex: number
-  // Songs that could not play on YouTube (sequenced player only).
+  // Segments that could not play: a video YouTube refused, a file that did not load
+  // (sequenced player only).
   failed?: ReadonlySet<number>
 }
 
@@ -46,7 +47,7 @@ export function Script({ segments, tracks, currentIndex, failed = NONE }: Props)
                 segment={segment}
                 track={segment.track_id ? tracks.get(segment.track_id) : undefined}
               />
-              {failed.has(i) && <span className="segment-note">Could not play on YouTube.</span>}
+              {failed.has(i) && <span className="segment-note">Could not play.</span>}
             </div>
           </li>
         ))}

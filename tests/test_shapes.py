@@ -70,6 +70,30 @@ def test_plan_with_one_option_left_still_works() -> None:
     assert [s.id for s in plan] in (["a", "b", "a", "b", "a"], ["b", "a", "b", "a", "b"])
 
 
+def test_plan_never_starts_on_the_previous_shape() -> None:
+    """A show that grows one break at a time passes the shape of its last break (D044)."""
+    for previous in SHAPES:
+        for seed in range(30):
+            (shape,) = plan_shapes(SHAPES, [True], random.Random(seed), previous=previous.id)
+            assert shape.id != previous.id
+
+
+def test_a_seeded_plan_of_a_whole_show_is_pinned() -> None:
+    """A show of a set length plans every break in one call, with no previous shape. The
+    ids are written out, so a change to that pick shows here. The shapes are made up for
+    the test: an edit of the prompt files must not move the pin."""
+    shapes = [
+        Shape(id="short", seconds=5, instruction="x"),
+        Shape(id="aside", seconds=10, instruction="y"),
+        Shape(id="long", seconds=20, instruction="z"),
+        Shape(id="story", seconds=25, needs_facts=True, instruction="w"),
+    ]
+
+    plan = plan_shapes(shapes, [True, False, True, True, False], random.Random(7))
+
+    assert [shape.id for shape in plan] == ["long", "short", "long", "story", "short"]
+
+
 def test_plan_with_no_breaks() -> None:
     assert plan_shapes(SHAPES, [], random.Random(1)) == []
 

@@ -13,6 +13,7 @@ from radio_llama.script import (
     word_budget,
 )
 from radio_llama.script.writer import (
+    TRANSCRIPT_MEMORY,
     UI_STRINGS,
     energy_line,
     format_facts,
@@ -111,6 +112,35 @@ def test_intro_prompt_carries_tracks_budget_persona_and_style() -> None:
     assert str(word_budget(SPEECH_SECONDS["intro"], "en")) in user.content
 
 
+@pytest.mark.parametrize(
+    ("language", "no_length", "never_count"),
+    [
+        ("en", "It has no set length", "Never say how many songs there will be"),
+        ("fr", "Elle n'a pas de durée fixée", "Ne dis jamais combien de morceaux il y aura"),
+    ],
+)
+def test_endless_intro_brings_in_the_first_song_only(
+    language: str, no_length: str, never_count: str
+) -> None:
+    """A show with no set length (D044): one song is known, and no length is promised."""
+    writer, llm = make_writer(language)
+
+    text = writer.write_endless_intro(TRACKS[0])
+
+    assert text == CANNED
+    _, user = llm.calls[0]
+    assert no_length in user.content
+    assert never_count in user.content
+    assert TRACKS[0].title in user.content
+    assert TRACKS[0].artist in user.content
+    assert "Blue Windows, 2019, jazz, late night" in user.content
+    assert TRACKS[1].title not in user.content
+    assert str(word_budget(SPEECH_SECONDS["intro"], language)) in user.content
+    # It is the show's intro all the same: later breaks see it as the opening.
+    assert writer.transcript == [("intro", CANNED)]
+    assert writer.transcript_text().startswith(f"- {UI_STRINGS[language]['kinds']['intro']}: ")
+
+
 def test_transition_prompt_carries_both_tracks_and_next_facts() -> None:
     writer, llm = make_writer()
     writer.write_transition(TRACKS[0], TRACKS[1], STORY)
@@ -165,6 +195,36 @@ def test_transcript_text_before_anything_was_said() -> None:
     writer, _ = make_writer()
     assert writer.transcript_text() == "(nothing yet)"
     assert make_writer("fr")[0].transcript_text() == "(rien encore)"
+
+
+def test_transcript_text_keeps_the_last_scripts_only() -> None:
+    """A show that never ends must not send a longer prompt at every break (D044)."""
+    writer, _ = make_writer()
+    writer.transcript = [("intro", "Script 0.")] + [
+        ("transition", f"Script {number}.") for number in range(1, TRANSCRIPT_MEMORY + 3)
+    ]
+
+    lines = writer.transcript_text().splitlines()
+
+    assert len(lines) == TRANSCRIPT_MEMORY
+    assert lines[0] == "- Break: Script 3."
+    assert lines[-1] == f"- Break: Script {TRANSCRIPT_MEMORY + 2}."
+    assert "Opening" not in writer.transcript_text()
+    # The writer still remembers everything: only the prompt is cut.
+    assert len(writer.transcript) == TRANSCRIPT_MEMORY + 3
+
+
+def test_a_show_of_ten_songs_still_gets_every_script() -> None:
+    """The longest show the API makes (D041): an intro and nine breaks before the outro."""
+    writer, _ = make_writer()
+    writer.transcript = [("intro", "Script 0.")] + [
+        ("transition", f"Script {number}.") for number in range(1, 10)
+    ]
+
+    lines = writer.transcript_text().splitlines()
+
+    assert len(lines) == 10
+    assert lines[0] == "- Opening: Script 0."
 
 
 def test_transition_prompt_carries_details_labelled_facts_and_host_notes() -> None:

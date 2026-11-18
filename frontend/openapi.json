@@ -8,6 +8,11 @@
             "title": "Demo",
             "type": "boolean"
           },
+          "endless": {
+            "default": false,
+            "title": "Endless",
+            "type": "boolean"
+          },
           "energy": {
             "anyOf": [
               {
@@ -100,6 +105,21 @@
         "title": "CreateShowRequest",
         "type": "object"
       },
+      "EndShowRequest": {
+        "description": "Body of POST /shows/{id}/end (D044).",
+        "properties": {
+          "after": {
+            "minimum": 0.0,
+            "title": "After",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "after"
+        ],
+        "title": "EndShowRequest",
+        "type": "object"
+      },
       "Fact": {
         "properties": {
           "about": {
@@ -160,6 +180,21 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "NextPartRequest": {
+        "description": "Body of POST /shows/{id}/next (D044).",
+        "properties": {
+          "known": {
+            "minimum": 0.0,
+            "title": "Known",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "known"
+        ],
+        "title": "NextPartRequest",
         "type": "object"
       },
       "OptionsResponse": {
@@ -343,6 +378,11 @@
             "title": "Demo",
             "type": "boolean"
           },
+          "endless": {
+            "default": false,
+            "title": "Endless",
+            "type": "boolean"
+          },
           "energy": {
             "anyOf": [
               {
@@ -476,6 +516,17 @@
             "title": "Created At",
             "type": "string"
           },
+          "end_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Note"
+          },
           "error": {
             "anyOf": [
               {
@@ -593,6 +644,10 @@
       },
       "SourceOption": {
         "properties": {
+          "endless": {
+            "title": "Endless",
+            "type": "boolean"
+          },
           "id": {
             "enum": [
               "catalog",
@@ -622,7 +677,8 @@
           "id",
           "name",
           "styles",
-          "wish"
+          "wish",
+          "endless"
         ],
         "title": "SourceOption",
         "type": "object"
@@ -1069,9 +1125,109 @@
         "summary": "Get Show Audio"
       }
     },
+    "/api/v1/shows/{show_id}/end": {
+      "post": {
+        "description": "Close an endless show after the song at segment `after`, and return the show (D044).\n\nThe part made past that song, one break and one song at most, is dropped and the\nhost's goodbye takes its place. A show that is already closed is returned as it is.\n\nThe errors are those of `next_part`. The 409 also covers an `after` that is not a\nsong of the show, and an `after` with more than one song behind it: the player is\nnever more than one part ahead, and this request never deletes more than that.",
+        "operationId": "end_show_api_v1_shows__show_id__end_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "show_id",
+            "required": true,
+            "schema": {
+              "title": "Show Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndShowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "End Show"
+      }
+    },
+    "/api/v1/shows/{show_id}/next": {
+      "post": {
+        "description": "Add the next break and song to an endless show, and return the whole show (D044).\n\nThe player asks at the middle of the current song. The request blocks until the part\nis made, about as long as one song of a show takes to generate. The reply is the\nshow with two more segments, or with the host's goodbye when the show had to end by\nitself (`end_note` says why). Asking again with the same `known` makes nothing new.\n\n404: no such show. 409: the show cannot take a step (not endless, an opening that\nfailed or has not started, `known` larger than the show). 502: the step failed for a\nreason the pipeline expects (a provider, the network, ffmpeg). show.json was not\ntouched, so the same request can be sent again.\n\nA request that arrives while the opening is being made is not refused. It waits for\nthe opening, as every step waits for what is being generated (D011), and is then\nanswered from the show as it is: the next part when the opening succeeded, a 409\nwhen it failed.",
+        "operationId": "next_part_api_v1_shows__show_id__next_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "show_id",
+            "required": true,
+            "schema": {
+              "title": "Show Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NextPartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Next Part"
+      }
+    },
     "/api/v1/shows/{show_id}/segments/{index}/audio": {
       "get": {
-        "description": "One speech file of a ready show, for per-segment playback (D038).",
+        "description": "One segment's audio file of a ready show, for per-segment playback (D038, D044).",
         "operationId": "get_segment_audio_api_v1_shows__show_id__segments__index__audio_get",
         "parameters": [
           {

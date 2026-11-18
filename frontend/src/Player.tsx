@@ -14,10 +14,15 @@ import { SegmentPlayer } from './SegmentPlayer'
 
 type Props = {
   id: string
+  // True when the listener comes from the create flow: an endless show then grows
+  // while it plays. From Past shows it is a replay (D044).
+  live: boolean
   onBack: () => void
 }
 
-export function Player({ id, onBack }: Props) {
+export function Player({ id, live, onBack }: Props) {
+  // The show lives here, not in the segment player: a live endless show is replaced by
+  // each new part, and the title and the credits below follow it.
   const [show, setShow] = useState<ShowResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,8 +69,10 @@ export function Player({ id, onBack }: Props) {
         {/* A YouTube show has no style (D039): its wish is shown on the line below. */}
         {show.config.style && <>{styleLabel(show.config.style)} show, </>}
         {/* On the replay page, a hand-written show.json may have no track_count. The generated
-            type says it is always a number, which holds for every file the backend writes. */}
-        {typeof show.config.track_count === 'number' && (
+            type says it is always a number, which holds for every file the backend writes.
+            An endless show counts the songs it has so far, so the title grows with a live
+            show; 0 songs is never shown (D044). */}
+        {typeof show.config.track_count === 'number' && show.config.track_count > 0 && (
           <>{songsLabel(show.config.track_count)}, </>
         )}
         {hostLabel(show.config)}, {languageLabel(show.config.language)}
@@ -73,6 +80,12 @@ export function Player({ id, onBack }: Props) {
           <>
             {' '}
             <span className="tag">{sourceTag(show.config.source)}</span>
+          </>
+        )}
+        {show.config.endless && (
+          <>
+            {' '}
+            <span className="tag">Endless</span>
           </>
         )}
         {show.config.demo && (
@@ -84,9 +97,16 @@ export function Player({ id, onBack }: Props) {
       </h2>
       {show.config.wish && <p className="muted">You asked for: {show.config.wish}</p>}
 
-      {/* A ready show plays as one MP3, or segment by segment with YouTube (D038). */}
+      {/* A ready show plays as one MP3, or segment by segment: a YouTube show (D038)
+          and every endless show (D044). */}
       {show.status === 'ready' && show.playback === 'segments' ? (
-        <SegmentPlayer key={show.id} show={show} />
+        <SegmentPlayer
+          key={show.id}
+          show={show}
+          // Only an endless show grows: a show of a set length is never live.
+          live={live && show.config.endless === true}
+          onShowChange={setShow}
+        />
       ) : (
         <FilePlayer show={show} />
       )}

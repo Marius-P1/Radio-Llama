@@ -58,6 +58,11 @@ def test_get_track_unknown_id_raises(catalog_path: Path) -> None:
         LocalCatalog(catalog_path).get_track("nope")
 
 
+def test_the_catalog_keeps_shows_of_a_set_length() -> None:
+    """Too few tracks per style for a show that never ends (D042)."""
+    assert LocalCatalog.endless is False
+
+
 def test_duplicate_ids_raise_value_error(tmp_path: Path) -> None:
     path = _write_catalog(tmp_path / "catalog.json", [_track("j1", "jazz"), _track("j1", "rock")])
     with pytest.raises(ValueError, match="j1"):

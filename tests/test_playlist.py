@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from radio_llama.llm import FakeLLM, LLMError
+from radio_llama.models import Track
 from radio_llama.music import SongProposal
 from radio_llama.script.playlist import propose_playlist
 
@@ -77,6 +78,51 @@ def test_propose_playlist_without_a_style_makes_the_wish_the_theme() -> None:
     assert "Énergie choisie par l'auditeur : calm" in french
     for call in llm.calls:
         assert "None" not in call[0].content
+
+
+def _played(artist: str, title: str) -> Track:
+    return Track(
+        id=f"youtube-{title}",
+        title=title,
+        artist=artist,
+        style="",
+        album="",
+        duration_s=200.0,
+        license="YouTube embed",
+        license_url="https://www.youtube.com/t/terms",
+        track_url="https://www.youtube.com/watch?v=x",
+        artist_url="https://www.youtube.com/channel/x",
+        video_id="x",
+    )
+
+
+def test_propose_playlist_lists_the_songs_already_played() -> None:
+    """An endless show asks again and again: the model is told what to leave out (D044)."""
+    llm = FakeLLM([PLAYLIST_JSON])
+    played = [_played("Example Artist", "Blue Window"), _played("Lea Example", "Night Train")]
+
+    for language in ("en", "fr"):
+        propose_playlist(
+            llm, PROMPTS_DIR, language, style=None, energy=None, wish="x", count=8, played=played
+        )
+
+    english = llm.calls[0][0].content
+    assert "Never propose one of them again:" in english
+    assert "Blue Window by Example Artist\nNight Train by Lea Example" in english
+    assert "Number of songs: 8" in english
+    french = llm.calls[1][0].content
+    assert "Ne propose plus jamais l'une d'elles :" in french
+    assert "Blue Window de Example Artist\nNight Train de Lea Example" in french
+
+
+def test_propose_playlist_for_a_show_of_a_set_length_says_nothing_was_played() -> None:
+    llm = FakeLLM([PLAYLIST_JSON])
+
+    propose_playlist(llm, PROMPTS_DIR, "en", style="rock", energy=None, wish=None, count=3)
+    propose_playlist(llm, PROMPTS_DIR, "fr", style="rock", energy=None, wish=None, count=3)
+
+    assert "Never propose one of them again:\n(nothing yet)" in llm.calls[0][0].content
+    assert "Ne propose plus jamais l'une d'elles :\n(rien encore)" in llm.calls[1][0].content
 
 
 def test_propose_playlist_accepts_a_fenced_reply() -> None:

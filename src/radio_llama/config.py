@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import SecretStr, ValidationError, field_validator
+from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     llm_model: str = "mistral-small-latest"
     tts_backend: Literal["elevenlabs", "fake"] = "elevenlabs"
     elevenlabs_model_id: str = "eleven_multilingual_v2"
+    # The most songs an endless show plays before the host closes it by itself (D044). It
+    # bounds what a show left running can spend. 0 means no limit.
+    endless_max_songs: int = Field(default=100, ge=0)
 
     # Paths
     cache_dir: Path = Path("cache")

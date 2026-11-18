@@ -1,4 +1,5 @@
-"""The `/api/v1` routes: options, voices, create a show, read shows, fetch the audio."""
+"""The `/api/v1` routes: options, voices, create a show, read shows, fetch the audio, and
+the two steps of an endless show (D044): its next part and its end."""
 
 import logging
 import re
@@ -9,18 +10,23 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
-from radio_llama.api.jobs import Jobs
+from radio_llama.api.jobs import Jobs, StepRefused
 from radio_llama.api.schemas import (
     CreateShowRequest,
+    EndShowRequest,
+    NextPartRequest,
     OptionsResponse,
     PersonaOption,
     ShowResponse,
     ShowSummary,
     SourceOption,
+    has_own_audio,
 )
 from radio_llama.config import Settings
+from radio_llama.generator.lifecycle import EXPECTED_ERRORS
+from radio_llama.generator.pipeline import ENDLESS_SOURCE_ERROR
 from radio_llama.models import ENERGIES, Show, ShowConfig
-from radio_llama.music import SOURCE_NAMES, MusicSource, missing_source_message
+from radio_llama.music import SOURCE_NAMES, MusicSource, missing_source_message, playback_of
 from radio_llama.personas import load_personas
 from radio_llama.storage import SHOW_FILE, load_show, new_show_id, save_show
 from radio_llama.voice import TTSError, UnknownVoiceError, VoiceList, VoiceOption, find_voice
@@ -55,8 +61,8 @@ JobsDep = Annotated[Jobs, Depends(get_jobs)]
 VoicesDep = Annotated[VoiceList, Depends(get_voice_list)]
 
 
-def load_show_or_404(output_dir: Path, show_id: str) -> Show:
-    """Read `output_dir / show_id / show.json`, or raise a 404."""
+def show_dir_or_404(output_dir: Path, show_id: str) -> Path:
+    """The folder of the show `show_id`, or a 404 when there is no such show."""
     not_found = HTTPException(status_code=404, detail=f"Show {show_id!r} not found.")
     # The id comes from the URL: rejecting anything that is not a show id prevents path traversal.
     if not SHOW_ID.match(show_id):
@@ -64,7 +70,12 @@ def load_show_or_404(output_dir: Path, show_id: str) -> Show:
     show_dir = output_dir / show_id
     if not (show_dir / SHOW_FILE).is_file():
         raise not_found
-    return load_show(show_dir)
+    return show_dir
+
+
+def load_show_or_404(output_dir: Path, show_id: str) -> Show:
+    """Read `output_dir / show_id / show.json`, or raise a 404."""
+    return load_show(show_dir_or_404(output_dir, show_id))
 
 
 def _summary(show: Show) -> ShowSummary:
@@ -98,6 +109,7 @@ def get_options(settings: SettingsDep, sources: SourcesDep) -> OptionsResponse:
                 name=SOURCE_NAMES[name],
                 styles=music.list_styles(),
                 wish=music.accepts_wish,
+                endless=music.endless,
             )
             for name, music in sources.items()
         ],
@@ -163,6 +175,9 @@ def create_show(
             status_code=400,
             detail=f"A {SOURCE_NAMES[body.source]} show needs a wish: say what you want to hear.",
         )
+    # A show with no set length needs a source that can always give one more song (D042).
+    if body.endless and not music.endless:
+        raise HTTPException(status_code=400, detail=ENDLESS_SOURCE_ERROR)
     persona_ids = [persona.id for persona in load_personas(settings.prompts_dir, body.language)]
     if body.persona not in persona_ids:
         raise HTTPException(
@@ -195,8 +210,10 @@ def create_show(
             energy=body.energy,
             source=body.source,
             wish=wish,
-            track_count=body.track_count,
+            # An endless show counts the songs it has so far: none yet (D044).
+            track_count=0 if body.endless else body.track_count,
             demo=body.demo,
+            endless=body.endless,
         ),
     )
     save_show(show, settings.output_dir / show.id)
@@ -237,7 +254,10 @@ def get_show_audio(show_id: str, settings: SettingsDep) -> FileResponse:
 
 @router.get("/shows/{show_id}/segments/{index}/audio")
 def get_segment_audio(show_id: str, index: int, settings: SettingsDep) -> FileResponse:
-    """One speech file of a ready show, for per-segment playback (D038)."""
+    """One segment's audio file of a ready show, for per-segment playback (D038, D044)."""
+    # Read without the generation lock: with it, the audio of a playing show would wait
+    # behind a step that takes tens of seconds. The price: a request that arrives at the
+    # instant a step saves show.json can read a half-written file and fail.
     show = load_show_or_404(settings.output_dir, show_id)
     not_found = HTTPException(
         status_code=404, detail=f"Segment {index} of show {show_id!r} has no audio."
@@ -245,11 +265,75 @@ def get_segment_audio(show_id: str, index: int, settings: SettingsDep) -> FileRe
     if show.status != "ready" or not 0 <= index < len(show.segments):
         raise not_found
     segment = show.segments[index]
-    # A song is never served here: a file show keeps its songs inside show.mp3, an embed
-    # show plays them in the YouTube player. Only the host's speech files are.
-    if segment.kind == "song" or segment.audio_file is None:
+    # The host's speech files, and the songs of a show that plays by segments from files
+    # (an endless Jamendo show, D044). A song of a file show is never served here: it is
+    # inside show.mp3. A YouTube song has no file at all.
+    if segment.audio_file is None or not has_own_audio(segment, playback_of(show.config)):
         raise not_found
     path = settings.output_dir / show_id / segment.audio_file
     if not path.is_file():
         raise not_found
-    return FileResponse(path, media_type="audio/mpeg")
+    # One URL can name two files over the life of an endless show: after an `end`, the
+    # index of the dropped break is the index of the goodbye (D044). `no-cache` makes the
+    # browser ask the server again before it reuses a copy. FileResponse never answers
+    # "304 Not Modified", so the file is then sent again: a segment played twice is
+    # downloaded twice.
+    return FileResponse(path, media_type="audio/mpeg", headers={"Cache-Control": "no-cache"})
+
+
+@router.post("/shows/{show_id}/next")
+def next_part(
+    show_id: str, body: NextPartRequest, settings: SettingsDep, jobs: JobsDep
+) -> ShowResponse:
+    """Add the next break and song to an endless show, and return the whole show (D044).
+
+    The player asks at the middle of the current song. The request blocks until the part
+    is made, about as long as one song of a show takes to generate. The reply is the
+    show with two more segments, or with the host's goodbye when the show had to end by
+    itself (`end_note` says why). Asking again with the same `known` makes nothing new.
+
+    404: no such show. 409: the show cannot take a step (not endless, an opening that
+    failed or has not started, `known` larger than the show). 502: the step failed for a
+    reason the pipeline expects (a provider, the network, ffmpeg). show.json was not
+    touched, so the same request can be sent again.
+
+    A request that arrives while the opening is being made is not refused. It waits for
+    the opening, as every step waits for what is being generated (D011), and is then
+    answered from the show as it is: the next part when the opening succeeded, a 409
+    when it failed.
+    """
+    # Only that the show exists: show.json is read once, by `Jobs`, under the lock, so
+    # a request that arrives while another one saves the show waits for it.
+    show_dir_or_404(settings.output_dir, show_id)
+    try:
+        show = jobs.extend(show_id, body.known)
+    except StepRefused as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except EXPECTED_ERRORS as exc:
+        log.exception("The next part of show %s failed", show_id)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return ShowResponse.from_show(show, None)
+
+
+@router.post("/shows/{show_id}/end")
+def end_show(
+    show_id: str, body: EndShowRequest, settings: SettingsDep, jobs: JobsDep
+) -> ShowResponse:
+    """Close an endless show after the song at segment `after`, and return the show (D044).
+
+    The part made past that song, one break and one song at most, is dropped and the
+    host's goodbye takes its place. A show that is already closed is returned as it is.
+
+    The errors are those of `next_part`. The 409 also covers an `after` that is not a
+    song of the show, and an `after` with more than one song behind it: the player is
+    never more than one part ahead, and this request never deletes more than that.
+    """
+    show_dir_or_404(settings.output_dir, show_id)  # as in `next_part`
+    try:
+        show = jobs.end(show_id, body.after)
+    except StepRefused as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except EXPECTED_ERRORS as exc:
+        log.exception("The closing of show %s failed", show_id)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return ShowResponse.from_show(show, None)

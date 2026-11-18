@@ -13,10 +13,10 @@ from typing import Literal
 from pydantic import BaseModel, ValidationError
 
 from radio_llama.llm.base import LLMClient, LLMError, LLMResponse, Message
-from radio_llama.models import Energy
+from radio_llama.models import Energy, Track
 from radio_llama.music.youtube import SongProposal
 from radio_llama.script.prompts import load_template, render
-from radio_llama.script.writer import UI_STRINGS, clean_script
+from radio_llama.script.writer import UI_STRINGS, clean_script, format_track_list
 from radio_llama.trace import traced_generate
 
 # Enough for the model's thinking plus a short JSON list (D021).
@@ -39,10 +39,16 @@ def propose_playlist(
     energy: Energy | None,
     wish: str | None,
     count: int,
+    played: list[Track] | None = None,
 ) -> tuple[list[SongProposal], LLMResponse]:
     """Ask the model for `count` songs. Returns them with the raw response.
 
-    With no style (D039) the prompt says so and the wish alone sets the theme.
+    With no style (D039) the prompt says so and the wish alone sets the theme. `played`
+    is what an endless show already played, so the model proposes other songs (D044); a
+    show of a set length asks once and passes nothing. Every played song is listed, so
+    this prompt grows by one line per song of the show. A shorter list would let the
+    model propose old songs again. The model may return more or fewer songs than
+    `count`: the caller decides what to do with them.
     """
     strings = UI_STRINGS[language]
     user = render(
@@ -53,6 +59,7 @@ def propose_playlist(
             "wish": wish or strings["no_wish"],
             "language": strings["language_name"],
             "count": str(count),
+            "played": format_track_list(played or [], language) or strings["nothing_yet"],
         },
     )
     response = traced_generate(

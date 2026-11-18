@@ -74,6 +74,12 @@ export function Progress({ id, onReady, onBack }: Props) {
             <span className="tag">{sourceTag(show.config.source)}</span>
           </>
         )}
+        {show?.config.endless && (
+          <>
+            {' '}
+            <span className="tag">Endless</span>
+          </>
+        )}
         {show?.config.demo && (
           <>
             {' '}
@@ -84,8 +90,12 @@ export function Progress({ id, onReady, onBack }: Props) {
       <p className="progress-line" aria-live="polite">
         {line}
       </p>
+      {/* An endless show only makes its opening here, two segments: the host's first
+          words and the first song (D044). */}
       <p className="muted">
-        The host is writing the script and recording it. This takes a few minutes.
+        {show?.config.endless
+          ? 'The host is writing the opening and getting the first song ready. The rest is made while you listen.'
+          : 'The host is writing the script and recording it. This takes a few minutes.'}
       </p>
     </section>
   )
