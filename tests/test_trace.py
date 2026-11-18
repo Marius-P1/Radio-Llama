@@ -13,7 +13,7 @@ from radio_llama.config import Settings
 from radio_llama.generator import PipelineGenerator, run_generation
 from radio_llama.llm import FakeLLM, LLMError, LLMResponse, Message
 from radio_llama.models import Show, ShowConfig
-from radio_llama.music import JamendoError, JamendoSource, LocalCatalog
+from radio_llama.music import JamendoError, JamendoSource, LocalCatalog, jamendo
 from radio_llama.trace import traced_generate, tracing
 from radio_llama.voice import CachedTextToSpeech, FakeTTS, Voice
 from tests.conftest import FakeFactServices, FakeJamendo
@@ -208,6 +208,25 @@ def test_jamendo_records_carry_no_client_id(fake_jamendo: FakeJamendo, tmp_path:
     assert download["path"].endswith("jamendo-1001.mp3")
     assert download["bytes"] == Path(download["path"]).stat().st_size > 0
     assert "body" not in download  # never the audio
+
+
+def test_the_next_link_of_a_jamendo_page_is_recorded_without_the_client_id(
+    fake_jamendo: FakeJamendo, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The search of an endless show asks for the total (D044). Jamendo then adds a
+    `next` link to a full page, and that link echoes the client id."""
+    monkeypatch.setattr(jamendo, "SEARCH_LIMIT", 2)  # a full page with two more after it
+    with tracing(tmp_path):
+        fake_jamendo.source.more_tracks("jazz", exclude=set())
+
+    text = (tmp_path / "jamendo.jsonl").read_text(encoding="utf-8")
+    assert "test-client-id" not in text
+    page = _records(tmp_path, "jamendo")[0]
+    assert page["params"]["fullcount"] == "true"
+    assert "client_id" not in page["params"]
+    assert page["body"]["headers"]["results_fullcount"] == "4"
+    # The link is kept, since it shows how Jamendo pages, with the secret taken out.
+    assert "client_id=<redacted>" in page["body"]["headers"]["next"]
 
 
 def test_a_jamendo_api_error_is_recorded(fake_jamendo: FakeJamendo, tmp_path: Path) -> None:

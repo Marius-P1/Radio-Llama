@@ -30,7 +30,7 @@ from radio_llama.music import LocalCatalog, playback_of
 from radio_llama.personas import get_persona, load_personas
 from radio_llama.storage import load_show, save_show
 from radio_llama.voice import TTSError
-from tests.conftest import PROMPTS_DIR, refused_voices
+from tests.conftest import PROMPTS_DIR, FakeJamendo, refused_voices
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
 
@@ -1235,6 +1235,34 @@ def test_a_failed_end_keeps_the_part_it_meant_to_drop(
         assert (show_dir / name).is_file()
         assert client.get(before["segments"][index]["audio_url"]).status_code == 200
     assert not (show_dir / "02-outro.mp3").exists()
+
+
+def test_a_step_jamendo_does_not_answer_is_a_502_and_the_show_stays_open(
+    client_with_jamendo: TestClient, fake_jamendo: FakeJamendo, fake_settings: Settings
+) -> None:
+    """Jamendo now and then answers no results for a style that has thousands, in runs
+    (D044). The step fails, the host does not sign off, and the player asks again."""
+    client = client_with_jamendo
+    show_id = _create(client, source="jamendo", endless=True)["id"]
+    before = client.get(f"/api/v1/shows/{show_id}").json()
+    saved = (fake_settings.output_dir / show_id / "show.json").read_bytes()
+    fake_jamendo.empty_replies = 99
+
+    response = _next(client, show_id, known=2)
+
+    assert response.status_code == 502
+    assert response.json() == {
+        "detail": "Jamendo did not answer the search. Try again in a moment."
+    }
+    assert (fake_settings.output_dir / show_id / "show.json").read_bytes() == saved
+    assert client.get(f"/api/v1/shows/{show_id}").json() == before
+    assert _kinds(before) == ["intro", "song"] and before["end_note"] is None
+
+    fake_jamendo.empty_replies = 0
+    response = _next(client, show_id, known=2)
+
+    assert response.status_code == 200, response.text
+    assert _kinds(response.json()) == ["intro", "song", "transition", "song"]
 
 
 def test_a_step_that_cannot_be_saved_is_a_502_and_keeps_the_show(

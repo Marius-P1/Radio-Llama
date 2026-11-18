@@ -18,7 +18,7 @@ from radio_llama.generator.pipeline import (
 )
 from radio_llama.llm import FakeLLM, LLMError
 from radio_llama.models import Fact, Show, ShowConfig, Track
-from radio_llama.music import LocalCatalog
+from radio_llama.music import JamendoError, LocalCatalog
 from radio_llama.personas import get_persona
 from radio_llama.script import plan_shapes, writer
 from radio_llama.storage import load_show, save_show
@@ -1592,3 +1592,63 @@ def test_a_show_already_past_a_lowered_song_limit_closes_at_its_next_step(
     assert show.end_note == "The show ended by itself: it reached the limit of 2 songs."
     assert len(show.tracks) == 3  # nothing is taken back
     assert len(fake_jamendo.requests) == requests_before
+
+
+# False empty replies from Jamendo (D044): now and then, in runs, the search answers no
+# results for a style that has thousands. A show must never take that for the end of the
+# music.
+
+
+def test_a_run_of_false_empty_replies_does_not_close_an_endless_show(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+    fake_jamendo.empty_replies = 4  # more than the three the host used to sign off on
+
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "transition", "song"]
+    assert show.is_open and show.end_note is None
+    assert len({track.id for track in show.tracks}) == 2
+
+
+def test_a_step_fails_when_jamendo_keeps_answering_nothing_and_can_be_asked_again(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+    out_dir = tmp_path / "out"
+    run_generation(generator, _endless_show(), out_dir)
+    saved = (out_dir / "show.json").read_bytes()
+    fake_jamendo.empty_replies = 99
+
+    with pytest.raises(JamendoError, match="Jamendo did not answer the search"):
+        generator.extend(load_show(out_dir), out_dir)
+
+    # No goodbye and no note: the show is as it was, still open.
+    assert (out_dir / "show.json").read_bytes() == saved
+    assert load_show(out_dir).is_open
+    assert _audio_files(out_dir) == ["00-intro.mp3", "01-song.mp3"]
+    assert len(generator.last_responses) == 0  # no script was paid for
+
+    fake_jamendo.empty_replies = 0
+    show = _step(generator, out_dir)
+
+    assert _kinds(show) == ["intro", "song", "transition", "song"]
+    errors = [step["error"] for step in _trace(out_dir, "steps")]
+    assert errors == [None, "Jamendo did not answer the search. Try again in a moment.", None]
+
+
+def test_an_endless_show_does_not_open_when_jamendo_keeps_answering_nothing(
+    fake_settings: Settings, tiny_catalog: LocalCatalog, fake_jamendo: FakeJamendo, tmp_path: Path
+) -> None:
+    """The opening fails with what happened, not with "the style has 0 tracks"."""
+    fake_jamendo.empty_replies = 99
+    generator = _jamendo_generator(fake_settings, tiny_catalog, fake_jamendo, FakeLLM([CANNED]))
+
+    show = run_generation(generator, _endless_show(), tmp_path / "out")
+
+    assert show.status == "failed"
+    assert show.error == "Jamendo did not answer the search. Try again in a moment."
+    assert generator.last_responses == []

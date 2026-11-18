@@ -118,10 +118,15 @@ export interface paths {
          *     show with two more segments, or with the host's goodbye when the show had to end by
          *     itself (`end_note` says why). Asking again with the same `known` makes nothing new.
          *
-         *     404: no such show. 409: the show cannot take a step (not endless, not ready, `known`
-         *     larger than the show). 502: the step failed for a reason the pipeline expects (a
-         *     provider, the network, ffmpeg). show.json was not touched, so the same request can
-         *     be sent again.
+         *     404: no such show. 409: the show cannot take a step (not endless, an opening that
+         *     failed or has not started, `known` larger than the show). 502: the step failed for a
+         *     reason the pipeline expects (a provider, the network, ffmpeg). show.json was not
+         *     touched, so the same request can be sent again.
+         *
+         *     A request that arrives while the opening is being made is not refused. It waits for
+         *     the opening, as every step waits for what is being generated (D011), and is then
+         *     answered from the show as it is: the next part when the opening succeeded, a 409
+         *     when it failed.
          */
         post: operations["next_part_api_v1_shows__show_id__next_post"];
         delete?: never;

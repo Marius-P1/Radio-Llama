@@ -99,12 +99,18 @@ class FakeJamendo:
     """A JamendoSource on a mock transport: recorded JSON for the API, a tone for the audio.
 
     `requests` records every request. A request carrying any parameter named in
-    `reject_params` gets an empty result list, which exercises the query relaxation.
-    `empty_replies` is how many tracks calls answer an empty list before the real one,
-    like the live API does now and then. `api_error` makes every API call answer that
-    Jamendo error code. A search is answered one page at a time, by its `limit` and
-    `offset`; `ignore_offset` answers the first page whatever the offset, like a search
-    that never ends.
+    `reject_params` gets an empty result list, like a query that matches nothing, which
+    exercises the query relaxation. `empty_replies` is how many tracks calls answer an
+    empty list before the real one, like the live API does now and then: a false empty
+    reply. `api_error` makes every API call answer that Jamendo error code. A search is
+    answered one page at a time, by its `limit` and `offset`; `ignore_offset` answers
+    the first page whatever the offset, like a search that never ends.
+
+    A search sent with `fullcount=true` is answered like the live API (measured on
+    2026-11-18, D044): the reply says how many results the whole query has in
+    `results_fullcount`, a string, also past the last page and for a query that matches
+    nothing. A false empty reply does not say it. A full page with more after it carries
+    a `next` header, a URL that echoes the client id.
     """
 
     def __init__(self, cache_dir: Path, tone: bytes) -> None:
@@ -131,23 +137,31 @@ class FakeJamendo:
             headers = {"status": "failed", "code": code, "error_message": message}
             return httpx.Response(200, json={"headers": headers, "results": []})
         if request.url.path == "/v3.0/tracks/":
-            body = dict(self._tracks)
+            headers = dict(self._tracks["headers"])
+            results = self._tracks["results"]
+            total: int | None = None  # the results of the whole query; None: not said
             if self.reject_params & set(params):
-                body = {**body, "results": []}
+                results, total = [], 0  # a query that matches nothing
             elif self.empty_replies > 0:
                 self.empty_replies -= 1
-                body = {**body, "results": []}
+                results = []  # a false empty reply: no results and no total
             elif "id" in params:
                 wanted = params["id"].split()
-                body = {**body, "results": [r for r in body["results"] if r["id"] in wanted]}
-            elif not self.ignore_offset:
+                results = [r for r in results if r["id"] in wanted]
+            elif self.ignore_offset:
+                total = 1_000_000  # the first page again and again
+            else:
                 # One page of the search: `limit` results from `offset` on. The fixture
-                # holds four tracks, so the second page of a real search (offset 50) is
-                # empty, and a show that asks for more runs out (D044).
-                start = int(params.get("offset", "0"))
-                page = body["results"][start : start + int(params["limit"])]
-                body = {**body, "results": page}
-            return httpx.Response(200, json=body)
+                # holds four tracks, so a show that asks for more runs out (D044).
+                start, limit = int(params.get("offset", "0")), int(params["limit"])
+                total = len(results)
+                results = results[start : start + limit]
+                if start + limit < total and "fullcount" in params:
+                    headers["next"] = str(request.url.copy_set_param("offset", start + limit))
+            headers["results_count"] = len(results)
+            if "fullcount" in params and total is not None:
+                headers["results_fullcount"] = str(total)
+            return httpx.Response(200, json={"headers": headers, "results": results})
         if request.url.path == "/v3.0/artists/musicinfo/":
             wanted = params["id"].split()
             results = [r for r in self._artists["results"] if r["id"] in wanted]
@@ -158,6 +172,7 @@ class FakeJamendo:
 @pytest.fixture
 def fake_jamendo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeJamendo:
     monkeypatch.setattr(jamendo, "RETRY_PAUSE_S", 0.0)
+    monkeypatch.setattr(jamendo, "FALSE_EMPTY_PAUSE_S", 0.0)
     tone_path = tmp_path / "jamendo-tone.mp3"
     _tone(tone_path, 330.0, TONE_SECONDS)
     return FakeJamendo(tmp_path / "cache", tone_path.read_bytes())

@@ -306,6 +306,25 @@ def test_export_refuses_an_endless_show_that_is_still_open(
     assert not (dest / OPEN_ID).exists()
 
 
+def test_a_refused_export_of_several_shows_copies_none_of_them(
+    endless_output_dir: Path, tmp_path: Path
+) -> None:
+    """Every show is checked before the first one is copied (D043): a show that can be
+    exported, followed by one that cannot, leaves nothing behind."""
+    dest = tmp_path / "shows"
+
+    with pytest.raises(ValueError, match=f"{OPEN_ID} has no closing"):
+        export_replay([CLOSED_ID, OPEN_ID], endless_output_dir, dest)
+
+    assert not dest.exists()
+
+    # The same for an unknown id after a good one.
+    with pytest.raises(FileNotFoundError, match="20261030-180000-abc333"):
+        export_replay([CLOSED_ID, "20261030-180000-abc333"], endless_output_dir, dest)
+
+    assert not dest.exists()
+
+
 def test_export_refuses_a_closed_endless_show_with_a_missing_song_file(
     endless_output_dir: Path, tmp_path: Path
 ) -> None:

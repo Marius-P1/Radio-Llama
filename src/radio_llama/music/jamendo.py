@@ -38,6 +38,16 @@ DURATION_RANGE = "60_600"
 # of matches (seen live on 2026-11-08, about one call in three). A second try works.
 EMPTY_RETRIES = 2
 RETRY_PAUSE_S = 0.5
+# An endless show cannot take such an empty reply for the end of the music, or the host
+# would sign off in the middle of a style with thousands of tracks. Its search asks for
+# the total of the query (`fullcount=true`): a real reply carries it, even with no
+# results, and a false empty one does not (D044). On 2026-11-18, 37 to 41 % of the calls
+# were false empties and they came in runs of four or more, so the page is asked again
+# more often and with a longer pause than above: up to six tries over ten seconds. A step
+# is asked at the middle of a song, so it has that time.
+FALSE_EMPTY_RETRIES = 5
+FALSE_EMPTY_PAUSE_S = 2.0
+FALSE_EMPTY_ERROR = "Jamendo did not answer the search. Try again in a moment."
 
 # Jamendo's featured genres (from its API docs) plus lofi, each with the tag searched for it.
 STYLE_TAGS = {
@@ -186,7 +196,11 @@ class JamendoSource:
         speed. Each query is read page by page until a page brings a track the show has
         not played, at most MAX_PAGES pages. The first such page is the answer, so the
         strictest query that still has something new wins. An empty list means the style
-        has nothing left for this show.
+        has nothing left for this show: every query was read to its true end.
+
+        Raises JamendoError when Jamendo keeps answering nothing for a page (a false
+        empty reply). That is never read as the end of a query, so it can neither close
+        the show nor drop the wish filters or the energy for this step.
 
         A long show reads one more page per SEARCH_LIMIT songs it played, so its steps
         cost a little more as it goes on.
@@ -201,24 +215,48 @@ class JamendoSource:
             steps.append(Query(tag=STYLE_TAGS[style]))
         for query in steps:
             for page in range(MAX_PAGES):
-                tracks = self.search(query, style, offset=page * SEARCH_LIMIT)
+                tracks, last = self._page(query, style, offset=page * SEARCH_LIMIT)
                 fresh = [track for track in tracks if track.id not in exclude]
                 if fresh:
                     return fresh
-                # A page that is not full is the last one of this query. Stopping here
-                # saves asking for the page after it, which would come back empty and be
-                # retried like any empty reply. An empty page stops the query the same way.
-                # A full page that lost a track with no Creative Commons license also
-                # looks short: the query then stops a page early and the next one is tried.
-                if len(tracks) < SEARCH_LIMIT:
+                if last:
                     break
         return []
 
-    def search(self, query: Query, style: str, offset: int = 0) -> list[Track]:
-        """One `tracks` request plus one `artists/musicinfo` request for the facts.
+    def _page(self, query: Query, style: str, offset: int) -> tuple[list[Track], bool]:
+        """One page of a search for `more_tracks`, and whether it is the last of its query.
 
-        `offset` skips that many results: page two of a search is offset SEARCH_LIMIT.
+        The same request as `search`, plus `offset` to skip that many results and
+        `fullcount=true`, which makes Jamendo say how many results the whole query has.
+        That total tells a real reply from a false empty one (see FALSE_EMPTY_RETRIES),
+        and it tells where the query ends. The number of tracks on the page cannot: a
+        track with no Creative Commons license is left out, so a full page can look short.
         """
+        params = {
+            "limit": str(SEARCH_LIMIT),
+            "include": "musicinfo licenses",
+            "audioformat": "mp32",
+            "boost": "popularity_month",
+            "durationbetween": DURATION_RANGE,
+            "fullcount": "true",
+            **query.params(),
+        }
+        if offset > 0:
+            params["offset"] = str(offset)
+        reply = self._reply("tracks", params)
+        for _ in range(FALSE_EMPTY_RETRIES):
+            if not _is_false_empty(reply):
+                break
+            time.sleep(FALSE_EMPTY_PAUSE_S)
+            reply = self._reply("tracks", params)
+        if _is_false_empty(reply):
+            raise JamendoError(FALSE_EMPTY_ERROR)
+        results = reply.get("results", [])
+        artists = self._artist_infos({str(raw["artist_id"]) for raw in results})
+        return self._remember(results, style, artists), _is_last_page(reply, offset)
+
+    def search(self, query: Query, style: str) -> list[Track]:
+        """One `tracks` request plus one `artists/musicinfo` request for the facts."""
         params = {
             "limit": str(SEARCH_LIMIT),
             "include": "musicinfo licenses",
@@ -227,8 +265,6 @@ class JamendoSource:
             "durationbetween": DURATION_RANGE,
             **query.params(),
         }
-        if offset > 0:  # the first page is asked with no offset parameter
-            params["offset"] = str(offset)
         results = self._get("tracks", params)
         for _ in range(EMPTY_RETRIES):
             if results:
@@ -291,6 +327,11 @@ class JamendoSource:
         return infos
 
     def _get(self, method: str, params: dict[str, str]) -> list[dict]:
+        """The results of one API call."""
+        return self._reply(method, params).get("results", [])
+
+    def _reply(self, method: str, params: dict[str, str]) -> dict:
+        """One API call: the whole JSON reply, with its `headers` and its `results`."""
         url = f"{API_URL}/{method}/"
         # The trace (D037) gets the query without the client id, which is a secret. The
         # reply echoes it too, in the audio URLs (`from=app-<client_id>`), so the whole
@@ -308,7 +349,7 @@ class JamendoSource:
         trace.record("jamendo", started, error=error, **sent, status=status, body=body)
         if error is not None:
             raise JamendoError(error)
-        return body.get("results", []) if isinstance(body, dict) else []
+        return body if isinstance(body, dict) else {}
 
     def _download(self, url: str, path: Path) -> None:
         sent = {"method": "download", "url": url, "path": str(path), "redact": self._client_id}
@@ -336,6 +377,35 @@ class JamendoSource:
         except httpx.HTTPError as exc:
             raise JamendoError(f"Jamendo audio download failed: {exc}") from exc
         part.replace(path)
+
+
+def _total(reply: dict) -> int | None:
+    """How many results the whole query has, from a reply asked with `fullcount=true`.
+
+    Jamendo sends it as a string in `headers.results_fullcount`, the same number on every
+    page. None when the reply does not say.
+    """
+    value = str(reply.get("headers", {}).get("results_fullcount", ""))
+    return int(value) if value.isdigit() else None
+
+
+def _is_false_empty(reply: dict) -> bool:
+    """Whether a `tracks` reply is Jamendo answering nothing, not the end of a query.
+
+    Both have no results. The true end of a query still carries the total; the false
+    empty reply does not (measured on the live API on 2026-11-18, D044).
+    """
+    return not reply.get("results") and _total(reply) is None
+
+
+def _is_last_page(reply: dict, offset: int) -> bool:
+    """Whether the query has no result after the page that starts at `offset`."""
+    total = _total(reply)
+    if total is None:
+        # Results with no total: not seen on the live API. Then only a page that is not
+        # full can be taken for the last one.
+        return len(reply.get("results", [])) < SEARCH_LIMIT
+    return offset + SEARCH_LIMIT >= total
 
 
 def _style_of(raw: dict) -> str:

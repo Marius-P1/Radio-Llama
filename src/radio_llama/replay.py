@@ -27,37 +27,43 @@ def export_replay(show_ids: list[str], output_dir: Path, dest: Path) -> list[dic
     A file show brings its MP3, a show that plays by segments the file of each segment that
     has one. Returns one summary dict per exported show. Raises FileNotFoundError for an
     unknown id or a missing audio file and ValueError for a show that is not ready or is
-    an endless show still open; nothing is copied for that id.
+    an endless show still open. Every show is checked before the first one is copied, so
+    a refused export copies nothing and leaves `dest` as it was (D043).
     """
+    shows = [_exportable_show(show_id, output_dir) for show_id in show_ids]
     summaries = []
-    for show_id in show_ids:
+    for show_id, show in zip(show_ids, shows, strict=True):
         source = output_dir / show_id
-        if not (source / SHOW_FILE).exists():
-            raise FileNotFoundError(f"No show {show_id} in {output_dir} (no {SHOW_FILE}).")
-        show = load_show(source)
-        if show.status != "ready":
-            raise ValueError(
-                f"Show {show_id} is {show.status}, not ready. Only ready shows can be exported."
-            )
-        # An endless show the listener left is ready but stops with no goodbye (D044).
-        if show.is_open:
-            raise ValueError(
-                f"Show {show_id} has no closing. Only a show the host closed can be exported."
-            )
-        audio_files = _audio_files(show)
-        for name in audio_files:
-            if not (source / name).exists():
-                raise FileNotFoundError(f"Show {show_id} has no audio file {name}.")
-
         target = dest / show_id
         target.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source / SHOW_FILE, target / SHOW_FILE)
-        for name in audio_files:
+        for name in _audio_files(show):
             shutil.copyfile(source / name, target / name)
         summaries.append(_summary(show).model_dump(mode="json"))
 
     write_index(dest)
     return summaries
+
+
+def _exportable_show(show_id: str, output_dir: Path) -> Show:
+    """Read the show `show_id`, or raise the reason it cannot be exported."""
+    source = output_dir / show_id
+    if not (source / SHOW_FILE).exists():
+        raise FileNotFoundError(f"No show {show_id} in {output_dir} (no {SHOW_FILE}).")
+    show = load_show(source)
+    if show.status != "ready":
+        raise ValueError(
+            f"Show {show_id} is {show.status}, not ready. Only ready shows can be exported."
+        )
+    # An endless show the listener left is ready but stops with no goodbye (D044).
+    if show.is_open:
+        raise ValueError(
+            f"Show {show_id} has no closing. Only a show the host closed can be exported."
+        )
+    for name in _audio_files(show):
+        if not (source / name).exists():
+            raise FileNotFoundError(f"Show {show_id} has no audio file {name}.")
+    return show
 
 
 def write_index(dest: Path) -> Path:
