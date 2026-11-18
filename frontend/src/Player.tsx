@@ -100,7 +100,13 @@ export function Player({ id, live, onBack }: Props) {
       {/* A ready show plays as one MP3, or segment by segment: a YouTube show (D038)
           and every endless show (D044). */}
       {show.status === 'ready' && show.playback === 'segments' ? (
-        <SegmentPlayer key={show.id} show={show} live={live} onShowChange={setShow} />
+        <SegmentPlayer
+          key={show.id}
+          show={show}
+          // Only an endless show grows: a show of a set length is never live.
+          live={live && show.config.endless === true}
+          onShowChange={setShow}
+        />
       ) : (
         <FilePlayer show={show} />
       )}

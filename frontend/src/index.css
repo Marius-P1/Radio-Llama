@@ -535,11 +535,9 @@ audio {
   margin-bottom: 10px;
 }
 
-.player-status {
-  font-size: 0.9rem;
-}
-
-/* A line under the status of a live show: why a step failed, why the show closed. */
+/* The status of the player, and the lines under it on a live show: why a step
+   failed, why the show closed. */
+.player-status,
 .player-note {
   font-size: 0.9rem;
 }
