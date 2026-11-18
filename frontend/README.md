@@ -10,17 +10,19 @@ A catalog or Jamendo show of a set length plays as one MP3 in the browser's audi
 
 On a source that allows it (Jamendo, YouTube), the Show length block has a fifth button, Endless. The create request then carries `endless: true`, and the progress screen only waits for the opening: the host's first words and the first song.
 
-The player that opens from the progress screen is live (`App.tsx` carries the flag in its view). Only a live player makes an endless show grow. A show opened from Past shows is a replay: it sends no request and has no End button. So a reload or a closed tab ends the live show.
+The player that opens from the progress screen is live (`App.tsx` carries the flag in its view). Only a live player makes an endless show grow. A show opened from Past shows is a replay: it sends no request and has no End button. So a reload, a closed tab or the Back button ends the live show, with no warning.
 
-What the live player does, all in `src/SegmentPlayer.tsx`:
+What the live player does, all in `src/SegmentPlayer.tsx` (its helpers that need no React are in `src/playback.ts`):
 
 - Once a second it reads the position of the song. When the last song it knows passes its middle, it sends `POST /api/v1/shows/{id}/next` once. In demo mode it sends it as soon as the song starts. A paused player sends nothing.
 - The reply is the whole show with its new part. `Player.tsx` owns the show, so the title, the script and the credits grow. The audio element and the YouTube player are created once per show id, so a reply never interrupts the song.
 - If the song ends before the reply, the player waits with "The host is getting the next song ready..." and goes on when the reply arrives. Next on the last song asks at once and waits the same way.
-- If the request fails, the song keeps playing and the message is shown. The player sends the request once more when the song ends. After that only the Try again button sends it, because each request can cost an LLM call.
-- End after this song sends `POST /api/v1/shows/{id}/end` with the index of the song that is playing, or of the next song when the host is speaking. Until the reply is in, the player starts nothing past that song. The reply holds the host's goodbye, which plays after the song. If the request fails, the button comes back with the message.
-- Still listening? is the check that someone is there. A click is any pointer press or key press on the page, or a pause or play made in the YouTube player's own controls. When the player is about to ask for the next part and the last click is more than an hour old, it shows the button instead. The song that is playing finishes, then the show is silent until the button is pressed.
-- When the host closes the show by itself, the reply ends with the goodbye and carries an `end_note`. The note is shown under the player, live and on replay. A show the listener left has no goodbye: its replay ends with "The show stopped here."
+- If the request fails, the song keeps playing and the message is shown. The player sends the request once more when the song ends, or at once if the song is already over. After that only the Try again button sends it, because each request can cost an LLM call.
+- End after this song sends `POST /api/v1/shows/{id}/end` with the index of the song that is playing, or of the next song when the host is speaking. Until the reply is in, the player starts nothing past that song, and a `next` reply that arrives in that time is dropped. The reply holds the host's goodbye, which plays after the song. If the request fails, the button comes back with the message. If the song is over by then, the player asks for nothing by itself: End after this song asks for the goodbye again, and Next goes on with the show.
+- Still listening? is the check that someone is there. A click is any pointer press or key press on the page, or a pause or play made in the YouTube player's own controls. When the player is about to ask for the next part and the last click is more than an hour old, it shows the button instead. While the song plays, a click anywhere is an answer: within a second the button goes away and the request is sent. If nobody clicks, the song finishes, and from then on only the button sends the request.
+- When the host closes the show by itself, the reply ends with the goodbye and carries an `end_note`. The note is shown under the player from the moment the goodbye starts, and on replay. A show the listener left has no goodbye: its replay ends with "The show stopped here."
+- A segment file that does not load, or a video that cannot play, is marked "Could not play." in the script and skipped after a short pause. This holds for replays and shows of a set length too.
+- When a button leaves the page or is switched off while it has the keyboard focus, the focus goes to the status line, which a screen reader then reads.
 
 To test the check without waiting an hour, set `VITE_CHECK_IN_MINUTES` when building or starting the dev server. It takes a number of minutes, decimals allowed:
 
@@ -28,7 +30,7 @@ To test the check without waiting an hour, set `VITE_CHECK_IN_MINUTES` when buil
 VITE_CHECK_IN_MINUTES=0.25 npm run build
 ```
 
-Unset, or not a positive number, it is 60.
+Unset, zero, negative or not a number, it is 60.
 
 The frontend has no test runner. The player was checked by hand in a headless browser, against a backend running on the fake LLM, the fake voice and the fake Jamendo source of the Python tests.
 
